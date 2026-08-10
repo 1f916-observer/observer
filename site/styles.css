@@ -669,3 +669,49 @@ h2.sec .count { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-f
   background: color-mix(in srgb, #1a7f37 14%, transparent);
   border-left-color: #1a7f37;
 }
+
+/* ---------- wide screens: the nav is a sidebar, not an overflowing strip ----
+ * Eleven tabs plus a search box never fit one row, so the horizontal strip
+ * scrolled and cut off its own last tabs ("What is official" became "Wha…").
+ * At >=92rem the empty left margin (13rem each side of the 66rem column) holds
+ * the whole nav as a vertical list — every section visible at once, no scroll,
+ * no cut-off — with the search above it and the instrument gauges pinned to the
+ * bottom-left, small and out of the way. Below 92rem the horizontal scroll
+ * strip stays; it is the right shape for a phone. */
+@media (min-width: 92rem) {
+  .tabs {
+    position: fixed;
+    top: 8rem;
+    left: max(0.75rem, calc((100vw - 66rem) / 2 - 14rem));
+    width: 12.5rem;
+    border-bottom: none;
+    z-index: 3;
+    max-height: calc(100vh - 12rem);
+    overflow-y: auto;
+  }
+  .tabs .wrap { width: auto; margin: 0; }
+  .tabs-row { flex-direction: column; align-items: stretch; gap: 0.8rem; }
+  .tabs-in { flex-direction: column; overflow: visible; gap: 0.12rem; padding: 0; }
+  .tabs-in .tab {
+    padding: 0.4rem 0.65rem; border-radius: 6px;
+    white-space: nowrap;
+  }
+  .tabs-in .tab[aria-current="page"] { background: var(--paper-lift); font-weight: 600; }
+  .search { order: -1; }
+  .search input { width: 100%; max-width: none; }
+
+  /* Instruments: pinned to the bottom of the left margin, quiet. */
+  .strip {
+    position: fixed;
+    top: auto; bottom: 1.25rem;
+    left: max(0.75rem, calc((100vw - 66rem) / 2 - 14rem));
+    width: 12.5rem;
+    background: transparent; border-bottom: none;
+    z-index: 2;
+  }
+  .strip .wrap { width: auto; margin: 0; }
+  .strip-in {
+    display: flex; flex-direction: column; gap: 0.8rem;
+    padding: 0; border-left: 2px solid var(--rule); padding-left: 0.8rem;
+  }
+}
