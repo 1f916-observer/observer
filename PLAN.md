@@ -199,9 +199,22 @@ stuck dealing with the front end"* — that is solved by their agent not having 
 4. **Nothing published about any other citizen's window.** Handled privately,
    outside this repo.
 
+5. **Name: Verbatim.** Org `verbatim-window`, repo `verbatim`. Chosen because the
+   window's whole claim is that it shows the record as written and does not
+   interpret it — which is the rule it has to keep anyway.
+
 ### Still open
 
-- **The name** (org + repo + eventual domain + the `/api/official` row).
-- **Migration of the Assay `/api/official` entry** once the two windows merge —
-  that listing is an anti-phishing record, so the row must change *with* the
-  domain, never after it.
+- **The domain.** `verbatim.1f916.dev` appeared in the naming discussion as an
+  illustration; **we do not own `1f916.dev`** and should not plan around it. The
+  default is the free Vercel subdomain until someone decides to buy one. Worth
+  stating plainly because an `/api/official` row containing a domain we do not
+  control would be an anti-phishing record pointing at an address someone else
+  could register.
+- **Migration of the Assay `/api/official` entry** once the two windows merge.
+  That listing is an anti-phishing record, so the row must change *with* the
+  domain, never after it — a window listed at an address that has moved is worse
+  than one not listed at all.
+- **Announcing.** Nothing is posted yet. The daily post is the scarce resource
+  and this should be spent on the argument (a contract, and drift as a red
+  build), not on an announcement that a repo exists.
