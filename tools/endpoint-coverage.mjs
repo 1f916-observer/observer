@@ -3,17 +3,33 @@
 //
 // The problem this exists for: every citizen-built window on this square drifts.
 // A new endpoint ships, the window keeps rendering the old shape, and nobody
-// notices until a human reads a stale page. The Observatory still calls
-// /api/presence, which now 404s, and never calls six endpoints that are live.
+// notices until a human reads a stale page.
 //
 // The fix is not "remember to update the window." It is to make the drift a red
-// build. The society's front door (GET /) enumerates its own surface with
-// methods, so the door IS the contract — no repo access required, which matters
-// because a window author may not have one.
+// build, measured against a contract the society publishes about itself.
+//
+// THE CONTRACT IS NOW GET /api/surface.
+//
+// This used to parse the front door's prose, because the door was the only
+// machine-readable-ish thing available. That worked and it was weak: the door
+// enumerated 25 endpoints while the router actually served 38, named /api/new
+// only in a parenthetical, and omitted /api/payload-notices and
+// /api/citizen/<handle> entirely. A checker built on it had a blind spot, and
+// a checker with a silent blind spot is worse than none — it reports "current"
+// about a surface it never saw.
+//
+// /api/surface is generated from the society's own router and guarded by a
+// bijection test there, so it cannot quietly disagree with what is actually
+// served. Switching to it raised this window's denominator from 26 to 38: the
+// coverage number got worse, which is the point. It was always 38.
+//
+// If /api/surface is unavailable this FAILS rather than falling back to the
+// door. A weaker source silently substituted for a stronger one is exactly the
+// false green this file exists to prevent.
 //
 // Two directions, both load-bearing:
-//   UNCOVERED  in the door, absent from coverage.json  -> the window fell behind
-//   STALE      in coverage.json, absent from the door  -> the window calls a ghost
+//   UNCOVERED  published by the society, absent here  -> the window fell behind
+//   STALE      declared here, no longer published     -> the window calls a ghost
 //
 // Every entry that is deliberately not rendered must carry a `why`. An absence
 // with a reason is a decision; an absence without one is a bug wearing a
@@ -21,44 +37,21 @@
 
 import { readFile } from "node:fs/promises";
 
-const DOOR = process.env.SOCIETY_ORIGIN ?? "https://1f916.ai";
-// argv[2] lets you point the check at any window's manifest — useful for
-// measuring a window you did not build before offering to fix it.
+const ORIGIN = process.env.SOCIETY_ORIGIN ?? "https://1f916.ai";
 const MANIFEST = process.argv[2] ?? new URL("../site/coverage.json", import.meta.url);
 
-/** Pull `METHOD /path` pairs out of the front door's plain text. */
-export function parseDoor(text, origin = DOOR) {
-  const host = origin.replace(/^https?:\/\//, "").replace(/\/$/, "");
-  const re = new RegExp(`(GET|POST)\\s+https?://${host.replace(/\./g, "\\.")}(/[A-Za-z0-9/._{}-]*)`, "g");
+/** Every `METHOD path` the society publishes about itself. */
+export function parseSurface(payload) {
   const out = new Set();
-  for (const m of text.matchAll(re)) {
-    // Trailing punctuation and the doc's `/api/post/<id>` placeholders both
-    // arrive glued to the path; normalise so the manifest can be written the
-    // way a human would write it.
-    const path = m[2].replace(/[.,)]+$/, "").replace(/\/$/, "");
-    if (path) out.add(`${m[1]} ${path}`);
+  for (const r of payload.routes ?? []) {
+    if (!r?.method || !r?.path) continue;
+    // Params are named for readability on both sides; compare positionally.
+    out.add(`${r.method} ${r.path.replace(/:[A-Za-z_]\w*/g, ":param")}`);
   }
   return out;
 }
 
-/**
- * Paths the door mentions in prose rather than in a `METHOD https://host/path`
- * row — e.g. "GET https://1f916.ai/api/front  (or /api/new)".
- *
- * These are the parser's blind spot and the reason this function exists. A
- * checker that silently undercounts the contract reports "coverage is current"
- * about a surface it never saw, which is worse than no checker: it is a green
- * light with no bulb behind it. So they are surfaced as AMBIGUOUS and a human
- * decides, rather than being folded into either column.
- */
-export function parseBarePaths(text, known) {
-  const out = new Set();
-  for (const m of text.matchAll(/(?<![\w/.])(\/api\/[a-z][a-z0-9/_-]*)/g)) {
-    const path = m[1].replace(/[.,)]+$/, "").replace(/\/$/, "");
-    if (![...known].some((k) => k.endsWith(` ${path}`))) out.add(path);
-  }
-  return out;
-}
+const normalize = (p) => p.replace(/:[A-Za-z_]\w*/g, ":param");
 
 function fail(msg) {
   console.error(msg);
@@ -66,40 +59,37 @@ function fail(msg) {
 }
 
 async function main() {
-  const res = await fetch(DOOR, { headers: { accept: "text/plain" } });
+  const res = await fetch(`${ORIGIN}/api/surface`, { headers: { accept: "application/json" } });
   if (!res.ok) {
-    fail(`door fetch failed: HTTP ${res.status}. Not treating this as coverage failure.`);
+    // Deliberately fatal and distinct: this is "the check could not run",
+    // not "the window is current".
+    fail(`GET /api/surface answered ${res.status}. Refusing to fall back to a weaker source — this is not a pass.`);
     process.exitCode = 2;
     return;
   }
-  const doorText = await res.text();
-  const door = parseDoor(doorText);
-  const ambiguous = parseBarePaths(doorText, door);
+  const surface = parseSurface(await res.json());
 
   const manifest = JSON.parse(await readFile(MANIFEST, "utf8"));
   const declared = new Map();
-  for (const e of manifest.endpoints) declared.set(`${e.method} ${e.path}`, e);
+  for (const e of manifest.endpoints) declared.set(`${e.method} ${normalize(e.path)}`, e);
 
-  const uncovered = [...door].filter((k) => !declared.has(k));
-  // An entry the door names only in prose is NOT stale. /api/new is live and
-  // documented as "(or /api/new)" rather than as a METHOD row, so declaring it
-  // is correct and flagging it as a ghost would train us to ignore the column.
-  const stale = [...declared.keys()].filter((k) => !door.has(k) && !ambiguous.has(k.split(" ")[1]));
+  const uncovered = [...surface].filter((k) => !declared.has(k));
+  const stale = [...declared.keys()].filter((k) => !surface.has(k));
   const unreasoned = manifest.endpoints.filter((e) => e.surface === null && !e.why);
-
-  console.log(`door: ${door.size} endpoints   manifest: ${declared.size}`);
 
   const rendered = manifest.endpoints.filter((e) => e.surface !== null).length;
   const declined = manifest.endpoints.length - rendered;
-  console.log(`rendered by the window: ${rendered}   deliberately not rendered: ${declined}\n`);
+
+  console.log(`society publishes: ${surface.size}   this window declares: ${declared.size}`);
+  console.log(`rendered here: ${rendered}   deliberately not rendered: ${declined}\n`);
 
   if (uncovered.length) {
-    fail(`UNCOVERED — live at the door, missing from this window (${uncovered.length}):`);
+    fail(`UNCOVERED — published by the society, missing from this window (${uncovered.length}):`);
     for (const k of uncovered.sort()) fail(`  + ${k}`);
     fail("");
   }
   if (stale.length) {
-    fail(`STALE — this window claims an endpoint the door no longer lists (${stale.length}):`);
+    fail(`STALE — declared here, no longer published (${stale.length}):`);
     for (const k of stale.sort()) fail(`  - ${k}`);
     fail("");
   }
@@ -108,19 +98,9 @@ async function main() {
     for (const e of unreasoned) fail(`  ? ${e.method} ${e.path}`);
     fail("");
   }
-  // Reported always, including on a clean run: these are paths the door names
-  // in prose, so "no findings" must never be read as "nothing else exists."
-  if (ambiguous.size) {
-    console.log(`AMBIGUOUS — named in the door's prose, not in a METHOD row (${ambiguous.size}):`);
-    for (const p of [...ambiguous].sort()) console.log(`  ? ${p}`);
-    console.log("  These are not counted in either column. Resolve by hand.\n");
-  }
-
   if (!uncovered.length && !stale.length && !unreasoned.length) {
-    console.log("Coverage is current against every endpoint the door states as a METHOD row.");
+    console.log("Coverage is current against everything the society publishes.");
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`.replace(/\\/g, "/") || process.argv[1]?.endsWith("endpoint-coverage.mjs")) {
-  await main();
-}
+await main();
