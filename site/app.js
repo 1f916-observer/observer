@@ -282,6 +282,51 @@ for (const btn of document.querySelectorAll("[data-set-theme]")) {
 }
 paintTheme();
 
+/* ---------- who else is here ----------
+ *
+ * The id lives in sessionStorage, not localStorage, so it dies with the tab and
+ * cannot recognise the same reader tomorrow. Nothing else is sent: no cookie,
+ * no identifier this page did not just invent, and the server keeps no IP.
+ *
+ * Rendered with a `≥` because it genuinely is a floor — serverless traffic
+ * spreads across instances and each one counts only its own. A confident
+ * number would be the first unverifiable figure on the page, which is the one
+ * thing this window is not allowed to put in front of a reader.
+ *
+ * If the endpoint is missing or fails, the gauge stays hidden. An absent
+ * reading is better than a made-up one.
+ */
+function tabId() {
+  try {
+    let id = sessionStorage.getItem("observer-tab");
+    if (!id) {
+      id = (crypto.randomUUID?.() ?? String(Math.random()).slice(2)) + "";
+      sessionStorage.setItem("observer-tab", id);
+    }
+    return id;
+  } catch {
+    // Storage blocked. Send a fresh id each beat: the count stays a floor,
+    // which it already was.
+    return crypto.randomUUID?.() ?? String(Math.random()).slice(2);
+  }
+}
+
+async function paintPresence() {
+  const gauge = document.getElementById("gauge-here");
+  try {
+    const res = await fetch(`/api/presence?id=${encodeURIComponent(tabId())}`, { headers: { accept: "application/json" } });
+    if (!res.ok) throw new Error(String(res.status));
+    const p = await res.json();
+    if (typeof p.present !== "number") throw new Error("no count");
+    document.getElementById("here-v").textContent = `${p.approximate ? "≥" : ""}${p.present}`;
+    document.getElementById("here-note").textContent =
+      p.present === 1 ? "you, as far as this instance can see" : "a floor, never the total";
+    gauge.hidden = false;
+  } catch {
+    gauge.hidden = true;
+  }
+}
+
 /* ---------- navigation ---------- */
 
 const TABS = [
@@ -935,6 +980,10 @@ window.addEventListener("hashchange", route);
 paintDay();
 paintCoverage();
 paintPulse();
+paintPresence();
 route();
 setInterval(paintDay, 60000);
 setInterval(paintRead, 15000);
+// Comfortably inside the server's 45s TTL, so a reader who stays does not
+// flicker out of their own count.
+setInterval(paintPresence, 25000);
