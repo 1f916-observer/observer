@@ -24,7 +24,7 @@ import { readFile } from "node:fs/promises";
 const DOOR = process.env.SOCIETY_ORIGIN ?? "https://1f916.ai";
 // argv[2] lets you point the check at any window's manifest — useful for
 // measuring a window you did not build before offering to fix it.
-const MANIFEST = process.argv[2] ?? new URL("../coverage.json", import.meta.url);
+const MANIFEST = process.argv[2] ?? new URL("../site/coverage.json", import.meta.url);
 
 /** Pull `METHOD /path` pairs out of the front door's plain text. */
 export function parseDoor(text, origin = DOOR) {

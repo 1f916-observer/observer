@@ -38,6 +38,18 @@ const RULES = [
     why: "Society text is attacker-controlled. Render it as text nodes, never as markup.",
   },
   {
+    id: "no-inline-style",
+    // Added after nearly shipping it. Our CSP sets style-src 'self' with no
+    // 'unsafe-inline', so a style attribute is dropped by the browser: the page
+    // looks correct anywhere the policy is not enforced and breaks in
+    // production. Set styles through the CSSOM (`node.style.x = ...`), which
+    // CSP does not govern.
+    test: (s) =>
+      [...s.matchAll(/<[a-z][^>]*\sstyle\s*=|setAttribute\(\s*["']style["']|(?:^|[^.\w])style:\s*["'`]/gim)]
+        .map((m) => m[0].trim()),
+    why: "style-src has no 'unsafe-inline', so inline styles are silently dropped in production.",
+  },
+  {
     id: "no-external-origins",
     // The CSP forbids these anyway; this proves it rather than trusting it.
     test: (s) =>

@@ -1,0 +1,413 @@
+/* Verbatim — a reading room onto a society of machines.
+ *
+ * The type system is the idea. Monospace is reserved for values quoted exactly
+ * as the society published them: handles, endpoint paths, hashes, timestamps,
+ * figures. Everything set in the sans face is Verbatim's own framing. A reader
+ * should be able to tell, at a glance and without being told twice, which words
+ * belong to the machines and which belong to us.
+ *
+ * No web fonts, deliberately: the CSP that makes this window safe to list sets
+ * font-src 'none' and forbids third-party origins. Character has to come from
+ * treatment — scale, tracking, weight, case — not from licensing.
+ */
+
+:root {
+  /* Cool paper rather than warm cream. This society is not cosy. */
+  --paper:      #edeff2;
+  --paper-lift: #f6f7f9;
+  --ink:        #0f1519;
+  --ink-soft:   #4a565f;
+  --ink-faint:  #7d8a94;
+  --rule:       #cfd5db;
+
+  /* The two accents are semantic, not decorative.
+   * teal   = recomputed here, and it agrees
+   * ember  = cited, stale, or drifting — look closer
+   * indigo = interaction only, never meaning */
+  --teal:   #0e7c66;
+  --ember:  #b4531a;
+  --indigo: #3a1fd6;
+
+  --display: Georgia, "Iowan Old Style", "Times New Roman", serif;
+  --body: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --mono: ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, monospace;
+
+  --measure: 68ch;
+  --step: clamp(0.9rem, 0.85rem + 0.25vw, 1rem);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper:      #0e1216;
+    --paper-lift: #161c22;
+    --ink:        #e6e9ed;
+    --ink-soft:   #a4b0ba;
+    --ink-faint:  #6f7d88;
+    --rule:       #263039;
+    --teal:       #34b79b;
+    --ember:      #e08a4e;
+    --indigo:     #9d8cff;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: var(--step);
+  line-height: 1.6;
+  font-synthesis-weight: none;
+}
+
+/* A reading room, not a dashboard. 66rem keeps the record rows wide enough to
+ * breathe while stopping the page from sprawling past what an eye can track. */
+.wrap { width: min(100% - 2.5rem, 66rem); margin-inline: auto; }
+
+.mono {
+  font-family: var(--mono);
+  font-size: 0.92em;
+  font-variant-ligatures: none;
+  letter-spacing: -0.01em;
+}
+
+a { color: var(--indigo); text-decoration-thickness: 1px; text-underline-offset: 0.18em; }
+a:hover { text-decoration-thickness: 2px; }
+
+:focus-visible {
+  outline: 2px solid var(--indigo);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+.skip {
+  position: absolute; left: -9999px;
+  background: var(--ink); color: var(--paper);
+  padding: 0.6rem 1rem; z-index: 10;
+}
+.skip:focus { left: 1rem; top: 1rem; }
+
+/* ---------- masthead ---------- */
+
+.masthead { border-bottom: 1px solid var(--rule); }
+.masthead-in {
+  display: flex; flex-wrap: wrap; gap: 1rem 2rem;
+  align-items: baseline; justify-content: space-between;
+  padding: 1.4rem 0 1.1rem;
+}
+.wordmark { text-decoration: none; color: inherit; display: block; }
+.wordmark-v {
+  display: block;
+  font-family: var(--display);
+  font-size: clamp(1.9rem, 1.5rem + 1.6vw, 2.7rem);
+  line-height: 1;
+  letter-spacing: -0.025em;
+  font-weight: 400;
+}
+.wordmark-sub {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--ink-faint);
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
+}
+.never {
+  margin: 0; max-width: 32ch;
+  font-size: 0.8rem; line-height: 1.45;
+  color: var(--ink-soft);
+  border-left: 2px solid var(--ember);
+  padding-left: 0.7rem;
+}
+
+/* ---------- the instrument strip: this page's signature ---------- */
+
+.strip {
+  background: var(--paper-lift);
+  border-bottom: 1px solid var(--rule);
+}
+.strip-in {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.4rem 2.5rem;
+  padding: 0.85rem 0;
+}
+.gauge {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas: "k v" "n n";
+  column-gap: 0.6rem;
+  align-items: baseline;
+}
+.gauge-k {
+  grid-area: k;
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--ink-faint);
+}
+.gauge-v { grid-area: v; font-size: 0.95rem; font-weight: 600; }
+.gauge-note {
+  grid-area: n;
+  font-size: 0.7rem;
+  color: var(--ink-faint);
+  margin-top: 0.1rem;
+}
+/* The day bar spans the gauge when present. */
+#gauge-day { grid-template-areas: "k v" "b b" "n n"; }
+.daybar {
+  grid-area: b;
+  display: block;
+  height: 3px;
+  margin: 0.4rem 0 0.1rem;
+  background: var(--rule);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.daybar-fill {
+  display: block; height: 100%; width: 0%;
+  background: var(--ink-soft);
+  transition: width 900ms cubic-bezier(.22,.61,.36,1);
+}
+.is-stale .gauge-v { color: var(--ember); }
+.is-good  #cov-v   { color: var(--teal); }
+
+/* ---------- tabs ---------- */
+
+.tabs { border-bottom: 1px solid var(--rule); }
+.tabs-in {
+  display: flex; gap: 0.15rem;
+  overflow-x: auto; scrollbar-width: thin;
+  padding: 0.3rem 0;
+}
+.tab {
+  flex: 0 0 auto;
+  padding: 0.5rem 0.85rem;
+  font-size: 0.83rem;
+  color: var(--ink-soft);
+  text-decoration: none;
+  border-radius: 4px;
+  white-space: nowrap;
+  transition: background 140ms ease, color 140ms ease;
+}
+.tab:hover { background: var(--paper-lift); color: var(--ink); }
+.tab[aria-current="page"] {
+  color: var(--ink);
+  font-weight: 600;
+  background: var(--paper-lift);
+  box-shadow: inset 0 -2px 0 var(--indigo);
+}
+
+/* ---------- view ---------- */
+
+#view { padding: 2.2rem 0 4rem; }
+
+.lede {
+  font-family: var(--display);
+  font-size: clamp(1.45rem, 1.1rem + 1.7vw, 2.25rem);
+  line-height: 1.22;
+  letter-spacing: -0.02em;
+  max-width: 22ch;
+  margin: 0 0 0.9rem;
+  font-weight: 400;
+}
+/* Kept whole: the browser will happily break a hyphenated word across lines,
+ * and "mid-" / "sentence." reads as a typesetting accident. */
+.lede em { font-style: italic; color: var(--ink-soft); white-space: nowrap; }
+
+.standfirst {
+  max-width: var(--measure);
+  color: var(--ink-soft);
+  margin: 0 0 2.2rem;
+}
+
+h2.sec {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 1.25rem;
+  letter-spacing: -0.01em;
+  margin: 2.6rem 0 0.2rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--rule);
+  display: flex; align-items: baseline; justify-content: space-between; gap: 1rem;
+}
+h2.sec .count { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-faint); letter-spacing: 0; }
+
+/* The hero post — a citizen mid-sentence, not a statistic. */
+.hero {
+  border-top: 2px solid var(--ink);
+  padding-top: 1.1rem;
+  margin-bottom: 2.4rem;
+}
+.hero-meta {
+  display: flex; flex-wrap: wrap; gap: 0.35rem 1rem;
+  align-items: baseline;
+  font-size: 0.72rem; color: var(--ink-faint);
+  text-transform: uppercase; letter-spacing: 0.1em;
+  margin-bottom: 0.7rem;
+}
+/* A handle is a value quoted exactly, and `1f916-agent` is lowercase. Letting
+ * the eyebrow's uppercase reach it would make the page break its own rule in
+ * the first line a reader sees. Labels get the treatment; quoted values do not. */
+.hero-meta .mono,
+.row-meta .mono {
+  text-transform: none;
+  letter-spacing: -0.01em;
+}
+.hero-title {
+  font-family: var(--display);
+  font-size: clamp(1.35rem, 1.05rem + 1.4vw, 2rem);
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+  margin: 0 0 0.7rem;
+  font-weight: 400;
+  /* A display line running the full 74rem is a headline nobody can track back
+   * to the start of. Titles get a measure like everything else. */
+  max-width: 30ch;
+}
+.hero-title a { color: inherit; text-decoration: none; background-image: linear-gradient(var(--indigo), var(--indigo)); background-size: 0% 1px; background-repeat: no-repeat; background-position: 0 100%; transition: background-size 240ms ease; }
+.hero-title a:hover { background-size: 100% 1px; }
+.hero-body { max-width: var(--measure); color: var(--ink-soft); margin: 0; }
+
+/* A row in any list of society records. */
+.row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.2rem 1.2rem;
+  padding: 0.85rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+.row:last-child { border-bottom: 0; }
+.row-title { margin: 0; font-size: 0.98rem; font-weight: 550; line-height: 1.35; }
+.row-title a { color: inherit; text-decoration: none; }
+.row-title a:hover { color: var(--indigo); }
+.row-meta { grid-column: 1 / -1; font-size: 0.75rem; color: var(--ink-faint); display: flex; flex-wrap: wrap; gap: 0.3rem 0.9rem; }
+.row-side { text-align: right; font-size: 0.75rem; color: var(--ink-faint); white-space: nowrap; }
+
+.pill {
+  display: inline-block;
+  font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.1em;
+  padding: 0.12rem 0.45rem; border-radius: 3px;
+  border: 1px solid currentColor;
+}
+.pill-open    { color: var(--ember); }
+.pill-shipped { color: var(--teal); }
+.pill-debate,
+.pill-watch,
+.pill-decision-pending { color: var(--ink-faint); }
+
+/* Verbatim quotation: agent prose, reproduced. Set in the reading face for
+ * legibility, but fenced so nobody mistakes it for our own words. */
+.quoted {
+  border-left: 2px solid var(--rule);
+  padding-left: 1.1rem;
+  max-width: var(--measure);
+  overflow-wrap: break-word;
+  margin: 0.6rem 0 0;
+  color: var(--ink);
+}
+
+/* Rendered from the author's markdown. The bytes are unchanged; the intent is
+ * honoured. Spacing is tight at the top so a quote sits against its rule. */
+.md-p { margin: 0 0 0.85em; }
+.md-p:last-child { margin-bottom: 0; }
+.md-h {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+  margin: 1.4em 0 0.4em;
+}
+.md-h:first-child { margin-top: 0; }
+.md-q {
+  margin: 0.9em 0;
+  padding-left: 0.9rem;
+  border-left: 2px solid var(--rule);
+  color: var(--ink-soft);
+  font-style: italic;
+}
+.md-list { margin: 0 0 0.85em; padding-left: 1.3rem; }
+.md-list li { margin-bottom: 0.25em; }
+.code {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  line-height: 1.5;
+  background: var(--paper-lift);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 0.7rem 0.85rem;
+  overflow-x: auto;
+  margin: 0.9em 0;
+}
+.code code { font: inherit; }
+
+/* A URL written by a stranger is shown, never made clickable. */
+.md-url { color: var(--ink-faint); overflow-wrap: anywhere; }
+
+.md-scroll { overflow-x: auto; margin: 0.9em 0; }
+.md-table { border-collapse: collapse; font-size: 0.85rem; min-width: 100%; }
+.md-table th, .md-table td {
+  text-align: left;
+  padding: 0.4rem 0.9rem 0.4rem 0;
+  border-bottom: 1px solid var(--rule);
+  vertical-align: top;
+}
+.md-table th { font-weight: 600; color: var(--ink-soft); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; }
+
+/* Full-width child of a two-column .row. */
+.span { grid-column: 1 / -1; }
+.lede-wide { max-width: 26ch; }
+
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: 0 2.5rem; }
+
+.kv { display: grid; grid-template-columns: 1fr auto; gap: 0.5rem 1rem; padding: 0.55rem 0; border-bottom: 1px solid var(--rule); font-size: 0.88rem; }
+.kv:last-child { border-bottom: 0; }
+.kv dt { color: var(--ink-soft); margin: 0; }
+.kv dd { margin: 0; text-align: right; font-family: var(--mono); font-size: 0.85rem; }
+
+.tag-recomputed { color: var(--teal); }
+.tag-cited { color: var(--ember); }
+
+.note {
+  background: var(--paper-lift);
+  border-left: 2px solid var(--ink-faint);
+  padding: 0.8rem 1rem;
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  max-width: var(--measure);
+  margin: 1.2rem 0 0;
+}
+
+.state { padding: 3rem 0; color: var(--ink-faint); max-width: var(--measure); }
+.state strong { color: var(--ink); font-weight: 600; display: block; margin-bottom: 0.3rem; font-size: 1.05rem; }
+.state-err { border-left: 2px solid var(--ember); padding-left: 1rem; }
+
+.back { display: inline-block; margin-bottom: 1.2rem; font-size: 0.8rem; }
+
+/* ---------- footer ---------- */
+
+.foot { border-top: 1px solid var(--rule); margin-top: 3rem; }
+.foot-in { padding: 1.6rem 0 3rem; color: var(--ink-faint); font-size: 0.78rem; }
+.foot-in p { max-width: var(--measure); margin: 0 0 0.6rem; }
+.foot-rule { display: flex; align-items: baseline; gap: 0.5rem; }
+.swatch-mono { width: 0.75rem; height: 0.75rem; background: var(--ink-faint); display: inline-block; border-radius: 2px; flex: 0 0 auto; }
+
+/* ---------- motion ---------- */
+
+/* One orchestrated entrance, not scattered effects: the view fades up as a
+ * single object so a route change reads as turning a page. */
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.enter { animation: rise 320ms cubic-bezier(.22,.61,.36,1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
+
+@media (max-width: 34rem) {
+  .never { max-width: none; }
+  .row { grid-template-columns: 1fr; }
+  .row-side { text-align: left; }
+}
