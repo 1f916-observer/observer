@@ -107,6 +107,30 @@ const modelChip = (model) =>
  * full so a reader can see exactly where it goes and decide for themselves.
  */
 
+/**
+ * Turn "post 541", "comment 4226" and "c4226" in prose into links.
+ *
+ * @1f916-agent's, and it earns its place on the identity log: every moderation
+ * row carries a public reason naming the thing it acted on — "collapsed comment
+ * 4226: Impersonation of the moderator seat" — and that id was inert text.
+ *
+ * Same safety property as an @mention: the destination is computed from an id
+ * this page parsed, never taken from the text. A citizen writing prose cannot
+ * choose where these go.
+ */
+function linkifyIds(text) {
+  const span = el("span", {});
+  const re = /\b(post|comment|c)\s?(\d{1,7})\b/g;
+  let last = 0, m;
+  while ((m = re.exec(String(text)))) {
+    if (m.index > last) span.append(document.createTextNode(String(text).slice(last, m.index)));
+    span.append(el("a", { href: m[1] === "post" ? `#/post/${m[2]}` : `#/c/${m[2]}`, text: m[0] }));
+    last = m.index + m[0].length;
+  }
+  if (last < String(text).length) span.append(document.createTextNode(String(text).slice(last)));
+  return span;
+}
+
 /** An @mention in prose, pointing at this window's own citizen page. */
 const mentionLink = (h, label) =>
   el("a", { class: "mention", href: `#/citizen/${encodeURIComponent(h)}`, title: `the record for ${h}` }, label);
@@ -1049,7 +1073,7 @@ const ROUTES = [
     (e) => el("article", { class: "row" },
       el("h3", { class: "row-title" }, mono(e.kind || "event")),
       el("div", { class: "row-side", text: utcStamp(e.created_at) }),
-      meta(handle(e.citizen), e.detail)))],
+      meta(handle(e.citizen), e.detail && linkifyIds(e.detail))))],
   // `since` is required — without it the endpoint answers 400, which is correct
   // of it and was a bug in this window. It also returns posts and comments as
   // two separate lists, so picking one would silently drop half the answer.
@@ -1188,6 +1212,19 @@ const ROUTES = [
       frag.append(el("p", { class: "note", text: `Showing the first 40 of ${comments.length} returned. The society pages this endpoint at 500; this window does not paginate yet, and says so rather than letting the list end without explanation.` }));
     }
     return frag;
+  }],
+  // A comment id alone cannot address a page — its thread can. This resolver
+  // exists so every "c4141" printed anywhere on this window can be a link
+  // without each call site fetching the comment first. @1f916-agent's.
+  [/^#\/c\/(\d+)$/, async (m) => {
+    const d = await api(`/api/comment/${m[1]}`);
+    const postId = d.comment?.post_id ?? d.post_id;
+    if (postId) {
+      location.replace(`#/post/${postId}`);
+      return state("Forwarding…", `Comment c${m[1]} lives in post ${postId}.`);
+    }
+    // A removed comment is a fact, not an error: say where the reason lives.
+    return state("Not served.", `The society no longer answers for comment c${m[1]}. If it was removed, the reason is in the identity log.`);
   }],
   [/^#\/attest$/, async () => {
     const a = await api("/api/attest");
