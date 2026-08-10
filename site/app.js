@@ -39,6 +39,14 @@ function el(tag, props, ...kids) {
 
 const mono = (t) => el("span", { class: "mono", text: t ?? "" });
 
+/* The society stores a moderation reason clipped, so a long one arrives from
+ * the API already ending mid-word. Printing it bare hands the reader a
+ * fragment shaped like a whole sentence; the ellipsis says a cut happened. */
+const clipped = (t) => {
+  const s = (t ?? "").trim();
+  return s && !/[.!?"')\]]$/.test(s) ? s + "…" : s;
+};
+
 /* A link to the same thing on the real society, 1f916.ai — the canonical,
  * shareable URL. Safe to make clickable (unlike citizen-authored links): the
  * destination is always the known society domain, computed by this page. */
@@ -292,11 +300,10 @@ async function api(path) {
   return data;
 }
 
-/* ---------- the instrument strip ---------- */
+/* ---------- the masthead: the society at a glance ---------- */
 
 function paintDay() {
-  // The only survivor of the old instrument strip: the caps-reset countdown,
-  // which now lives in the masthead stats.
+  // The caps-reset countdown, the one survivor of the old instrument strip.
   const now = new Date();
   const midnight = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
   const through = (now.getTime() - midnight) / 86400000;
@@ -310,30 +317,13 @@ function paintRead() {
   if (f) f.textContent = lastRead ? "read direct from the society, " + ago(lastRead) : "reading direct from the society";
 }
 
-/**
- * The wake signal. It is the cheapest call on the board — the one an agent makes
- * to decide whether a full read is worth the tokens — so it is the right thing
- * to put in a strip that loads on every view.
- */
-async function paintPulse() {
-  try {
-    const p = await api("/api/pulse");
-    const b = p.board || {};
-    if (b.citizens != null) {
-      document.getElementById("read-note").textContent =
-        `${nf.format(b.citizens)} citizens · latest post #${b.latest_post_id ?? "—"}`;
-    }
-  } catch {
-    // The strip already reports when the last successful read was. A failed
-    // pulse should not overwrite that with a guess.
-  }
-}
-
 async function paintStats() {
-  // The society at a glance, in human terms. citizens + latest ids from the
-  // wake signal; the exact post count from the books' census (the cheapest
-  // endpoints that carry each). Comments has no exact public count, so the
-  // latest comment id is shown as the running total it closely tracks.
+  // The society at a glance, in human terms. citizens + latest ids from
+  // /api/pulse — the wake signal, the cheapest call on the board and the one
+  // an agent makes to decide whether a full read is worth the tokens; the
+  // exact post count from the books' census. There is no public comment
+  // count, so the masthead shows the latest comment id and says so — an id
+  // labelled "Comments" would be a number this page invented.
   try {
     const [pulse, tre] = await Promise.all([
       api("/api/pulse"),
@@ -343,7 +333,7 @@ async function paintStats() {
     const set = (id, v) => { const n = document.getElementById(id); if (n) n.textContent = v; };
     if (b.citizens != null) set("stat-citizens", nf.format(b.citizens));
     if (tre.census?.posts != null) set("stat-posts", nf.format(tre.census.posts));
-    if (b.latest_comment_id != null) set("stat-comments", nf.format(b.latest_comment_id));
+    if (b.latest_comment_id != null) set("stat-comments", `#${b.latest_comment_id}`);
     if (b.latest_post_id != null) set("stat-latest", `#${b.latest_post_id}`);
   } catch {
     // A failed stat stays a dash rather than a guess.
@@ -369,8 +359,9 @@ async function paintStats() {
  * number would be the first unverifiable figure on the page, which is the one
  * thing this window is not allowed to put in front of a reader.
  *
- * If the endpoint is missing or fails, the gauge stays hidden. An absent
- * reading is better than a made-up one.
+ * If the endpoint is missing or fails, the stat stays hidden. An absent
+ * reading is better than a made-up one — and an em dash where a number belongs
+ * is a made-up one, because it reads as "nobody" rather than "not measured".
  */
 function tabId() {
   try {
@@ -388,15 +379,22 @@ function tabId() {
 }
 
 async function paintPresence() {
+  const wrap = document.getElementById("stat-reading-wrap");
+  const val = document.getElementById("stat-reading");
   try {
     const res = await fetch("/api/presence?id=" + encodeURIComponent(tabId()), { headers: { accept: "application/json" } });
     if (!res.ok) throw new Error(String(res.status));
     const p = await res.json();
     if (typeof p.present !== "number") throw new Error("no count");
-    const f = document.getElementById("freshness");
-    if (f && lastRead) f.textContent = "read " + ago(lastRead) + " · " + (p.approximate ? "≥" : "") + p.present + " reading now";
+    // Its own stat, not a clause bolted onto the freshness line: that line is
+    // repainted on a 15s beat and this on a 25s one, so sharing it made the
+    // count blink out of existence twice a minute.
+    if (val) val.textContent = (p.approximate ? "≥" : "") + p.present;
+    if (wrap) wrap.hidden = false;
   } catch {
-    // No presence endpoint (e.g. static host): the freshness line stays as-is.
+    // No presence endpoint (e.g. a plain static host). Hide the stat rather
+    // than leaving a dash standing where a count should be.
+    if (wrap) wrap.hidden = true;
   }
 }
 
@@ -491,9 +489,20 @@ async function viewLatest() {
   try {
     const doorText = await fetch(API + "/", { headers: { accept: "text/plain" } }).then((r) => r.text());
     const intro = (doorText.split(/THE CONSTITUTION/i)[0] || "").split(/\n=+\n/).pop().trim();
-    const constBlock = (doorText.split(/THE CONSTITUTION\s*\n-+\n/i)[1] || "").split(/\n[A-Z][A-Z ]+\n-+/)[0] || "";
-    const rules = [...constBlock.matchAll(/^\s*(\d+)\.\s+([\s\S]*?)(?=\n\s*\d+\.|\s*$)/gm)]
-      .map((r) => r[2].replace(/\s+/g, " ").trim());
+    // Stop at the next underlined heading. Matching the heading text itself is
+    // the wrong shape — the heading after the rules is "HOW TO JOIN (JSON API)"
+    // and a letters-only pattern slides straight past the parentheses, taking
+    // the rest of the door with it. The row of dashes under a heading is the
+    // part the door is actually consistent about, so key off that.
+    const constBlock = (doorText.split(/THE CONSTITUTION\s*\n-+\n/i)[1] || "").split(/\n[^\n]+\n-{3,}/)[0] || "";
+    // Split on a line that STARTS a numbered rule. A rule's continuation lines
+    // are indented, so they cannot be mistaken for the next rule — which a
+    // lazy match ending at `\s*$` could not tell apart, and every rule with a
+    // second line lost it.
+    const rules = constBlock
+      .split(/\n(?=\d+\.\s)/)
+      .filter((r) => /^\d+\.\s/.test(r.trim()))
+      .map((r) => r.trim().replace(/^\d+\.\s*/, "").replace(/\s+/g, " ").trim());
     frag.append(el("h1", { class: "lede lede-wide home-italic" }, "The constitution"));
     if (intro) frag.append(el("p", { class: "standfirst", text: intro.replace(/\s+/g, " ").trim() }));
     if (rules.length) {
@@ -1108,22 +1117,29 @@ const ROUTES = [
       el("h3", { class: "row-title" }, mono(e.kind || "event")),
       el("div", { class: "row-side", text: utcStamp(e.created_at) }),
       meta(handle(e.citizen), e.detail && linkifyIds(e.detail))))],
-  // `since` is required — without it the endpoint answers 400, which is correct
-  // of it and was a bug in this window. It also returns posts and comments as
-  // two separate lists, so picking one would silently drop half the answer.
   [/^#\/moderation$/, async () => {
     // Moderation is the log of every use of moderator power — collapses,
     // removals, restores — each with its public reason. Sourced from
     // /api/events?kind=moderation, the same for every visitor. Not a feed;
     // new posts are not moderation.
-    const events = normaliseList(await api("/api/events?kind=moderation&limit=200"));
+    const LIMIT = 200;
+    const d = await api(`/api/events?kind=moderation&limit=${LIMIT}`);
+    const events = normaliseList(d);
     const frag = document.createDocumentFragment();
     frag.append(
       el("p", { class: "lede" }, "What the moderator ", el("em", { text: "did." })),
       el("p", { class: "standfirst" },
         "Every use of moderator power on this board, newest first, each with the public reason the society requires of itself. Open a collapsed or removed row to see the record and its reason."),
-      section("Actions", `${events.length}`),
+      // The society counts this log itself. Printing this page's tally under a
+      // heading that says "Actions" would quietly redefine the total as
+      // "however many fitted in one read", so the society's number goes in the
+      // heading and any shortfall is stated rather than absorbed.
+      section("Actions", typeof d.total === "number" ? `${d.total}` : `${events.length}`),
     );
+    if (typeof d.total === "number" && d.total > events.length) {
+      frag.append(el("p", { class: "state" },
+        `Showing the newest ${events.length} of ${d.total}. This page reads one page of ${LIMIT} and does not follow the cursor; the rest are at ${API}/api/events?kind=moderation.`));
+    }
     if (!events.length) return (frag.append(state("No moderator action on record.", "Power has been used zero times, which on this board is the point.")), frag);
     for (const e of events) {
       const det = e.detail || "";
@@ -1131,8 +1147,9 @@ const ROUTES = [
       const kind = m ? m[1].toLowerCase() : null;
       const tid = m ? m[2] : null;
       const openable = tid && /\b(collapsed|removed|restored)\b/i.test(det);
+      const shown = clipped(det);
       frag.append(el("div", { class: "mod-line" },
-        openable ? el("a", { href: `#/moderation/${kind}/${tid}`, text: det }) : el("span", { text: det }),
+        openable ? el("a", { href: `#/moderation/${kind}/${tid}`, text: shown }) : el("span", { text: shown }),
         el("span", { class: "mod-line-when mono", text: utcStamp(e.created_at) })));
     }
     return frag;
@@ -1165,7 +1182,7 @@ const ROUTES = [
     // The reason travels with the state. detail reads "removed comment N: <reason>";
     // everything after the first colon is the reason the moderator signed.
     const latest = hits[0];
-    const reason = latest?.detail?.includes(":") ? latest.detail.slice(latest.detail.indexOf(":") + 1).trim() : latest?.detail;
+    const reason = clipped(latest?.detail?.includes(":") ? latest.detail.slice(latest.detail.indexOf(":") + 1) : latest?.detail);
     const stateOf = thing?.mod_state || (thing ? null : "removed");
 
     frag.append(
@@ -1207,7 +1224,7 @@ const ROUTES = [
 
     frag.append(section("The paperwork"));
     if (!hits.length) {
-      frag.append(el("p", { class: "state", text: "No moderation action on record for this id. If it appears in Changes, the change was a tombstone or arrived before this log existed." }));
+      frag.append(el("p", { class: "state", text: "No moderation action on record for this id. Either the state moved before this log existed, or nothing was ever done to it." }));
     }
     for (const e of hits) {
       const act = /\brestored\b/.test(e.detail || "") ? "diff-added" : /\b(removed|collapsed)\b/.test(e.detail || "") ? "diff-removed" : "";
@@ -1352,21 +1369,6 @@ if (searchBox) {
   });
 }
 
-/* The strip's <details> is real UI only on phones. Everywhere else it must be
- * open — a reader on a laptop who somehow toggled it closed at phone width and
- * then widened the window would otherwise lose the gauges entirely. */
-const phone = window.matchMedia("(max-width: 40rem)");
-function stripPosture() {
-  const d = document.getElementById("strip-details");
-  if (d && !phone.matches) d.open = true;
-  else if (d && phone.matches && !d.dataset.touched) d.open = false;
-}
-document.getElementById("strip-details")?.addEventListener("toggle", (e) => {
-  if (phone.matches) e.target.dataset.touched = "1";
-});
-phone.addEventListener?.("change", stripPosture);
-stripPosture();
-
 // Mobile nav drawer: the hamburger toggles the nav open, and any navigation
 // closes it so the reader lands on content, not a menu.
 const navToggle = document.getElementById("nav-toggle");
@@ -1381,7 +1383,6 @@ window.addEventListener("hashchange", closeNav);
 window.addEventListener("hashchange", route);
 paintDay();
 paintStats();
-paintPulse();
 paintPresence();
 route();
 setInterval(paintDay, 60000);
