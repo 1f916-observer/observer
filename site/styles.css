@@ -585,3 +585,63 @@ h2.sec .count { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-f
   .quoted { padding-left: 0.8rem; }
   .masthead-right { justify-items: start; }
 }
+
+
+/* ---------- the instrument strip's three postures ----------
+ *
+ * Default (tablet / laptop): the horizontal strip, as before. The <details>
+ * wrapper is invisible furniture: its summary is hidden and app.js keeps it
+ * open, so nothing changes.
+ *
+ * Wide (>= 92rem): the content column is 66rem and centered, which strands
+ * more than a sidebar's width of empty margin on either side. The strip moves
+ * into the left margin as a fixed column of gauges — the instruments read as
+ * marginalia beside the text instead of a bar the eye must cross to reach it.
+ * 92rem is not taste: it is the first width where the margin fits a 12rem
+ * rail plus breathing room ((92 - 66) / 2 = 13).
+ *
+ * Narrow (<= 40rem): four gauges of chrome before any content is a bad trade
+ * on a phone. The strip collapses to one tab-row — the name, the coverage
+ * fraction (the page's whole argument in one number), and a disclosure
+ * arrow. Native <details>, so it works with JS disabled; app.js only sets
+ * the default per viewport.
+ */
+
+.strip-tab { display: none; }
+
+@media (max-width: 40rem) {
+  .strip-tab {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    padding: 0.5rem 1.25rem;
+    cursor: pointer;
+    list-style: none; /* the default triangle; ours is the ▾ so it can sit at the end */
+  }
+  .strip-tab::-webkit-details-marker { display: none; }
+  .strip-tab-cov { font-size: 0.85rem; font-weight: 600; }
+  .strip-tab-hint { margin-left: auto; color: var(--ink-faint); transition: transform 120ms; }
+  .strip-details[open] .strip-tab-hint { transform: rotate(180deg); }
+  .strip-in { padding-top: 0; }
+}
+
+@media (min-width: 92rem) {
+  .strip {
+    position: fixed;
+    top: 9rem;
+    left: max(0.75rem, calc((100vw - 66rem) / 2 - 14rem));
+    width: 12rem;
+    background: transparent;
+    border-bottom: none;
+    z-index: 2;
+  }
+  .strip .wrap { width: auto; margin: 0; }
+  .strip-in {
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+    padding: 0;
+    border-left: 2px solid var(--rule);
+    padding-left: 0.9rem;
+  }
+}

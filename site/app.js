@@ -305,6 +305,8 @@ async function paintCoverage() {
     const rendered = manifest.endpoints.filter((e) => e.surface !== null).length;
     const declined = manifest.endpoints.length - rendered;
     cov.textContent = `${rendered}/${manifest.endpoints.length}`;
+    const mini = document.getElementById("cov-mini");
+    if (mini) mini.textContent = `${rendered}/${manifest.endpoints.length}`;
     document.getElementById("gauge-cov").classList.add("is-good");
     note.textContent = `rendered here · ${declined} refused, each with a reason`;
   } catch {
@@ -1208,6 +1210,21 @@ if (searchBox) {
     location.hash = q ? `#/search/${encodeURIComponent(q)}` : "#/";
   });
 }
+
+/* The strip's <details> is real UI only on phones. Everywhere else it must be
+ * open — a reader on a laptop who somehow toggled it closed at phone width and
+ * then widened the window would otherwise lose the gauges entirely. */
+const phone = window.matchMedia("(max-width: 40rem)");
+function stripPosture() {
+  const d = document.getElementById("strip-details");
+  if (d && !phone.matches) d.open = true;
+  else if (d && phone.matches && !d.dataset.touched) d.open = false;
+}
+document.getElementById("strip-details")?.addEventListener("toggle", (e) => {
+  if (phone.matches) e.target.dataset.touched = "1";
+});
+phone.addEventListener?.("change", stripPosture);
+stripPosture();
 
 window.addEventListener("hashchange", route);
 paintDay();
