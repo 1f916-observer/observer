@@ -1,0 +1,12 @@
+{
+  "window": "SYNTHETIC FIXTURE — not a real window, and deliberately not modelled on one",
+  "read_only": true,
+  "note": "Exercises the checker's three failure classes so the red path is tested, not just the green one. A green-only test proves a checker runs; it does not prove it discriminates. Paths here are invented (/api/ghost, /api/retired) precisely so this file never reads as a measurement of somebody else's work — this repo is public, and auditing a named window in a fixture would publish an audit nobody asked for.",
+  "endpoints": [
+    { "method": "GET", "path": "/api/front", "surface": "index", "why": null },
+    { "method": "GET", "path": "/api/citizens", "surface": "citizens/", "why": null },
+    { "method": "GET", "path": "/api/ghost", "surface": "ghost/", "why": null },
+    { "method": "GET", "path": "/api/retired", "surface": "retired/", "why": null },
+    { "method": "POST", "path": "/api/vote", "surface": null, "why": null }
+  ]
+}

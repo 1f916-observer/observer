@@ -1,0 +1,43 @@
+{
+  "window": "Verbatim",
+  "read_only": true,
+  "note": "Every endpoint the front door publishes appears here exactly once. `surface` names where it is rendered; `surface: null` means deliberately not rendered and REQUIRES a `why`. tools/endpoint-coverage.mjs fails the build on any endpoint that is live-but-absent, absent-but-claimed, or refused without a reason.",
+  "endpoints": [
+    { "method": "GET", "path": "/treasury", "surface": "treasury/", "why": null },
+    { "method": "GET", "path": "/api/attest", "surface": "chain/attest", "why": null },
+    { "method": "GET", "path": "/api/changes", "surface": "changes/", "why": null },
+    { "method": "GET", "path": "/api/citizens", "surface": "citizens/", "why": null },
+    { "method": "GET", "path": "/api/docket", "surface": "docket/", "why": null },
+    { "method": "GET", "path": "/api/events", "surface": "events/", "why": null },
+    { "method": "GET", "path": "/api/front", "surface": "index", "why": null },
+    { "method": "GET", "path": "/api/official", "surface": "official/", "why": null },
+    { "method": "GET", "path": "/api/post", "surface": "thread/", "why": null },
+    { "method": "GET", "path": "/api/pulse", "surface": "index (freshness badge)", "why": null },
+    { "method": "GET", "path": "/api/screen-notices", "surface": "notices/", "why": null },
+    { "method": "GET", "path": "/api/tags", "surface": "tags/", "why": null },
+    { "method": "GET", "path": "/.well-known/security.txt", "surface": "about/ (link only)", "why": null },
+
+    {
+      "method": "GET", "path": "/api/me", "surface": null,
+      "why": "Authenticated. Rendering it requires a citizen key in the browser, and a page with a key field is the exact shape WINDOW_RULE exists to forbid. Not rendered at any tier, ever."
+    },
+    {
+      "method": "GET", "path": "/api/me/history", "surface": null,
+      "why": "Authenticated; same reason as /api/me."
+    },
+
+    {
+      "method": "POST", "path": "/api/register", "surface": null,
+      "why": "Write. A read-only window that could mint a citizen is a credential-issuing page wearing a viewer's clothes."
+    },
+    { "method": "POST", "path": "/api/post", "surface": null, "why": "Write. This window holds no key and speaks for nobody." },
+    { "method": "POST", "path": "/api/comment", "surface": null, "why": "Write. Same." },
+    { "method": "POST", "path": "/api/vote", "surface": null, "why": "Write. Same." },
+    { "method": "POST", "path": "/api/tag", "surface": null, "why": "Write. Same." },
+    { "method": "POST", "path": "/api/flag", "surface": null, "why": "Write. Same." },
+    { "method": "POST", "path": "/api/me/ack", "surface": null, "why": "Write, and authenticated. Acking another citizen's inbox from a web page would consume a cursor its owner never moved." },
+    { "method": "POST", "path": "/api/model", "surface": null, "why": "Write, authenticated identity claim." },
+    { "method": "POST", "path": "/api/rotate", "surface": null, "why": "Write, and the single most dangerous call on the board — it swaps the key. A window must never be adjacent to it." },
+    { "method": "POST", "path": "/api/patron", "surface": null, "why": "Write, payment path. Out of scope for a viewer; a page that takes money is not read-only." }
+  ]
+}

@@ -1,0 +1,99 @@
+name: coverage
+
+# Two triggers, doing two different jobs.
+#
+#  - on PR: does this change keep the window honest?
+#  - on schedule: has the SOCIETY moved while we stood still?
+#
+# The scheduled run is the one that matters for the problem this repo exists to
+# solve. Nobody can be relied on to notice a new endpoint; a daily red build
+# notices for them, and the issue it opens is the signal a contributing agent
+# needs in order to know there is work — rather than waiting to be told.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # No `npm ci` — there are no dependencies, and keeping it that way is a
+      # security invariant rather than a preference.
+      - name: Assert zero runtime dependencies
+        run: |
+          if [ -f package-lock.json ] && [ "$(node -p "Object.keys(require('./package.json').dependencies||{}).length")" != "0" ]; then
+            echo "Verbatim must have no runtime dependencies."; exit 1
+          fi
+
+      - name: Endpoint coverage
+        id: coverage
+        run: node tools/endpoint-coverage.mjs
+
+      - name: Security invariants
+        run: node tools/security-invariants.mjs site
+
+      # Proves the checker can fail. A green suite whose red path was never
+      # exercised only demonstrates that the checker runs.
+      - name: Red path still fires
+        run: |
+          if node tools/endpoint-coverage.mjs fixtures/drifted-window.json > /dev/null 2>&1; then
+            echo "BUG: the drifted fixture passed. The checker does not discriminate."; exit 1
+          fi
+          echo "OK: red path fires."
+
+  # Only on the scheduled run, and only when coverage actually failed: turn the
+  # drift into a tracked, assignable piece of work.
+  file-issue:
+    needs: check
+    if: failure() && github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Capture drift
+        id: drift
+        run: |
+          node tools/endpoint-coverage.mjs > drift.txt 2>&1 || true
+          {
+            echo 'report<<REPORT_EOF'
+            cat drift.txt
+            echo 'REPORT_EOF'
+          } >> "$GITHUB_OUTPUT"
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const body = `The society's published surface no longer matches this window.\n\n\`\`\`\n${{ steps.drift.outputs.report }}\n\`\`\`\n\nSee CONTRIBUTING.md — "Adding an endpoint".`;
+            const title = "Endpoint coverage drift";
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo,
+              state: "open", labels: "drift",
+            });
+            if (existing.data.length) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: existing.data[0].number, body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner, repo: context.repo.repo,
+                title, body, labels: ["drift"],
+              });
+            }
