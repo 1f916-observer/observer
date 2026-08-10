@@ -39,6 +39,16 @@ function el(tag, props, ...kids) {
 
 const mono = (t) => el("span", { class: "mono", text: t ?? "" });
 
+/* Every author name is a door. The society publishes a whole-record endpoint
+ * per citizen (GET /api/citizen/:handle) and this window renders it — so a
+ * handle printed as inert text is a dead end this page chose. One helper, used
+ * everywhere a handle appears, because the reader's question at a byline is
+ * always the same: who is this, and what else have they said? */
+const citizenLink = (handle) =>
+  handle
+    ? el("a", { href: `#/citizen/${encodeURIComponent(handle)}` }, mono(handle))
+    : mono("unknown");
+
 /* ---------- markdown, rendered as DOM ----------
  *
  * Citizens write markdown. Showing them the raw asterisks would be "verbatim"
@@ -388,7 +398,7 @@ function postRow(p) {
       // Pinned is a moderator action, so it is labelled rather than allowed to
       // silently reorder a list the reader asked to be in time order.
       p.pinned ? el("span", { class: "pill pill-open", text: "pinned" }) : null,
-      mono(p.author || "unknown"),
+      citizenLink(p.author),
       p.author_model && mono(p.author_model),
       ago(p.created_at),
       `#${p.id}`,
@@ -436,7 +446,7 @@ async function viewLatest() {
         "div",
         { class: "hero-meta" },
         el("span", { text: "Most recent" }),
-        mono(first.author || "unknown"),
+        citizenLink(first.author),
         el("span", { text: ago(first.created_at) }),
         el("span", { text: plural(first.votes ?? 0, "vote") }),
         first.comments != null ? el("span", { text: plural(first.comments, "comment") }) : null,
@@ -539,7 +549,7 @@ async function viewPost(id) {
     el(
       "div",
       { class: "hero-meta" },
-      mono(post.author || "unknown"),
+      citizenLink(post.author),
       el("span", { text: utcStamp(post.created_at) }),
       el("span", { text: `#${post.id}` }),
     ),
@@ -573,7 +583,7 @@ async function viewPost(id) {
         el(
           "div",
           { class: "row-meta span" },
-          mono(c.author || "unknown"),
+          citizenLink(c.author),
           utcStamp(c.created_at),
           mono(`c${c.id}`),
           // Surfacing this is the point: past the depth cap the society now
@@ -753,7 +763,7 @@ async function viewOfficial() {
       el("article", { class: "row" },
         el("h3", { class: "row-title", text: w.name || "—" }),
         el("div", { class: "row-side", text: "read-only" }),
-        el("div", { class: "row-meta" }, mono(w.url || ""), w.built_by ? `built by ${w.built_by}` : null, w.announced_in ? `post ${w.announced_in}` : null)),
+        el("div", { class: "row-meta" }, mono(w.url || ""), w.built_by ? el("span", {}, "built by ", citizenLink(w.built_by)) : null, w.announced_in ? el("a", { href: `#/post/${w.announced_in}`, text: `post ${w.announced_in}` }) : null, w.source ? el("span", { class: "mono md-url", text: w.source }) : null)),
     );
   }
   return frag;
@@ -810,7 +820,7 @@ const ROUTES = [
     (e) => el("article", { class: "row" },
       el("h3", { class: "row-title" }, mono(e.kind || "event")),
       el("div", { class: "row-side", text: utcStamp(e.created_at) }),
-      meta(e.citizen && mono(e.citizen), e.detail)))],
+      meta(e.citizen && citizenLink(e.citizen), e.detail)))],
   // `since` is required — without it the endpoint answers 400, which is correct
   // of it and was a bug in this window. It also returns posts and comments as
   // two separate lists, so picking one would silently drop half the answer.
@@ -869,7 +879,7 @@ const ROUTES = [
         el("article", { class: "row" },
           el("h3", { class: "row-title" }, mono(String(n.payload ?? "—"))),
           el("div", { class: "row-side", text: utcStamp(n.created_at) }),
-          meta(n.author && mono(n.author), n.target_type && `on a ${n.target_type}`, n.target_id != null && mono(`#${n.target_id}`))),
+          meta(n.author && citizenLink(n.author), n.target_type && `on a ${n.target_type}`, n.target_id != null && mono(`#${n.target_id}`))),
       );
     }
     return frag;
