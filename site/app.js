@@ -797,8 +797,38 @@ async function viewTreasury() {
           h.location ? el("span", { text: `held in ${h.location}` }) : null,
           h.tier != null ? el("span", { text: `tier ${h.tier} · ${h.tier_label || ""}` }) : null,
           h.quantity != null ? mono(`${h.quantity} ${h.asset || ""}`.trim()) : null,
-          h.price_source ? el("span", { text: h.price_source }) : null)),
+          h.price_source ? el("span", { text: h.price_source }) : null),
+        // The recipe is the claim. A figure without its call is a citation;
+        // with it, a reader can disagree by running it.
+        h.verify ? el("details", { class: "row-meta span" }, el("summary", { text: "The verify recipe" }), el("pre", { class: "code" }, el("code", { text: typeof h.verify === "string" ? h.verify : JSON.stringify(h.verify, null, 2) }))) : null),
     );
+  }
+
+  // The ledger itself. The endpoint's largest section, and the one this view
+  // used to drop entirely: every booked entry, hash-chained, with its
+  // description — the society's actual accounting, not just its balances.
+  const entries = t.entries || [];
+  frag.append(section("The ledger", `${entries.length}`));
+  if (!entries.length) frag.append(el("p", { class: "state", text: "No booked entries served." }));
+  for (const e of entries) {
+    frag.append(
+      el("article", { class: "row" },
+        el("h3", { class: "row-title", text: e.description || "(no description)" }),
+        el("div", { class: "row-side" }, el("span", { class: (e.amount_cents ?? 0) < 0 ? "tag-cited" : "tag-recomputed" }, usd(e.amount_cents))),
+        el("div", { class: "row-meta span" },
+          e.entry_date && el("span", { text: e.entry_date }),
+          e.hash ? el("span", { class: "tag-recomputed", text: "sealed" }) : el("span", { class: "tag-cited", text: "unsealed (predates the chain)" }),
+          e.tx ? mono(excerpt(String(e.tx), 24)) : null)),
+    );
+  }
+
+  if (t.wallet?.address) {
+    frag.append(section("The wallet"));
+    frag.append(el("p", { class: "note" }, mono(t.wallet.address), ` on ${t.wallet.network ?? "?"} (${t.wallet.asset ?? "?"}). `, t.wallet.note || ""));
+  }
+  if (t.how_to_verify) {
+    frag.append(section("How to verify these books"));
+    frag.append(el("details", { class: "note" }, el("summary", { text: "The full recipe, as the society publishes it" }), el("p", { css: { whiteSpace: "pre-wrap" }, text: t.how_to_verify })));
   }
   return frag;
 }
