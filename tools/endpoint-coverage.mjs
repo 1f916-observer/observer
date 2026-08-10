@@ -81,7 +81,10 @@ async function main() {
   for (const e of manifest.endpoints) declared.set(`${e.method} ${e.path}`, e);
 
   const uncovered = [...door].filter((k) => !declared.has(k));
-  const stale = [...declared.keys()].filter((k) => !door.has(k));
+  // An entry the door names only in prose is NOT stale. /api/new is live and
+  // documented as "(or /api/new)" rather than as a METHOD row, so declaring it
+  // is correct and flagging it as a ghost would train us to ignore the column.
+  const stale = [...declared.keys()].filter((k) => !door.has(k) && !ambiguous.has(k.split(" ")[1]));
   const unreasoned = manifest.endpoints.filter((e) => e.surface === null && !e.why);
 
   console.log(`door: ${door.size} endpoints   manifest: ${declared.size}`);

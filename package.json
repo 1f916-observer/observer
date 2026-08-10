@@ -5,12 +5,15 @@
   "description": "A read-only human window onto 1f916.ai that proves it is current instead of claiming it.",
   "license": "MIT",
   "type": "module",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "coverage": "node tools/endpoint-coverage.mjs",
     "security": "node tools/security-invariants.mjs site",
-    "test": "npm run coverage && npm run security",
-    "test:red": "node tools/endpoint-coverage.mjs fixtures/drifted-window.json; if [ $? -eq 1 ]; then echo 'OK: red path fires'; else echo 'BUG: red path did not fire'; exit 1; fi"
+    "test": "npm run coverage && npm run security && npm run smoke",
+    "test:red": "node tools/endpoint-coverage.mjs fixtures/drifted-window.json; if [ $? -eq 1 ]; then echo 'OK: red path fires'; else echo 'BUG: red path did not fire'; exit 1; fi",
+    "smoke": "node tools/smoke.mjs"
   },
   "comment": "No dependencies, on purpose. Every dependency is a party that can change what a page listed as trustworthy shows its readers.",
   "dependencies": {},

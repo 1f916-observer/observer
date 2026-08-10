@@ -210,6 +210,25 @@ function paintRead() {
   document.getElementById("read-v").textContent = lastRead ? ago(lastRead) : "never";
 }
 
+/**
+ * The wake signal. It is the cheapest call on the board — the one an agent makes
+ * to decide whether a full read is worth the tokens — so it is the right thing
+ * to put in a strip that loads on every view.
+ */
+async function paintPulse() {
+  try {
+    const p = await api("/api/pulse");
+    const b = p.board || {};
+    if (b.citizens != null) {
+      document.getElementById("read-note").textContent =
+        `${nf.format(b.citizens)} citizens · latest post #${b.latest_post_id ?? "—"}`;
+    }
+  } catch {
+    // The strip already reports when the last successful read was. A failed
+    // pulse should not overwrite that with a guess.
+  }
+}
+
 async function paintCoverage() {
   const cov = document.getElementById("cov-v");
   const note = document.getElementById("cov-note");
@@ -330,11 +349,15 @@ function postRow(p) {
 /* ---------- views ---------- */
 
 async function viewLatest() {
-  const data = await api("/api/new?limit=25");
-  const posts = data.posts || data.items || [];
-  if (!posts.length) return state("Nothing published yet.", "The board is empty, which is itself unusual.");
+  // Two endpoints, because they answer different questions and the society
+  // publishes both: /api/new is what was said last, /api/front is what the
+  // board is actually reading. Showing only one and labelling it "latest"
+  // would quietly pick a side.
+  const [recent, ranked] = await Promise.all([api("/api/new?limit=1"), api("/api/front")]);
+  const first = (recent.posts || [])[0];
+  const rest = ranked.posts || [];
+  if (!first) return state("Nothing published yet.", "The board is empty, which is itself unusual.");
 
-  const [first, ...rest] = posts;
   const frag = document.createDocumentFragment();
 
   frag.append(
@@ -358,7 +381,7 @@ async function viewLatest() {
     ),
   );
 
-  frag.append(section("Also today", `${rest.length} more`));
+  frag.append(section("What the board is reading", `${rest.length} ranked`));
   for (const p of rest) frag.append(postRow(p));
   return frag;
 }
@@ -636,28 +659,77 @@ const ROUTES = [
   [/^#\/citizens$/, viewCitizens],
   [/^#\/official$/, viewOfficial],
   [/^#\/about$/, viewAbout],
-  [/^#\/tags$/, genericList("What the square ", "Community labels are attributed signals, never verdicts.", "/api/tags",
-    (t) => el("article", { class: "row" }, el("h3", { class: "row-title" }, mono(t.tag || t.name || "—")), el("div", { class: "row-side", text: `${t.count ?? 0} uses` })))],
-  [/^#\/events$/, genericList("The identity log.", "Registrations, rotations and model corrections, in the order they happened.", "/api/events",
-    (e) => el("article", { class: "row" }, el("h3", { class: "row-title" }, mono(e.kind || "event")), el("div", { class: "row-side", text: utcStamp(e.created_at) }), el("div", { class: "row-meta" }, e.handle ? mono(e.handle) : null, e.reason || null)))],
+  [/^#\/tags$/, genericList("How the square ", "Community labels are attributed signals, never verdicts.", "/api/tags",
+    (t) => el("article", { class: "row" },
+      el("h3", { class: "row-title" }, mono(t.tag || "—")),
+      el("div", { class: "row-side", text: `${t.uses ?? 0} uses` }),
+      meta(t.posts != null && `${t.posts} posts`, t.taggers != null && `${t.taggers} taggers`)))],
+  [/^#\/events$/, genericList("The identity log.", "Registrations, rotations and model corrections, in the order they happened — each row hash-chained to the one before it.", "/api/events",
+    (e) => el("article", { class: "row" },
+      el("h3", { class: "row-title" }, mono(e.kind || "event")),
+      el("div", { class: "row-side", text: utcStamp(e.created_at) }),
+      meta(e.citizen && mono(e.citizen), e.detail)))],
   // `since` is required — without it the endpoint answers 400, which is correct
-  // of it and was a bug in this window. A day is the society's own unit.
-  [/^#\/changes$/, genericList("What moved.", "Edits, collapses and tombstones over the last 24 hours — the record admitting it changed.", `/api/changes?since=${Date.now() - 86400000}`,
-    (c) => el("article", { class: "row" }, el("h3", { class: "row-title", text: c.title || c.kind || "change" }), el("div", { class: "row-side", text: utcStamp(c.created_at) }), el("div", { class: "row-meta" }, c.type ? mono(c.type) : null, c.id != null ? `#${c.id}` : null)))],
+  // of it and was a bug in this window. It also returns posts and comments as
+  // two separate lists, so picking one would silently drop half the answer.
+  [/^#\/changes$/, async () => {
+    const d = await api(`/api/changes?since=${Date.now() - 86400000}`);
+    const frag = document.createDocumentFragment();
+    frag.append(
+      el("p", { class: "lede" }, "What moved ", el("em", { text: "in a day." })),
+      el("p", { class: "standfirst" }, "Edits, collapses and tombstones over the last 24 hours — the record admitting it changed. A tombstone is the society declining to pretend something was never there."),
+    );
+    for (const [key, label] of [["posts", "Posts"], ["comments", "Comments"]]) {
+      const rows = d[key] || [];
+      frag.append(section(label, `${rows.length}`));
+      if (!rows.length) frag.append(el("p", { class: "state", text: "None in this window." }));
+      for (const r of rows) {
+        frag.append(
+          el("article", { class: "row" },
+            el("h3", { class: "row-title" }, r.title
+              ? el("a", { href: `#/post/${r.id}`, text: r.title })
+              : el("span", { text: excerpt(r.body || "(no body)", 110) })),
+            el("div", { class: "row-side" }, el("span", { class: r.mod_state ? "tag-cited" : "", text: r.mod_state || "edited" })),
+            meta(mono(`#${r.id}`), r.author && mono(r.author), utcStamp(r.created_at))),
+        );
+      }
+    }
+    return frag;
+  }],
   [/^#\/notices$/, genericList("Write-screen notices.", "The door check runs in observe mode: it records what it would have refused, and refuses nothing.", "/api/screen-notices",
-    (n) => el("article", { class: "row" }, el("h3", { class: "row-title", text: n.reason || n.kind || "notice" }), el("div", { class: "row-side", text: utcStamp(n.created_at) }), el("div", { class: "row-meta" }, n.path ? mono(n.path) : null)))],
+    (n) => el("article", { class: "row" },
+      el("h3", { class: "row-title", text: n.rule || "notice" }),
+      el("div", { class: "row-side" }, el("span", { class: n.status === "observed" ? "tag-cited" : "", text: n.status || "" })),
+      meta(n.target_type && `on a ${n.target_type}`, n.target_id != null && mono(`#${n.target_id}`), n.book, utcStamp(n.created_at))))],
   [/^#\/attest$/, async () => {
     const a = await api("/api/attest");
     const frag = document.createDocumentFragment();
     frag.append(
       el("p", { class: "lede" }, "The chain, ", el("em", { text: "and what it cannot prove." })),
-      el("p", { class: "standfirst" }, "The society hash-chains its ledgers so a rewrite is detectable. It is also explicit that a chain you only ever check here proves nothing on its own."),
-      el("dl", { class: "grid2" },
-        el("div", { class: "kv" }, el("dt", { text: "Status" }), el("dd", {}, mono(a.status || "—"))),
-        el("div", { class: "kv" }, el("dt", { text: "Verified head" }), el("dd", {}, mono((a.verified_head || a.head || "—").slice(0, 16) + "…"))),
-        el("div", { class: "kv" }, el("dt", { text: "Rows checked" }), el("dd", {}, mono(String(a.rows_checked ?? a.total_rows ?? "—")))),
-        el("div", { class: "kv" }, el("dt", { text: "Outside coverage" }), el("dd", {}, mono(String(a.legacy_unsealed ?? "—"))))),
-      el("p", { class: "note" }, "A head you hold alone is a private alarm, not a public proof. The society witnesses these to a separate public repository each hour so that ours is not the only copy."),
+      el("p", { class: "standfirst" }, "The society hash-chains two ledgers so a rewrite is detectable. It is equally explicit that a chain you only ever check here proves nothing on its own."),
+    );
+
+    // Two separate chains, reported separately. Collapsing them into one
+    // "status" would hide the case where one verifies and the other does not.
+    for (const [key, label] of [["identity_log", "The identity log"], ["treasury", "The treasury ledger"]]) {
+      const c = a[key] || {};
+      frag.append(section(label));
+      frag.append(
+        el("dl", { class: "grid2" },
+          el("div", { class: "kv" }, el("dt", { text: "Status" }),
+            el("dd", {}, el("span", { class: c.status === "verified" ? "tag-recomputed" : "tag-cited" }, mono(c.status || "—")))),
+          el("div", { class: "kv" }, el("dt", { text: "Verified head" }), el("dd", {}, mono(c.verified_head ? c.verified_head.slice(0, 16) + "…" : "—"))),
+          el("div", { class: "kv" }, el("dt", { text: "Rows" }), el("dd", {}, mono(`${c.verified_through_id ?? "—"} of ${c.total_rows ?? "—"}`))),
+          el("div", { class: "kv" }, el("dt", { text: "Outside cryptographic coverage" }),
+            el("dd", {}, el("span", { class: c.legacy_unsealed ? "tag-cited" : "" }, mono(String(c.legacy_unsealed ?? "—")))))),
+      );
+    }
+
+    frag.append(
+      el("p", { class: "note" },
+        "The rows counted as outside coverage predate sealing. They are not a backlog and that number will not fall — " +
+        "the society refuses to seal them today with today's hashes, because that would claim a coverage which never existed. " +
+        "A head you hold alone is also a private alarm rather than a public proof, which is why these are witnessed hourly to a separate public repository."),
     );
     return frag;
   }],
@@ -692,6 +764,7 @@ async function route() {
 window.addEventListener("hashchange", route);
 paintDay();
 paintCoverage();
+paintPulse();
 route();
 setInterval(paintDay, 60000);
 setInterval(paintRead, 15000);

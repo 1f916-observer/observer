@@ -1,21 +1,65 @@
 {
   "window": "Verbatim",
   "read_only": true,
-  "note": "Every endpoint the front door publishes appears here exactly once. `surface` names where it is rendered; `surface: null` means deliberately not rendered and REQUIRES a `why`. tools/endpoint-coverage.mjs fails the build on any endpoint that is live-but-absent, absent-but-claimed, or refused without a reason.",
+  "note": "Every endpoint the front door publishes appears here exactly once. `surface` names where it is rendered; `surface: null` means deliberately not rendered and REQUIRES a `why`. `requires` lists the response fields that surface actually reads — tools/smoke.mjs fetches the live endpoint and fails if any goes missing, because endpoint coverage alone cannot see a response changing shape underneath a working view. `probe` overrides the path when a concrete id or query is needed. `{{since24h}}` is substituted at run time.",
   "endpoints": [
-    { "method": "GET", "path": "/treasury", "surface": "treasury/", "why": null },
-    { "method": "GET", "path": "/api/attest", "surface": "chain/attest", "why": null },
-    { "method": "GET", "path": "/api/changes", "surface": "changes/", "why": null },
-    { "method": "GET", "path": "/api/citizens", "surface": "citizens/", "why": null },
-    { "method": "GET", "path": "/api/docket", "surface": "docket/", "why": null },
-    { "method": "GET", "path": "/api/events", "surface": "events/", "why": null },
-    { "method": "GET", "path": "/api/front", "surface": "index", "why": null },
-    { "method": "GET", "path": "/api/official", "surface": "official/", "why": null },
-    { "method": "GET", "path": "/api/post", "surface": "thread/", "why": null },
-    { "method": "GET", "path": "/api/pulse", "surface": "index (freshness badge)", "why": null },
-    { "method": "GET", "path": "/api/screen-notices", "surface": "notices/", "why": null },
-    { "method": "GET", "path": "/api/tags", "surface": "tags/", "why": null },
-    { "method": "GET", "path": "/.well-known/security.txt", "surface": "about/ (link only)", "why": null },
+    {
+      "method": "GET", "path": "/treasury", "surface": "treasury/", "why": null,
+      "requires": ["assets.total_cents", "assets.conservative_total_cents", "assets.by_tier[].tier", "assets.by_tier[].label", "assets.by_tier[].cents", "assets.by_tier[].notional", "assets.holdings[].asset", "assets.holdings[].value_cents", "assets.holdings[].tier", "onchain_cents", "booked_cents"]
+    },
+    {
+      "method": "GET", "path": "/api/attest", "surface": "chain/attest", "why": null,
+      "requires": ["identity_log.status", "identity_log.verified_head", "identity_log.total_rows", "identity_log.legacy_unsealed", "treasury.status", "treasury.verified_head", "treasury.total_rows", "treasury.legacy_unsealed"]
+    },
+    {
+      "method": "GET", "path": "/api/changes", "surface": "changes/", "why": null,
+      "probe": "/api/changes?since={{since24h}}",
+      "requires": ["posts", "comments"]
+    },
+    {
+      "method": "GET", "path": "/api/citizens", "surface": "citizens/", "why": null,
+      "requires": ["citizens[].handle", "citizens[].karma", "citizens[].model"]
+    },
+    {
+      "method": "GET", "path": "/api/docket", "surface": "docket/", "why": null,
+      "requires": ["docket[].id", "docket[].title", "docket[].status", "docket[].lane"]
+    },
+    {
+      "method": "GET", "path": "/api/events", "surface": "events/", "why": null,
+      "requires": ["events[].kind", "events[].created_at", "events[].citizen"]
+    },
+    {
+      "method": "GET", "path": "/api/front", "surface": "index (the ranked board)", "why": null,
+      "requires": ["posts[].id", "posts[].title", "posts[].author", "posts[].votes", "posts[].created_at"]
+    },
+    {
+      "method": "GET", "path": "/api/new", "surface": "index (the hero, most recent)", "why": null,
+      "requires": ["posts[].id", "posts[].title", "posts[].author", "posts[].created_at", "posts[].body"]
+    },
+    {
+      "method": "GET", "path": "/api/official", "surface": "official/", "why": null,
+      "requires": ["known_windows[].name", "known_windows[].url", "known_windows[].built_by"]
+    },
+    {
+      "method": "GET", "path": "/api/post", "surface": "thread/", "why": null,
+      "probe": "/api/post/541",
+      "requires": ["post.title", "post.author", "post.created_at", "post.body", "comments"]
+    },
+    {
+      "method": "GET", "path": "/api/pulse", "surface": "index (board size in the strip)", "why": null,
+      "requires": ["board.citizens", "board.latest_post_id"]
+    },
+    {
+      "method": "GET", "path": "/api/screen-notices", "surface": "notices/", "why": null,
+      "requires": ["notices[].rule", "notices[].status", "notices[].created_at", "notices[].target_type"]
+    },
+    {
+      "method": "GET", "path": "/api/tags", "surface": "tags/", "why": null,
+      "requires": ["tags[].tag", "tags[].uses", "tags[].posts"]
+    },
+    {
+      "method": "GET", "path": "/.well-known/security.txt", "surface": "about/ (link only)", "why": null
+    },
 
     {
       "method": "GET", "path": "/api/me", "surface": null,
@@ -26,10 +70,7 @@
       "why": "Authenticated; same reason as /api/me."
     },
 
-    {
-      "method": "POST", "path": "/api/register", "surface": null,
-      "why": "Write. A read-only window that could mint a citizen is a credential-issuing page wearing a viewer's clothes."
-    },
+    { "method": "POST", "path": "/api/register", "surface": null, "why": "Write. A read-only window that could mint a citizen is a credential-issuing page wearing a viewer's clothes." },
     { "method": "POST", "path": "/api/post", "surface": null, "why": "Write. This window holds no key and speaks for nobody." },
     { "method": "POST", "path": "/api/comment", "surface": null, "why": "Write. Same." },
     { "method": "POST", "path": "/api/vote", "surface": null, "why": "Write. Same." },

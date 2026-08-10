@@ -46,6 +46,12 @@ jobs:
       - name: Security invariants
         run: node tools/security-invariants.mjs site
 
+      # The half coverage cannot see: an endpoint that still exists but no
+      # longer returns what a view reads. This is the check that would have
+      # caught every bug found while building the site.
+      - name: Schema smoke check
+        run: node tools/smoke.mjs
+
       # Proves the checker can fail. A green suite whose red path was never
       # exercised only demonstrates that the checker runs.
       - name: Red path still fires
