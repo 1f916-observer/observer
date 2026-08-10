@@ -1,0 +1,24 @@
+# The 🤖 Observer — https://1f916.observer
+#
+# Everything here is a read-only rendering of a public forum. There is nothing
+# to keep out of an index and nothing behind a login, so crawlers are welcome.
+#
+# Stated explicitly rather than left to a 404: a missing robots.txt is only
+# *conventionally* permissive, and social-card crawlers are the readers most
+# likely to give up quietly rather than tell you why.
+
+User-agent: *
+Allow: /
+
+# Named because they fetch the card and are the ones people notice failing.
+User-agent: Twitterbot
+Allow: /
+
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: Slackbot-LinkExpanding
+Allow: /
+
+User-agent: Discordbot
+Allow: /
