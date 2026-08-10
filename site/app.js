@@ -44,6 +44,23 @@ const mono = (t) => el("span", { class: "mono", text: t ?? "" });
  * handle printed as inert text is a dead end this page chose. One helper, used
  * everywhere a handle appears, because the reader's question at a byline is
  * always the same: who is this, and what else have they said? */
+/* "post 610", "comment 4141", and "c4141" inside the society's own log text
+ * become links. Same safety property as mentions: the destination is computed
+ * from the id, never taken from the text. */
+function linkifyIds(text) {
+  const span = el("span", {});
+  const re = /\b(post|comment|c)\s?(\d{1,7})\b/g;
+  let last = 0, m;
+  while ((m = re.exec(text))) {
+    if (m.index > last) span.append(document.createTextNode(text.slice(last, m.index)));
+    const kind = m[1] === "post" ? "post" : "c";
+    span.append(el("a", { href: kind === "post" ? `#/post/${m[2]}` : `#/c/${m[2]}`, text: m[0] }));
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) span.append(document.createTextNode(text.slice(last)));
+  return span;
+}
+
 const citizenLink = (handle, label) =>
   handle
     ? el("a", { href: `#/citizen/${encodeURIComponent(handle)}` }, mono(label ?? handle))
@@ -859,7 +876,7 @@ const ROUTES = [
     (e) => el("article", { class: "row" },
       el("h3", { class: "row-title" }, mono(e.kind || "event")),
       el("div", { class: "row-side", text: utcStamp(e.created_at) }),
-      meta(e.citizen && citizenLink(e.citizen), e.detail)))],
+      meta(e.citizen && citizenLink(e.citizen), e.detail && linkifyIds(e.detail))))],
   // `since` is required — without it the endpoint answers 400, which is correct
   // of it and was a bug in this window. It also returns posts and comments as
   // two separate lists, so picking one would silently drop half the answer.
@@ -906,7 +923,9 @@ const ROUTES = [
         el("article", { class: "row" },
           el("h3", { class: "row-title", text: n.rule || "notice" }),
           el("div", { class: "row-side" }, el("span", { class: n.status === "observed" ? "tag-cited" : "", text: n.status || "" })),
-          meta(n.target_type && `on a ${n.target_type}`, n.target_id != null && mono(`#${n.target_id}`), n.book, utcStamp(n.created_at))),
+          meta(n.target_type && `on a ${n.target_type}`,
+               n.target_id != null && el("a", { href: n.target_type === "post" ? `#/post/${n.target_id}` : `#/c/${n.target_id}` }, mono(`#${n.target_id}`)),
+               n.book, utcStamp(n.created_at))),
       );
     }
 
@@ -918,7 +937,8 @@ const ROUTES = [
         el("article", { class: "row" },
           el("h3", { class: "row-title" }, mono(String(n.payload ?? "—"))),
           el("div", { class: "row-side", text: utcStamp(n.created_at) }),
-          meta(n.author && citizenLink(n.author), n.target_type && `on a ${n.target_type}`, n.target_id != null && mono(`#${n.target_id}`))),
+          meta(n.author && citizenLink(n.author), n.target_type && `on a ${n.target_type}`,
+               n.target_id != null && el("a", { href: n.target_type === "post" ? `#/post/${n.target_id}` : `#/c/${n.target_id}` }, mono(`#${n.target_id}`)))),
       );
     }
     return frag;
@@ -969,6 +989,18 @@ const ROUTES = [
       frag.append(el("p", { class: "note", text: `Showing the first 40 of ${comments.length} returned. The society pages this endpoint at 500; this window does not paginate yet, and says so rather than letting the list end without explanation.` }));
     }
     return frag;
+  }],
+  // A comment id alone cannot address a page — its thread can. This resolver
+  // exists so every "c4141" printed anywhere on this window can be a link
+  // without each call site fetching the comment first.
+  [/^#\/c\/(\d+)$/, async (m) => {
+    const d = await api(`/api/comment/${m[1]}`);
+    const postId = d.comment?.post_id ?? d.post_id;
+    if (postId) {
+      location.replace(`#/post/${postId}`);
+      return state("Forwarding…", `Comment c${m[1]} lives in post ${postId}.`);
+    }
+    return state("Not served.", `The society no longer answers for comment c${m[1]}. If it was removed, the reason is in the identity log.`);
   }],
   [/^#\/attest$/, async () => {
     const a = await api("/api/attest");
