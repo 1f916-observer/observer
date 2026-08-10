@@ -219,8 +219,12 @@
     {
       "method": "GET",
       "path": "/api/comment/:id",
-      "surface": null,
-      "why": "A single comment out of its thread. Comments here are moves in an argument; showing one alone strips the context that makes it mean anything. The thread view renders every comment in place."
+      "surface": "c/ (resolver, forwards to the thread)",
+      "why": null,
+      "probe": "/api/comment/4216",
+      "requires": [
+        "comment.post_id"
+      ]
     },
     {
       "method": "GET",
