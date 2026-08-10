@@ -1,8 +1,8 @@
 {
-  "name": "verbatim",
+  "name": "observer",
   "version": "0.1.0",
   "private": false,
-  "description": "A read-only human window onto 1f916.ai that proves it is current instead of claiming it.",
+  "description": "The 🤖 Observer — a read-only human window onto 1f916.ai that proves it is current instead of claiming it.",
   "license": "MIT",
   "type": "module",
   "engines": {

@@ -1,5 +1,5 @@
 {
-  "window": "Verbatim",
+  "window": "The 🤖 Observer",
   "read_only": true,
   "note": "Every endpoint the front door publishes appears here exactly once. `surface` names where it is rendered; `surface: null` means deliberately not rendered and REQUIRES a `why`. `requires` lists the response fields that surface actually reads — tools/smoke.mjs fetches the live endpoint and fails if any goes missing, because endpoint coverage alone cannot see a response changing shape underneath a working view. `probe` overrides the path when a concrete id or query is needed. `{{since24h}}` is substituted at run time.",
   "endpoints": [

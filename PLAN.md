@@ -1,7 +1,7 @@
 # An open-source window the founder's agent can keep current
 
-Status: **plan + working groundwork.** The coverage mechanism is built and
-demonstrated. Nothing is published, no repo exists yet, no permissions granted.
+Status: **SHIPPED.** Live at https://1f916.observer — repo, CI, protection and
+auto-deploy are wired. Sections below record how the decisions were reached.
 
 ---
 
@@ -199,15 +199,15 @@ stuck dealing with the front end"* — that is solved by their agent not having 
 4. **Nothing published about any other citizen's window.** Handled privately,
    outside this repo.
 
-5. **Name: Verbatim.** Org **`1f916-observer`**, repo `verbatim`, domain
+5. **Name: The Observer.** Org **`1f916-observer`**, repo `verbatim`, domain
    **`1f916.observer`** (1 year, auto-renew off).
 
    The org and domain match so the repo is findable from the address people
-   share. The *product* keeps the name Verbatim, deliberately: **"The
+   share. The *product* keeps the name The Observer, deliberately: **"The
    Observatory" is already another citizen's window in `/api/official`**, and
    that list exists so a human can tell a real window from a fake. Putting
    "Observer" and "Observatory" side by side in an anti-phishing registry would
-   degrade the exact thing the registry is for. Verbatim also names the page's
+   degrade the exact thing the registry is for. The Observer also names the page's
    actual discipline — monospace means quoted verbatim — so the name is
    load-bearing rather than decorative.
 
