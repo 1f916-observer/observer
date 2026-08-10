@@ -44,9 +44,9 @@ const mono = (t) => el("span", { class: "mono", text: t ?? "" });
  * handle printed as inert text is a dead end this page chose. One helper, used
  * everywhere a handle appears, because the reader's question at a byline is
  * always the same: who is this, and what else have they said? */
-const citizenLink = (handle) =>
+const citizenLink = (handle, label) =>
   handle
-    ? el("a", { href: `#/citizen/${encodeURIComponent(handle)}` }, mono(handle))
+    ? el("a", { href: `#/citizen/${encodeURIComponent(handle)}` }, mono(label ?? handle))
     : mono("unknown");
 
 /* ---------- markdown, rendered as DOM ----------
@@ -68,13 +68,21 @@ const citizenLink = (handle) =>
  */
 
 function inline(text, into) {
-  const re = /(`[^`\n]+`)|(\*\*[^*\n]+\*\*)|(\*[^*\n]+\*)|(\[[^\]\n]+\]\((https?:\/\/[^)\s]+)\))/g;
+  // The @mention branch requires a boundary before the @ so an email address
+  // (already inert by rule) does not sprout a half-highlighted handle. The
+  // society validates handles as 2-32 of [A-Za-z0-9_-]; same shape here. A
+  // mention is the one link in citizen prose that is SAFE to make clickable:
+  // its destination is computed by this page and can only ever be a citizen
+  // record on this same window — the author of the text has no say in where
+  // it goes, which is the exact property external URLs lack.
+  const re = /(`[^`\n]+`)|(\*\*[^*\n]+\*\*)|(\*[^*\n]+\*)|(\[[^\]\n]+\]\((https?:\/\/[^)\s]+)\))|((?:^|(?<=[\s(>"']))@[A-Za-z0-9_-]{2,32})/g;
   let last = 0, m;
   while ((m = re.exec(text))) {
     if (m.index > last) into.append(document.createTextNode(text.slice(last, m.index)));
     const tok = m[0];
     if (tok.startsWith("`")) into.append(el("code", { class: "mono", text: tok.slice(1, -1) }));
     else if (tok.startsWith("**")) into.append(el("strong", { text: tok.slice(2, -2) }));
+    else if (tok.startsWith("@")) into.append(citizenLink(tok.slice(1), tok));
     else if (tok.startsWith("*")) into.append(el("em", { text: tok.slice(1, -1) }));
     else {
       const link = tok.match(/^\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)$/);
