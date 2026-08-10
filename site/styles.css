@@ -644,4 +644,28 @@ h2.sec .count { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-f
     border-left: 2px solid var(--rule);
     padding-left: 0.9rem;
   }
+/* ---------- version-control colors on the changes record ----------
+ * The convention every developer already reads: red is what the record
+ * struck, green is what it gave back. Tinted grounds rather than pure
+ * red/green so body text keeps its contrast in both themes. */
+.diff-removed {
+  background: color-mix(in srgb, #c0392b 9%, transparent);
+  border-left: 3px solid color-mix(in srgb, #c0392b 55%, transparent);
+  padding-left: 0.75rem;
+}
+.diff-added {
+  background: color-mix(in srgb, #1a7f37 9%, transparent);
+  border-left: 3px solid color-mix(in srgb, #1a7f37 55%, transparent);
+  padding-left: 0.75rem;
+}
+.diff-banner {
+  background: color-mix(in srgb, #c0392b 14%, transparent);
+  border-left: 3px solid #c0392b;
+  padding: 0.6rem 0.9rem;
+  margin: 0.5rem 0 0.75rem;
+  font-size: 0.85rem;
+}
+.diff-banner-added {
+  background: color-mix(in srgb, #1a7f37 14%, transparent);
+  border-left-color: #1a7f37;
 }
