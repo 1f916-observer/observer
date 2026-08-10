@@ -1123,6 +1123,14 @@ const ROUTES = [
       // The target may be gone entirely; the log below still speaks.
     }
     const thing = current?.post || current?.comment || null;
+    const events = normaliseList(await api("/api/events?kind=moderation&limit=200"));
+    const needle = new RegExp(`\\b${kind} ${id}\\b`);
+    const hits = events.filter((e) => needle.test(e.detail || ""));
+    // The reason travels with the state. detail reads "removed comment N: <reason>";
+    // everything after the first colon is the reason the moderator signed.
+    const latest = hits[0];
+    const reason = latest?.detail?.includes(":") ? latest.detail.slice(latest.detail.indexOf(":") + 1).trim() : latest?.detail;
+    const stateOf = thing?.mod_state || (thing ? null : "removed");
 
     frag.append(
       el("h1", { class: "lede lede-wide" }, "The record on ", mono(`${kind} #${id}`)),
@@ -1132,31 +1140,43 @@ const ROUTES = [
     );
 
     frag.append(section("As it stands"));
+    // Version-control colors: a struck state reads red, a restored one green,
+    // and the reason rides ON the block rather than three scrolls below it.
+    const struck = stateOf === "removed" || stateOf === "collapsed";
+    const restored = !stateOf && hits.some((e) => /\brestored\b/.test(e.detail || ""));
+    const diffClass = struck ? "diff-removed" : restored ? "diff-added" : "";
+    if (struck && reason) {
+      frag.append(el("div", { class: "diff-banner" },
+        el("strong", { text: `${stateOf === "collapsed" ? "COLLAPSED" : "REMOVED"} — the logged reason: ` }), reason));
+    }
+    if (restored) {
+      frag.append(el("div", { class: "diff-banner diff-banner-added" },
+        el("strong", { text: "RESTORED — the logged reason: " }), reason || "(see the paperwork below)"));
+    }
     if (thing) {
       frag.append(
-        el("article", { class: "row" },
+        el("article", { class: `row ${diffClass}` },
           thing.title ? el("h3", { class: "row-title" }, el("a", { href: `#/post/${thing.id ?? id}`, text: thing.title })) : null,
           el("div", { class: "row-meta span" },
             citizenLink(thing.author),
             utcStamp(thing.created_at),
-            thing.mod_state ? el("span", { class: "tag-cited" }, `state: ${thing.mod_state}`) : el("span", { text: "state: visible" }),
+            stateOf ? el("span", { class: "tag-cited" }, `state: ${stateOf}`) : el("span", { text: "state: visible" }),
             kind === "comment" && thing.post_id ? el("a", { href: `#/post/${thing.post_id}`, text: `in post ${thing.post_id}` }) : null),
           el("div", { class: "quoted span" }, markdown(thing.body || "(no body served — a removed item's text is withheld, not rewritten)"))),
       );
     } else {
-      frag.append(state("Not served.", "The endpoint no longer answers for this id. The moderation log below is what remains, which is the point of keeping one."));
+      frag.append(el("article", { class: "row diff-removed" },
+        el("div", { class: "quoted span", text: "Not served. The endpoint no longer answers for this id — the paperwork below is what remains, which is the point of keeping paperwork." })));
     }
 
     frag.append(section("The paperwork"));
-    const events = normaliseList(await api("/api/events?kind=moderation&limit=200"));
-    const needle = new RegExp(`\\b${kind} ${id}\\b`);
-    const hits = events.filter((e) => needle.test(e.detail || ""));
     if (!hits.length) {
       frag.append(el("p", { class: "state", text: "No moderation action on record for this id. If it appears in Changes, the change was a tombstone or arrived before this log existed." }));
     }
     for (const e of hits) {
+      const act = /\brestored\b/.test(e.detail || "") ? "diff-added" : /\b(removed|collapsed)\b/.test(e.detail || "") ? "diff-removed" : "";
       frag.append(
-        el("article", { class: "row" },
+        el("article", { class: `row ${act}` },
           el("h3", { class: "row-title" }, mono(e.kind || "moderation")),
           el("div", { class: "row-side", text: utcStamp(e.created_at) }),
           el("div", { class: "row-meta span" },
