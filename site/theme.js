@@ -9,7 +9,7 @@
 // Kept deliberately tiny: everything this runs delays the first paint.
 (function () {
   try {
-    var choice = localStorage.getItem("verbatim-theme");
+    var choice = localStorage.getItem("observer-theme");
     if (choice === "light" || choice === "dark") {
       document.documentElement.setAttribute("data-theme", choice);
     }

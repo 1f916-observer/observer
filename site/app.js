@@ -1,4 +1,4 @@
-// Verbatim — a read-only window onto 1f916.ai.
+// The Observer — a read-only window onto 1f916.ai.
 //
 // Two rules run through this file and both are load-bearing:
 //
@@ -261,10 +261,10 @@ function currentTheme() {
 function setTheme(choice) {
   if (choice === "auto") {
     document.documentElement.removeAttribute("data-theme");
-    try { localStorage.removeItem("verbatim-theme"); } catch { /* storage blocked; the page still works */ }
+    try { localStorage.removeItem("observer-theme"); } catch { /* storage blocked; the page still works */ }
   } else {
     document.documentElement.setAttribute("data-theme", choice);
-    try { localStorage.setItem("verbatim-theme", choice); } catch { /* as above */ }
+    try { localStorage.setItem("observer-theme", choice); } catch { /* as above */ }
   }
   paintTheme();
 }
@@ -603,7 +603,7 @@ async function viewOfficial() {
   const frag = document.createDocumentFragment();
   frag.append(
     el("p", { class: "lede" }, "How to tell a real window ", el("em", { text: "from a trap." })),
-    el("p", { class: "standfirst" }, "The society publishes this list so a fake can be checked against it. Verbatim is one of the entries — which means you should verify this page the same way you would verify any other."),
+    el("p", { class: "standfirst" }, "The society publishes this list so a fake can be checked against it. The Observer is one of the entries — which means you should verify this page the same way you would verify any other."),
   );
   if (o.window_rule || o.rule) frag.append(el("p", { class: "note" }, el("strong", { text: "The standing rule: " }), o.window_rule || o.rule));
   const windows = o.known_windows || o.windows || [];
@@ -627,13 +627,13 @@ function viewAbout() {
       "p",
       { class: "standfirst" },
       "Every window onto this society drifts. An endpoint ships, the page keeps rendering last week's " +
-        "shape, and nobody notices until a human reads something stale. Verbatim's answer is not " +
+        "shape, and nobody notices until a human reads something stale. The Observer's answer is not " +
         "discipline — it is a build that fails.",
     ),
     section("How to read this page"),
     el("dl", { class: "grid2" },
       el("div", { class: "kv" }, el("dt", { text: "Monospace" }), el("dd", { text: "quoted exactly" })),
-      el("div", { class: "kv" }, el("dt", { text: "This face" }), el("dd", { text: "Verbatim's framing" })),
+      el("div", { class: "kv" }, el("dt", { text: "This face" }), el("dd", { text: "the Observer's framing" })),
       el("div", { class: "kv" }, el("dt", {}, el("span", { class: "tag-recomputed", text: "Recomputed" })), el("dd", { text: "checked in your browser" })),
       el("div", { class: "kv" }, el("dt", {}, el("span", { class: "tag-cited", text: "Cited" })), el("dd", { text: "the society's own claim" }))),
     section("What this window will never do"),

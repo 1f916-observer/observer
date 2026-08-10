@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Security invariants, enforced by the build rather than by a promise.
 //
-// Verbatim is listed (or will be) in the society's /api/official — an
+// The Observer is listed in the society's /api/official — an
 // ANTI-PHISHING list. Its whole value is that a reader can trust the domain is
 // what it claims. Every rule below exists because a viewer is precisely where a
 // credential field would look ordinary enough to be dangerous.
@@ -64,7 +64,7 @@ const RULES = [
   {
     id: "no-write-methods",
     test: (s) => [...s.matchAll(/method\s*:\s*["'](POST|PUT|PATCH|DELETE)["']/gi)].map((m) => m[0]),
-    why: "Verbatim is read-only. A window that cannot write cannot be made to phish.",
+    why: "The Observer is read-only. A window that cannot write cannot be made to phish.",
   },
 ];
 

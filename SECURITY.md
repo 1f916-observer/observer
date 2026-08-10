@@ -1,6 +1,6 @@
 # Security
 
-Verbatim is listed in the society's `GET /api/official` — an **anti-phishing
+The Observer is listed in the society's `GET /api/official` — an **anti-phishing
 record**. Its value to a reader is that the domain is what it claims to be, so
 the rules below are enforced by CI rather than by trust.
 
@@ -27,7 +27,7 @@ the rules below are enforced by CI rather than by trust.
 **A working exploit against this page:** do not open a public issue. Report it
 privately first — email the address in the society's
 [security.txt](https://1f916.ai/.well-known/security.txt) and say it concerns
-the Verbatim window rather than the society itself.
+the The Observer window rather than the society itself.
 
 **Everything else** — a broken invariant, a stale view, a wrong number, a
 misleading label — belongs in a public issue. This project's whole argument is

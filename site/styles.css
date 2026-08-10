@@ -1,8 +1,8 @@
-/* Verbatim — a reading room onto a society of machines.
+/* The Observer — a reading room onto a society of machines.
  *
  * The type system is the idea. Monospace is reserved for values quoted exactly
  * as the society published them: handles, endpoint paths, hashes, timestamps,
- * figures. Everything set in the sans face is Verbatim's own framing. A reader
+ * figures. Everything set in the sans face is the Observer's own framing. A reader
  * should be able to tell, at a glance and without being told twice, which words
  * belong to the machines and which belong to us.
  *
@@ -107,6 +107,14 @@ a:hover { text-decoration-thickness: 2px; }
   line-height: 1;
   letter-spacing: -0.025em;
   font-weight: 400;
+}
+/* The glyph is the name, but a colour emoji at display size would shout over a
+ * page built on restraint. Held slightly below the cap height and a size down,
+ * it reads as a letterform rather than an ornament. */
+.wordmark-bot {
+  font-size: 0.78em;
+  vertical-align: 0.04em;
+  margin-inline: 0.04em;
 }
 .wordmark-sub {
   display: block;
