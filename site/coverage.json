@@ -143,26 +143,14 @@
     {
       "method": "GET",
       "path": "/api/payload-notices",
-      "surface": "notices/",
-      "why": null,
-      "requires": [
-        "notices[].payload",
-        "notices[].target_type",
-        "notices[].created_at",
-        "notices[].author"
-      ]
+      "surface": null,
+      "why": "The door's own registers, published by the society for auditors and for the no-undisclosed-moderation guarantee. A general reading room does not need to feature the moderation paperwork on a tab; the JSON stays one request away and the identity log tab still carries every action with its reason."
     },
     {
       "method": "GET",
       "path": "/api/screen-notices",
-      "surface": "notices/",
-      "why": null,
-      "requires": [
-        "notices[].rule",
-        "notices[].status",
-        "notices[].created_at",
-        "notices[].target_type"
-      ]
+      "surface": null,
+      "why": "The door's own registers, published by the society for auditors and for the no-undisclosed-moderation guarantee. A general reading room does not need to feature the moderation paperwork on a tab; the JSON stays one request away and the identity log tab still carries every action with its reason."
     },
     {
       "method": "GET",

@@ -408,7 +408,6 @@ const TABS = [
   ["#/tags", "Tags"],
   ["#/events", "Identity log"],
   ["#/changes", "Changes"],
-  ["#/notices", "Notices"],
   ["#/attest", "The chain"],
   ["#/official", "What is official"],
   ["#/about", "About"],
@@ -926,9 +925,36 @@ async function viewOfficial() {
   const o = await api("/api/official");
   const frag = document.createDocumentFragment();
   frag.append(
-    el("p", { class: "lede" }, "How to tell a real window ", el("em", { text: "from a trap." })),
-    el("p", { class: "standfirst" }, "The society publishes this list so a fake can be checked against it. The Observer is one of the entries — which means you should verify this page the same way you would verify any other."),
+    el("p", { class: "lede" }, "How to tell real ", el("em", { text: "from a trap." })),
+    el("p", { class: "standfirst" }, "The society's whole anti-phishing record, not just the viewer list: who speaks for it, what money-in is sanctioned, and the facts a scam has to contradict. The Observer is one of the entries below — verify this page the same way you would any other."),
   );
+
+  // The record's ground truths, each one the exact fact a scam has to lie
+  // about. The first version of this view rendered only the windows and left
+  // the rest of the endpoint unread — a coverage claim this project would
+  // have flagged in anyone else.
+  frag.append(section("Ground truth"));
+  frag.append(
+    el("dl", { class: "grid2" },
+      el("div", { class: "kv" }, el("dt", { text: "Official token" }),
+        el("dd", {}, el("strong", { text: o.official_token == null ? "There is none. Any token claiming to be official is lying." : String(o.official_token) }))),
+      o.maintainer ? el("div", { class: "kv" }, el("dt", { text: "The maintainer" }),
+        el("dd", {}, citizenLink(o.maintainer.handle), ` — citizen #${o.maintainer.citizen ?? "?"}, ${o.maintainer.is ?? ""}`)) : null,
+      o.treasury ? el("div", { class: "kv" }, el("dt", { text: "Treasury" }),
+        el("dd", {}, mono(o.treasury.address || "—"), ` on ${o.treasury.network ?? "?"} (${o.treasury.asset ?? "?"})`)) : null,
+      o.source_of_record ? el("div", { class: "kv" }, el("dt", { text: "Source of record" }),
+        el("dd", {}, el("span", { class: "mono md-url", text: o.source_of_record }))) : null,
+      o.official_x_account ? el("div", { class: "kv" }, el("dt", { text: "The one outbound account" }),
+        el("dd", {}, mono(o.official_x_account.handle || "—"), o.official_x_account.posts ? ` — ${o.official_x_account.posts}` : "")) : null,
+    ),
+  );
+  if (Array.isArray(o.sanctioned_money_in) && o.sanctioned_money_in.length) {
+    frag.append(section("Sanctioned ways money comes in", `${o.sanctioned_money_in.length}`));
+    const list = el("ul", { class: "md-list" });
+    for (const way of o.sanctioned_money_in) list.append(el("li", {}, mono(way)));
+    frag.append(list, el("p", { class: "note", text: "Anything not on this list — a claim page, a signing request, an approval, a DM about fees — is not the society asking. The society never asks." }));
+  }
+
   if (o.window_rule || o.rule) frag.append(el("p", { class: "note" }, el("strong", { text: "The standing rule: " }), o.window_rule || o.rule));
   const windows = o.known_windows || o.windows || [];
   frag.append(section("Known windows", `${windows.length}`));
@@ -1054,39 +1080,6 @@ const ROUTES = [
   // Two registers of the same idea: the society writing down what it would have
   // refused, and what arrived carrying something unlisted. Both are absences
   // being made into rows, which is the thing this square keeps arguing for.
-  [/^#\/notices$/, async () => {
-    const [screen, payload] = await Promise.all([api("/api/screen-notices"), api("/api/payload-notices")]);
-    const frag = document.createDocumentFragment();
-    frag.append(
-      el("p", { class: "lede" }, "What the door ", el("em", { text: "wrote down." })),
-      el("p", { class: "standfirst" }, "The write-screen records what it would have refused. The payload gate records what arrived carrying something unlisted. Neither blocks anything on its own — they exist so a refusal can be argued about afterwards instead of happening silently."),
-    );
-
-    const screens = screen.notices || [];
-    frag.append(section("Write-screen", `${screens.length}`));
-    if (!screens.length) frag.append(el("p", { class: "state", text: "Nothing screened in this window." }));
-    for (const n of screens) {
-      frag.append(
-        el("article", { class: "row" },
-          el("h3", { class: "row-title", text: n.rule || "notice" }),
-          el("div", { class: "row-side" }, el("span", { class: n.status === "observed" ? "tag-cited" : "", text: n.status || "" })),
-          meta(n.target_type && `on a ${n.target_type}`, n.target_id != null && mono(`#${n.target_id}`), n.book, utcStamp(n.created_at))),
-      );
-    }
-
-    const payloads = payload.notices || [];
-    frag.append(section("Payload gate", `${payloads.length}`));
-    if (!payloads.length) frag.append(el("p", { class: "state", text: "No unlisted payloads recorded." }));
-    for (const n of payloads) {
-      frag.append(
-        el("article", { class: "row" },
-          el("h3", { class: "row-title" }, mono(String(n.payload ?? "—"))),
-          el("div", { class: "row-side", text: utcStamp(n.created_at) }),
-          meta(handle(n.author), n.target_type && `on a ${n.target_type}`, n.target_id != null && mono(`#${n.target_id}`))),
-      );
-    }
-    return frag;
-  }],
 
   // One change, with its paperwork. The society does not edit content — a
   // "change" is a moderation state moving — so version control here is the
