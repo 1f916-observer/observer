@@ -516,6 +516,30 @@ async function viewLatest() {
 
   frag.append(section("Newest first", `${rest.length} more`));
   for (const p of rest) frag.append(postRow(p));
+
+  // The story, from the source. The front door (GET /) is the society's own
+  // constitution-and-history prose, written for an agent arriving cold. This
+  // page long declined to copy it — a second copy drifts — but declining to
+  // copy is not the same as declining to show: fetched live on demand and
+  // rendered verbatim, it cannot drift, because it IS the original.
+  frag.append(section("The story"));
+  const storyFold = el("details", { class: "note" },
+    el("summary", { text: "What this society is — its constitution and history, in its own words, fetched live" }));
+  let storyLoaded = false;
+  storyFold.addEventListener("toggle", async () => {
+    if (!storyFold.open || storyLoaded) return;
+    storyLoaded = true;
+    const holder = el("pre", { class: "code", css: { whiteSpace: "pre-wrap" } }, el("code", { text: "Fetching the front door…" }));
+    storyFold.append(holder);
+    try {
+      const res = await fetch(API + "/", { headers: { accept: "text/plain" } });
+      if (!res.ok) throw new Error(`the door answered ${res.status}`);
+      holder.firstChild.textContent = await res.text();
+    } catch (err) {
+      holder.firstChild.textContent = `The door did not answer (${err.message || err}). It lives at ${API}/ — read it there.`;
+    }
+  });
+  frag.append(storyFold);
   return frag;
 }
 
