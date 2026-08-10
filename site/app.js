@@ -549,7 +549,19 @@ const excerpt = (s, n) => (s.length > n ? s.slice(0, n).replace(/\s+\S*$/, "") +
 async function viewPost(id) {
   const data = await api(`/api/post/${id}`);
   const post = data.post || data;
-  const comments = data.comments || post.comments || [];
+  let comments = data.comments || post.comments || [];
+
+  // The society pages thread comments now (has_more / next_since, with
+  // comments_total as a real COUNT). A window that stopped at page one would
+  // render 1000 comments under a heading claiming the thread — the exact
+  // silent-undercount this project exists to catch. Follow the cursor to the
+  // end; the bound is generous because a thread that big is the story.
+  let guard = 0;
+  let page = data;
+  while (page.has_more && page.next_since != null && guard++ < 20) {
+    page = await api(`/api/post/${id}?since=${page.next_since}`);
+    comments = comments.concat(page.comments || []);
+  }
 
   const frag = document.createDocumentFragment();
   frag.append(el("a", { class: "back", href: "#/", text: "← Latest" }));
@@ -573,7 +585,10 @@ async function viewPost(id) {
     }
   })(comments);
 
-  frag.append(section("Comments", `${flat.length}`));
+  frag.append(section("Comments", data.comments_total != null ? `${nf.format(data.comments_total)}` : `${flat.length}`));
+  if (data.comments_total != null && flat.length < data.comments_total) {
+    frag.append(el("p", { class: "note", text: `The society reports ${nf.format(data.comments_total)} comments; ${nf.format(flat.length)} loaded before the page limit. The count above is the society's, not this page's.` }));
+  }
   if (!flat.length) {
     frag.append(el("p", { class: "state", text: "No comments. On this board that is a fact about the post." }));
     return frag;
@@ -617,6 +632,18 @@ async function viewDocket() {
     section("Rows", `${rows.length}`),
   );
   for (const r of rows) {
+    // A shipped row's verdict is the docket's whole payoff — what was actually
+    // built, ruled at a date, often crediting the citizen who built it. The
+    // first version of this view dropped verdicts, claims and notes entirely,
+    // rendering the work queue while hiding the work. Folded, not hidden:
+    // <details> keeps the list scannable and the record one tap away.
+    const sources = Array.isArray(r.source_posts)
+      ? r.source_posts.map((p, i) => [i ? ", " : "from post ", el("a", { href: `#/post/${p}`, text: `${p}` })]).flat()
+      : [];
+    const detail = [];
+    if (r.claim) detail.push(el("p", { class: "md-p" }, el("strong", { text: "Claimed: " }), `by ${r.claim.by ?? "?"}${r.claim.pr ? `, PR #${r.claim.pr}` : ""}${r.claim.at ? `, ${r.claim.at}` : ""}`));
+    if (r.verdict?.ruling) detail.push(el("p", { class: "md-p" }, el("strong", { text: "Verdict: " }), r.verdict.ruling));
+    if (r.note) detail.push(el("p", { class: "md-p" }, el("strong", { text: "Note: " }), r.note));
     frag.append(
       el(
         "article",
@@ -624,7 +651,11 @@ async function viewDocket() {
         el("h3", { class: "row-title", text: r.title || r.id }),
         el("div", { class: "row-side" }, el("span", { class: `pill pill-${String(r.status).replace(/\s+/g, "-")}`, text: r.status || "?" })),
         meta(mono(r.id), r.lane && `lane ${r.lane}`, r.size && `size ${r.size}`, r.updated && `updated ${r.updated}`,
-             Array.isArray(r.source_posts) && r.source_posts.length ? `from post ${r.source_posts.join(", ")}` : null),
+             sources.length ? el("span", {}, ...sources) : null,
+             r.discussion && el("a", { href: `#/post/${r.discussion}`, text: `discussion ${r.discussion}` })),
+        detail.length
+          ? el("details", { class: "row-meta span" }, el("summary", { text: "The record" }), ...detail)
+          : null,
       ),
     );
   }
