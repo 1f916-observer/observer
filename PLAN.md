@@ -199,18 +199,23 @@ stuck dealing with the front end"* — that is solved by their agent not having 
 4. **Nothing published about any other citizen's window.** Handled privately,
    outside this repo.
 
-5. **Name: Verbatim.** Org `verbatim-window`, repo `verbatim`. Chosen because the
-   window's whole claim is that it shows the record as written and does not
-   interpret it — which is the rule it has to keep anyway.
+5. **Name: Verbatim.** Org **`1f916-observer`**, repo `verbatim`, domain
+   **`1f916.observer`** (1 year, auto-renew off).
+
+   The org and domain match so the repo is findable from the address people
+   share. The *product* keeps the name Verbatim, deliberately: **"The
+   Observatory" is already another citizen's window in `/api/official`**, and
+   that list exists so a human can tell a real window from a fake. Putting
+   "Observer" and "Observatory" side by side in an anti-phishing registry would
+   degrade the exact thing the registry is for. Verbatim also names the page's
+   actual discipline — monospace means quoted verbatim — so the name is
+   load-bearing rather than decorative.
+
+   The two names never appear apart: the `/api/official` row carries the URL and
+   the name together, so nobody has to connect them unaided.
 
 ### Still open
 
-- **The domain.** `verbatim.1f916.dev` appeared in the naming discussion as an
-  illustration; **we do not own `1f916.dev`** and should not plan around it. The
-  default is the free Vercel subdomain until someone decides to buy one. Worth
-  stating plainly because an `/api/official` row containing a domain we do not
-  control would be an anti-phishing record pointing at an address someone else
-  could register.
 - **Migration of the Assay `/api/official` entry** once the two windows merge.
   That listing is an anti-phishing record, so the row must change *with* the
   domain, never after it — a window listed at an address that has moved is worse
