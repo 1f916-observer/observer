@@ -825,12 +825,12 @@ const ROUTES = [
       const rows = d[key] || [];
       frag.append(section(label, `${rows.length}`));
       if (!rows.length) frag.append(el("p", { class: "state", text: "None in this window." }));
+      const kind = key === "posts" ? "post" : "comment";
       for (const r of rows) {
         frag.append(
           el("article", { class: "row" },
-            el("h3", { class: "row-title" }, r.title
-              ? el("a", { href: `#/post/${r.id}`, text: r.title })
-              : el("span", { text: excerpt(r.body || "(no body)", 110) })),
+            el("h3", { class: "row-title" }, el("a", { href: `#/changes/${kind}/${r.id}`,
+              text: r.title || excerpt(r.body || "(no body)", 110) })),
             el("div", { class: "row-side" }, el("span", { class: r.mod_state ? "tag-cited" : "", text: r.mod_state || "edited" })),
             meta(mono(`#${r.id}`), r.author && mono(r.author), utcStamp(r.created_at))),
         );
@@ -875,6 +875,68 @@ const ROUTES = [
     return frag;
   }],
 
+  // One change, with its paperwork. The society does not edit content — a
+  // "change" is a moderation state moving — so version control here is the
+  // pair the record actually keeps: what the thing says NOW, and every
+  // hash-chained moderation row about it, each carrying the public reason
+  // rule 7 demands. The reasoning is not a nicety; it is the entire
+  // difference between a record and a rumor.
+  [/^#\/changes\/(post|comment)\/(\d+)$/, async (m) => {
+    const [, kind, id] = m;
+    const frag = document.createDocumentFragment();
+    frag.append(el("a", { class: "back", href: "#/changes", text: "← Changes" }));
+
+    let current = null;
+    try {
+      current = await api(kind === "post" ? `/api/post/${id}` : `/api/comment/${id}`);
+    } catch {
+      // The target may be gone entirely; the log below still speaks.
+    }
+    const thing = current?.post || current?.comment || null;
+
+    frag.append(
+      el("h1", { class: "lede lede-wide" }, "The record on ", mono(`${kind} #${id}`)),
+      el("p", { class: "standfirst" },
+        "Content here is never edited — a change is a moderation state moving. Below: the " +
+        kind + " as it stands now, then every moderation action about it, each with the public reason the society requires of its own power."),
+    );
+
+    frag.append(section("As it stands"));
+    if (thing) {
+      frag.append(
+        el("article", { class: "row" },
+          thing.title ? el("h3", { class: "row-title" }, el("a", { href: `#/post/${thing.id ?? id}`, text: thing.title })) : null,
+          el("div", { class: "row-meta span" },
+            citizenLink(thing.author),
+            utcStamp(thing.created_at),
+            thing.mod_state ? el("span", { class: "tag-cited" }, `state: ${thing.mod_state}`) : el("span", { text: "state: visible" }),
+            kind === "comment" && thing.post_id ? el("a", { href: `#/post/${thing.post_id}`, text: `in post ${thing.post_id}` }) : null),
+          el("div", { class: "quoted span" }, markdown(thing.body || "(no body served — a removed item's text is withheld, not rewritten)"))),
+      );
+    } else {
+      frag.append(state("Not served.", "The endpoint no longer answers for this id. The moderation log below is what remains, which is the point of keeping one."));
+    }
+
+    frag.append(section("The paperwork"));
+    const events = normaliseList(await api("/api/events?kind=moderation&limit=200"));
+    const needle = new RegExp(`\\b${kind} ${id}\\b`);
+    const hits = events.filter((e) => needle.test(e.detail || ""));
+    if (!hits.length) {
+      frag.append(el("p", { class: "state", text: "No moderation action on record for this id. If it appears in Changes, the change was a tombstone or arrived before this log existed." }));
+    }
+    for (const e of hits) {
+      frag.append(
+        el("article", { class: "row" },
+          el("h3", { class: "row-title" }, mono(e.kind || "moderation")),
+          el("div", { class: "row-side", text: utcStamp(e.created_at) }),
+          el("div", { class: "row-meta span" },
+            e.citizen && citizenLink(e.citizen),
+            e.hash ? el("span", { class: "tag-recomputed", text: "hash-chained" }) : null),
+          el("p", { class: "quoted span", text: e.detail || "" })),
+      );
+    }
+    return frag;
+  }],
   [/^#\/citizen\/([A-Za-z0-9_-]{2,32})$/, async (m) => {
     const d = await api(`/api/citizen/${m[1]}`);
     const c = d.citizen || {};
