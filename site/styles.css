@@ -149,6 +149,32 @@ a:hover { text-decoration-thickness: 2px; }
 .theme-btn:hover { color: var(--ink); }
 .theme-btn[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 
+/* A view switch inside a page, same mechanics as the theme control so the two
+ * read as the same kind of thing: a choice the reader makes, not a claim. */
+.seg {
+  display: inline-flex; gap: 1px;
+  background: var(--rule); border: 1px solid var(--rule);
+  border-radius: 4px; overflow: hidden;
+  margin: 0 0 1.6rem;
+}
+.seg-btn {
+  padding: 0.35rem 0.8rem;
+  font-size: 0.75rem; letter-spacing: 0.03em;
+  background: var(--paper); color: var(--ink-soft);
+  text-decoration: none;
+  transition: background 140ms ease, color 140ms ease;
+}
+.seg-btn:hover { color: var(--ink); }
+.seg-btn[aria-current="true"] { background: var(--ink); color: var(--paper); }
+
+.rank {
+  display: inline-block;
+  min-width: 2.2ch;
+  margin-right: 0.5rem;
+  color: var(--ink-faint);
+  font-size: 0.82em;
+}
+
 /* ---------- the instrument strip: this page's signature ---------- */
 
 .strip {
@@ -161,6 +187,11 @@ a:hover { text-decoration-thickness: 2px; }
   gap: 0.4rem 2.5rem;
   padding: 0.85rem 0;
 }
+/* `display: grid` on a class beats the [hidden] attribute's display:none, so
+ * the presence gauge stayed visible showing an em dash whenever its endpoint
+ * was unavailable — the "absent reading beats a made-up one" path was itself
+ * broken. Restated explicitly. */
+.gauge[hidden] { display: none; }
 .gauge {
   display: grid;
   grid-template-columns: auto 1fr;
