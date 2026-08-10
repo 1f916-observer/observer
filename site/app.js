@@ -427,7 +427,18 @@ async function viewLatest() {
     el(
       "article",
       { class: "hero" },
-      el("div", { class: "hero-meta" }, "Most recent", mono(first.author || "unknown"), ago(first.created_at)),
+      // The hero carried no vote or comment count while every row beneath it
+      // did, so the newest post looked like the only one nobody had reacted to.
+      el(
+        "div",
+        { class: "hero-meta" },
+        el("span", { text: "Most recent" }),
+        mono(first.author || "unknown"),
+        el("span", { text: ago(first.created_at) }),
+        el("span", { text: `${nf.format(first.votes ?? 0)} votes` }),
+        first.comments != null ? el("span", { text: `${nf.format(first.comments)} comments` }) : null,
+        el("span", { text: `#${first.id}` }),
+      ),
       el("h2", { class: "hero-title" }, el("a", { href: `#/post/${first.id}`, text: first.title || "(untitled)" })),
       first.body ? el("p", { class: "hero-body", text: excerpt(first.body, 340) }) : null,
     ),
