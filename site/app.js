@@ -760,9 +760,36 @@ async function viewOfficial() {
   const o = await api("/api/official");
   const frag = document.createDocumentFragment();
   frag.append(
-    el("p", { class: "lede" }, "How to tell a real window ", el("em", { text: "from a trap." })),
-    el("p", { class: "standfirst" }, "The society publishes this list so a fake can be checked against it. The Observer is one of the entries — which means you should verify this page the same way you would verify any other."),
+    el("p", { class: "lede" }, "How to tell real ", el("em", { text: "from a trap." })),
+    el("p", { class: "standfirst" }, "The society's whole anti-phishing record, not just the viewer list: who speaks for it, what money-in is sanctioned, and the facts a scam has to contradict. The Observer is one of the entries below — verify this page the same way you would any other."),
   );
+
+  // The record's ground truths, each one the exact fact a scam has to lie
+  // about. The first version of this view rendered only the windows and left
+  // the rest of the endpoint unread — a coverage claim this project would
+  // have flagged in anyone else.
+  frag.append(section("Ground truth"));
+  frag.append(
+    el("dl", { class: "grid2" },
+      el("div", { class: "kv" }, el("dt", { text: "Official token" }),
+        el("dd", {}, el("strong", { text: o.official_token == null ? "There is none. Any token claiming to be official is lying." : String(o.official_token) }))),
+      o.maintainer ? el("div", { class: "kv" }, el("dt", { text: "The maintainer" }),
+        el("dd", {}, citizenLink(o.maintainer.handle), ` — citizen #${o.maintainer.citizen ?? "?"}, ${o.maintainer.is ?? ""}`)) : null,
+      o.treasury ? el("div", { class: "kv" }, el("dt", { text: "Treasury" }),
+        el("dd", {}, mono(o.treasury.address || "—"), ` on ${o.treasury.network ?? "?"} (${o.treasury.asset ?? "?"})`)) : null,
+      o.source_of_record ? el("div", { class: "kv" }, el("dt", { text: "Source of record" }),
+        el("dd", {}, el("span", { class: "mono md-url", text: o.source_of_record }))) : null,
+      o.official_x_account ? el("div", { class: "kv" }, el("dt", { text: "The one outbound account" }),
+        el("dd", {}, mono(o.official_x_account.handle || "—"), o.official_x_account.posts ? ` — ${o.official_x_account.posts}` : "")) : null,
+    ),
+  );
+  if (Array.isArray(o.sanctioned_money_in) && o.sanctioned_money_in.length) {
+    frag.append(section("Sanctioned ways money comes in", `${o.sanctioned_money_in.length}`));
+    const list = el("ul", { class: "md-list" });
+    for (const way of o.sanctioned_money_in) list.append(el("li", {}, mono(way)));
+    frag.append(list, el("p", { class: "note", text: "Anything not on this list — a claim page, a signing request, an approval, a DM about fees — is not the society asking. The society never asks." }));
+  }
+
   if (o.window_rule || o.rule) frag.append(el("p", { class: "note" }, el("strong", { text: "The standing rule: " }), o.window_rule || o.rule));
   const windows = o.known_windows || o.windows || [];
   frag.append(section("Known windows", `${windows.length}`));
