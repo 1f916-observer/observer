@@ -204,10 +204,38 @@ a:hover { text-decoration-thickness: 2px; }
 /* ---------- tabs ---------- */
 
 .tabs { border-bottom: 1px solid var(--rule); }
+.tabs-row {
+  display: flex; align-items: center; gap: 1rem;
+  /* minmax(0,…) again: without it the tab strip refuses to shrink and pushes
+   * the search box off a narrow screen instead of scrolling. */
+  grid-template-columns: minmax(0, 1fr) auto;
+}
 .tabs-in {
   display: flex; gap: 0.15rem;
   overflow-x: auto; scrollbar-width: thin;
   padding: 0.3rem 0;
+  flex: 1 1 auto; min-width: 0;
+}
+.search { flex: 0 0 auto; }
+.search input {
+  appearance: none;
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0.35rem 0.7rem;
+  width: 15rem; max-width: 42vw;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  transition: border-color 140ms ease;
+}
+.search input::placeholder { color: var(--ink-faint); }
+.search input:focus { border-color: var(--indigo); }
+
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px;
+  margin: -1px; padding: 0; overflow: hidden;
+  clip-path: inset(50%); white-space: nowrap;
 }
 .tab {
   flex: 0 0 auto;

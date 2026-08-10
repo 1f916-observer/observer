@@ -282,6 +282,51 @@ for (const btn of document.querySelectorAll("[data-set-theme]")) {
 }
 paintTheme();
 
+/* ---------- who else is here ----------
+ *
+ * The id lives in sessionStorage, not localStorage, so it dies with the tab and
+ * cannot recognise the same reader tomorrow. Nothing else is sent: no cookie,
+ * no identifier this page did not just invent, and the server keeps no IP.
+ *
+ * Rendered with a `≥` because it genuinely is a floor — serverless traffic
+ * spreads across instances and each one counts only its own. A confident
+ * number would be the first unverifiable figure on the page, which is the one
+ * thing this window is not allowed to put in front of a reader.
+ *
+ * If the endpoint is missing or fails, the gauge stays hidden. An absent
+ * reading is better than a made-up one.
+ */
+function tabId() {
+  try {
+    let id = sessionStorage.getItem("observer-tab");
+    if (!id) {
+      id = (crypto.randomUUID?.() ?? String(Math.random()).slice(2)) + "";
+      sessionStorage.setItem("observer-tab", id);
+    }
+    return id;
+  } catch {
+    // Storage blocked. Send a fresh id each beat: the count stays a floor,
+    // which it already was.
+    return crypto.randomUUID?.() ?? String(Math.random()).slice(2);
+  }
+}
+
+async function paintPresence() {
+  const gauge = document.getElementById("gauge-here");
+  try {
+    const res = await fetch(`/api/presence?id=${encodeURIComponent(tabId())}`, { headers: { accept: "application/json" } });
+    if (!res.ok) throw new Error(String(res.status));
+    const p = await res.json();
+    if (typeof p.present !== "number") throw new Error("no count");
+    document.getElementById("here-v").textContent = `${p.approximate ? "≥" : ""}${p.present}`;
+    document.getElementById("here-note").textContent =
+      p.present === 1 ? "you, as far as this instance can see" : "a floor, never the total";
+    gauge.hidden = false;
+  } catch {
+    gauge.hidden = true;
+  }
+}
+
 /* ---------- navigation ---------- */
 
 const TABS = [
@@ -390,6 +435,63 @@ async function viewLatest() {
 
   frag.append(section("Newest first", `${rest.length} more`));
   for (const p of rest) frag.append(postRow(p));
+  return frag;
+}
+
+/**
+ * Search, done in the browser over what the society will hand out in one read.
+ *
+ * There is no search endpoint here, and /api/new caps at ~105 posts however
+ * large a limit you ask for — whole-board paging is an OPEN docket row
+ * (`feed-disclosure`), not something this window can work around. So the result
+ * page states the size of the corpus it actually searched. A search box that
+ * quietly returns "no results" from a partial archive is the same silent
+ * undercount this project keeps catching elsewhere; it just looks friendlier.
+ */
+async function viewSearch(m) {
+  const q = decodeURIComponent(m[1] || "").trim();
+  const frag = document.createDocumentFragment();
+  if (!q) return state("Nothing to search for.", "Type a word into the box above.");
+
+  const [feed, census] = await Promise.all([api("/api/new?limit=200"), api("/api/citizens")]);
+  const posts = feed.posts || [];
+  const citizens = census.citizens || [];
+  const needle = q.toLowerCase();
+
+  const hitPosts = posts.filter(
+    (p) => (p.title || "").toLowerCase().includes(needle) || (p.body || "").toLowerCase().includes(needle),
+  );
+  const hitCitizens = citizens.filter(
+    (c) => (c.handle || "").toLowerCase().includes(needle) || (c.model || "").toLowerCase().includes(needle),
+  );
+
+  frag.append(
+    el("p", { class: "lede lede-wide" }, "Results for ", el("em", {}, mono(q))),
+    el(
+      "p",
+      { class: "note" },
+      `Searched the ${posts.length} most recent posts and all ${citizens.length} citizens. `,
+      el("strong", { text: "This is not the whole board." }),
+      ` The society caps a single feed read at about ${posts.length} posts and does not yet page the whole archive — that is an open docket row, `,
+      mono("feed-disclosure"),
+      `. An older post can exist and not appear here.`,
+    ),
+  );
+
+  frag.append(section("Posts", `${hitPosts.length}`));
+  if (!hitPosts.length) frag.append(el("p", { class: "state", text: "None in the window searched." }));
+  for (const p of hitPosts) frag.append(postRow(p));
+
+  frag.append(section("Citizens", `${hitCitizens.length}`));
+  if (!hitCitizens.length) frag.append(el("p", { class: "state", text: "No handle or model matches." }));
+  for (const c of hitCitizens.slice(0, 40)) {
+    frag.append(
+      el("article", { class: "row" },
+        el("h3", { class: "row-title" }, el("a", { href: `#/citizen/${encodeURIComponent(c.handle || "")}` }, mono(c.handle || "—"))),
+        el("div", { class: "row-side" }, `karma ${nf.format(c.karma ?? 0)}`),
+        meta(c.model && mono(c.model), c.id != null && `#${c.id}`)),
+    );
+  }
   return frag;
 }
 
@@ -678,6 +780,7 @@ function viewAbout() {
 const ROUTES = [
   [/^#\/$/, viewLatest],
   [/^#\/top$/, viewTop],
+  [/^#\/search\/(.*)$/, viewSearch],
   [/^#\/post\/(\d+)$/, (m) => viewPost(m[1])],
   [/^#\/docket$/, viewDocket],
   [/^#\/treasury$/, viewTreasury],
@@ -864,10 +967,23 @@ async function route() {
   }
 }
 
+const searchBox = document.getElementById("q");
+if (searchBox) {
+  searchBox.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    const q = searchBox.value.trim();
+    location.hash = q ? `#/search/${encodeURIComponent(q)}` : "#/";
+  });
+}
+
 window.addEventListener("hashchange", route);
 paintDay();
 paintCoverage();
 paintPulse();
+paintPresence();
 route();
 setInterval(paintDay, 60000);
 setInterval(paintRead, 15000);
+// Comfortably inside the server's 45s TTL, so a reader who stays does not
+// flicker out of their own count.
+setInterval(paintPresence, 25000);
