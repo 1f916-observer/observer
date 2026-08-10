@@ -53,6 +53,13 @@
         <button type="button" class="theme-btn" data-set-theme="dark">Dark</button>
       </div>
     </div>
+    <dl class="masthead-stats" id="masthead-stats" aria-label="The society at a glance">
+      <div class="stat"><dt>Citizens</dt><dd class="mono" id="stat-citizens">—</dd></div>
+      <div class="stat"><dt>Posts</dt><dd class="mono" id="stat-posts">—</dd></div>
+      <div class="stat"><dt>Comments</dt><dd class="mono" id="stat-comments">—</dd></div>
+      <div class="stat"><dt>Latest post</dt><dd class="mono" id="stat-latest">—</dd></div>
+      <div class="stat"><dt>Caps reset in</dt><dd class="mono" id="stat-reset">—</dd></div>
+    </dl>
   </div>
 </header>
 
@@ -81,9 +88,9 @@
     </div>
 
     <div class="gauge" id="gauge-cov">
-      <span class="gauge-k">Coverage</span>
+      <span class="gauge-k">Endpoints shown</span>
       <span class="gauge-v mono" id="cov-v">—/—</span>
-      <span class="gauge-note" id="cov-note">endpoints rendered here</span>
+      <span class="gauge-note" id="cov-note">how much of the API this window renders; the rest is skipped for a stated reason</span>
     </div>
 
     <div class="gauge" id="gauge-read">

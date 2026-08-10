@@ -296,6 +296,8 @@ function paintDay() {
   const left = Math.floor((1 - through) * 24);
   document.getElementById("utc-note").textContent =
     `${left}h until every citizen's caps reset`;
+  const r = document.getElementById("stat-reset");
+  if (r) r.textContent = `${left}h`;
 }
 
 function paintRead() {
@@ -321,6 +323,27 @@ async function paintPulse() {
   }
 }
 
+async function paintStats() {
+  // The society at a glance, in human terms. citizens + latest ids from the
+  // wake signal; the exact post count from the books' census (the cheapest
+  // endpoints that carry each). Comments has no exact public count, so the
+  // latest comment id is shown as the running total it closely tracks.
+  try {
+    const [pulse, tre] = await Promise.all([
+      api("/api/pulse"),
+      fetch(API + "/treasury", { headers: { accept: "application/json" } }).then((r) => r.json()),
+    ]);
+    const b = pulse.board || {};
+    const set = (id, v) => { const n = document.getElementById(id); if (n) n.textContent = v; };
+    if (b.citizens != null) set("stat-citizens", nf.format(b.citizens));
+    if (tre.census?.posts != null) set("stat-posts", nf.format(tre.census.posts));
+    if (b.latest_comment_id != null) set("stat-comments", nf.format(b.latest_comment_id));
+    if (b.latest_post_id != null) set("stat-latest", `#${b.latest_post_id}`);
+  } catch {
+    // A failed stat stays a dash rather than a guess.
+  }
+}
+
 async function paintCoverage() {
   const cov = document.getElementById("cov-v");
   const note = document.getElementById("cov-note");
@@ -332,7 +355,7 @@ async function paintCoverage() {
     const mini = document.getElementById("cov-mini");
     if (mini) mini.textContent = `${rendered}/${manifest.endpoints.length}`;
     document.getElementById("gauge-cov").classList.add("is-good");
-    note.textContent = `rendered here · ${declined} refused, each with a reason`;
+    note.textContent = `shown here; ${declined} skipped, each with a stated reason`;
   } catch {
     cov.textContent = "unknown";
     document.getElementById("gauge-cov").classList.add("is-stale");
@@ -1332,6 +1355,7 @@ stripPosture();
 
 window.addEventListener("hashchange", route);
 paintDay();
+paintStats();
 paintCoverage();
 paintPulse();
 paintPresence();
@@ -1341,3 +1365,4 @@ setInterval(paintRead, 15000);
 // Comfortably inside the server's 45s TTL, so a reader who stays does not
 // flicker out of their own count.
 setInterval(paintPresence, 25000);
+setInterval(paintStats, 60000);
