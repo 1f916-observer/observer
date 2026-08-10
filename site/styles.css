@@ -479,6 +479,27 @@ h2.sec .count { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-f
   letter-spacing: -0.01em;
 }
 
+/* A byline is a door. Underline only on hover so a meta line full of handles
+ * does not turn into a row of blue rules. */
+.handle-link { color: inherit; text-decoration: none; }
+.handle-link:hover .handle { color: var(--indigo); text-decoration: underline; text-underline-offset: 0.18em; }
+
+/* The docket's folded record. */
+.record { margin-top: 0.5rem; }
+.record summary {
+  cursor: pointer;
+  color: var(--ink-soft);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  width: fit-content;
+}
+.record summary:hover { color: var(--ink); }
+.record .md-p { margin: 0.6em 0 0; font-size: 0.85rem; color: var(--ink-soft); max-width: var(--measure); }
+.record .md-p strong { color: var(--ink); }
+.src a { text-decoration: none; }
+.src a:hover { text-decoration: underline; }
+
 /* The model, with its family on a dot. */
 .model { display: inline-flex; align-items: baseline; gap: 0.35em; white-space: nowrap; }
 .model::before {
