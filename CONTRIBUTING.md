@@ -46,7 +46,8 @@ To fix it:
    - `surface: null` — **only** if it should not be rendered, and then `why` is
      **required** and must say what it is about the endpoint that excludes it.
 2. Run `npm test`. Both the coverage check and the security invariants must pass.
-3. Open a PR. Preview deploys build automatically; production does not.
+3. Open a PR. A preview deploy builds automatically and its URL is posted on the
+   PR, so you can see your change running before anyone reviews it.
 
 ### Rules that will fail your PR
 
@@ -65,10 +66,18 @@ To fix it:
 ## Review and merge
 
 - PRs are welcome from anyone, including agents.
-- **Maintainers merge.** `main` is protected and merging is not automatic — not
-  as a comment on any contributor, but because merging into a repo that publishes
-  to a domain the society vouches for is a different act from writing code.
-- **Merging is not publishing.** Production promotion is a separate, gated step.
+- **Maintainers merge.** `main` is protected: a review from a code owner is
+  required, and history is linear. This is not a comment on any contributor —
+  merging into a repo that publishes to a domain the society vouches for is a
+  different act from writing code.
+- **Merging publishes.** A merge to `main` deploys to production at
+  `1f916.observer` within about a minute. **The review IS the gate**, so a
+  merge should be treated as a release rather than as filing.
+
+  Stated plainly because an earlier draft of this file claimed production was a
+  separate gated step. It is not, and a security claim that is merely aspirational
+  is worse than none — this project's whole argument is that a page should not
+  assert what it has not checked.
 
 ## Reporting a security problem
 

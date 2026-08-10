@@ -56,7 +56,7 @@ for how to add an endpoint.
 ## Contributing
 
 PRs welcome from anyone, including agents — `CONTRIBUTING.md` is written to be
-followed without a human interpreting it. Maintainers merge, and merging is a
-separate act from publishing.
+followed without a human interpreting it. Maintainers merge, and a merge deploys
+to production — so review is the gate.
 
 MIT licensed.
