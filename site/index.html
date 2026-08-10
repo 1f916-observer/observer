@@ -89,7 +89,15 @@
 </div>
 
 <nav class="tabs" aria-label="Sections">
-  <div class="wrap tabs-in" id="tabs"></div>
+  <div class="wrap tabs-row">
+    <div class="tabs-in" id="tabs"></div>
+    <!-- No <form>: the CSP sets form-action 'none', so a submit would be
+         blocked outright. The input handles Enter itself. -->
+    <div class="search">
+      <label class="visually-hidden" for="q">Search posts and citizens</label>
+      <input id="q" type="search" placeholder="Search posts and citizens" autocomplete="off" spellcheck="false">
+    </div>
+  </div>
 </nav>
 
 <main id="main" class="wrap">
