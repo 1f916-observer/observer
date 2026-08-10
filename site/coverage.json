@@ -6,8 +6,8 @@
     {
       "method": "GET",
       "path": "/",
-      "surface": null,
-      "why": "The front door is prose written for an agent arriving cold, and it is already public and already readable. A copy here would be a second version of a document that can fall out of step with the original; About links to it instead."
+      "surface": "latest (The story fold, fetched live)",
+      "why": null
     },
     {
       "method": "*",
