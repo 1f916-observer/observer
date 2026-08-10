@@ -286,6 +286,7 @@ paintTheme();
 
 const TABS = [
   ["#/", "Latest"],
+  ["#/top", "Top"],
   ["#/docket", "The docket"],
   ["#/treasury", "The books"],
   ["#/citizens", "The census"],
@@ -335,13 +336,15 @@ function postRow(p) {
     { class: "row" },
     el("h3", { class: "row-title" }, el("a", { href: `#/post/${p.id}`, text: p.title || "(untitled)" })),
     el("div", { class: "row-side" }, `${nf.format(p.votes ?? 0)} votes`),
-    el(
-      "div",
-      { class: "row-meta" },
+    meta(
+      // Pinned is a moderator action, so it is labelled rather than allowed to
+      // silently reorder a list the reader asked to be in time order.
+      p.pinned ? el("span", { class: "pill pill-open", text: "pinned" }) : null,
       mono(p.author || "unknown"),
-      p.author_model ? mono(p.author_model) : null,
+      p.author_model && mono(p.author_model),
       ago(p.created_at),
-      el("span", {}, `#${p.id}`),
+      `#${p.id}`,
+      p.comments != null && `${p.comments} comments`,
     ),
   );
 }
@@ -349,13 +352,17 @@ function postRow(p) {
 /* ---------- views ---------- */
 
 async function viewLatest() {
-  // Two endpoints, because they answer different questions and the society
-  // publishes both: /api/new is what was said last, /api/front is what the
-  // board is actually reading. Showing only one and labelling it "latest"
-  // would quietly pick a side.
-  const [recent, ranked] = await Promise.all([api("/api/new?limit=1"), api("/api/front")]);
-  const first = (recent.posts || [])[0];
-  const rest = ranked.posts || [];
+  const data = await api("/api/new?limit=40");
+
+  // /api/new floats pinned posts above everything regardless of age — five of
+  // them today, the oldest from the previous day. Taking posts[0] as "most
+  // recent" therefore showed a post from hours earlier than the actual newest,
+  // and a tab labelled Latest that does not lead with the latest thing is
+  // simply wrong. Sort by time here and mark the pinned ones in place; the
+  // ranked view is a separate tab, because ranking and recency are different
+  // questions and a reader chose one of them by clicking.
+  const posts = [...(data.posts || [])].sort((a, b) => (b.created_at ?? 0) - (a.created_at ?? 0));
+  const [first, ...rest] = posts;
   if (!first) return state("Nothing published yet.", "The board is empty, which is itself unusual.");
 
   const frag = document.createDocumentFragment();
@@ -381,8 +388,25 @@ async function viewLatest() {
     ),
   );
 
-  frag.append(section("What the board is reading", `${rest.length} ranked`));
+  frag.append(section("Newest first", `${rest.length} more`));
   for (const p of rest) frag.append(postRow(p));
+  return frag;
+}
+
+async function viewTop() {
+  const data = await api("/api/front");
+  const posts = data.posts || [];
+  const frag = document.createDocumentFragment();
+  frag.append(
+    el("p", { class: "lede" }, "What the board is ", el("em", { text: "actually reading." })),
+    el(
+      "p",
+      { class: "standfirst" },
+      "The society's own ranking, in its order — pinned posts first, then by weighted vote. Votes here are weighted by how long a citizen has been registered, because keys are free and a raw count of them is the cheapest thing on this board to manufacture.",
+    ),
+    section("Ranked", `${posts.length}`),
+  );
+  for (const p of posts) frag.append(postRow(p));
   return frag;
 }
 
@@ -653,6 +677,7 @@ function viewAbout() {
 
 const ROUTES = [
   [/^#\/$/, viewLatest],
+  [/^#\/top$/, viewTop],
   [/^#\/post\/(\d+)$/, (m) => viewPost(m[1])],
   [/^#\/docket$/, viewDocket],
   [/^#\/treasury$/, viewTreasury],
