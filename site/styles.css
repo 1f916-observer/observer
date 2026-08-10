@@ -11,22 +11,31 @@
  * treatment — scale, tracking, weight, case — not from licensing.
  */
 
+/* Each colour is stated ONCE, as light-dark(light, dark), and the theme is
+ * chosen by flipping `color-scheme` alone. The obvious alternative — a light
+ * block plus a `prefers-color-scheme` block plus a `[data-theme]` override —
+ * states every value two or three times, and copies that agree on the day they
+ * are written are the exact failure mode this project exists to catch. */
 :root {
+  color-scheme: light dark;
+
   /* Cool paper rather than warm cream. This society is not cosy. */
-  --paper:      #edeff2;
-  --paper-lift: #f6f7f9;
-  --ink:        #0f1519;
-  --ink-soft:   #4a565f;
-  --ink-faint:  #7d8a94;
-  --rule:       #cfd5db;
+  --paper:      light-dark(#edeff2, #0e1216);
+  --paper-lift: light-dark(#f6f7f9, #161c22);
+  --ink:        light-dark(#0f1519, #e6e9ed);
+  --ink-soft:   light-dark(#4a565f, #a4b0ba);
+  --ink-faint:  light-dark(#7d8a94, #6f7d88);
+  --rule:       light-dark(#cfd5db, #263039);
 
   /* The two accents are semantic, not decorative.
    * teal   = recomputed here, and it agrees
    * ember  = cited, stale, or drifting — look closer
-   * indigo = interaction only, never meaning */
-  --teal:   #0e7c66;
-  --ember:  #b4531a;
-  --indigo: #3a1fd6;
+   * indigo = interaction only, never meaning
+   * Dark values are lifted, not the same hex dimmed: a colour that carries
+   * meaning has to stay legible on both grounds or it stops carrying it. */
+  --teal:   light-dark(#0e7c66, #34b79b);
+  --ember:  light-dark(#b4531a, #e08a4e);
+  --indigo: light-dark(#3a1fd6, #9d8cff);
 
   --display: Georgia, "Iowan Old Style", "Times New Roman", serif;
   --body: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
@@ -36,19 +45,10 @@
   --step: clamp(0.9rem, 0.85rem + 0.25vw, 1rem);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --paper:      #0e1216;
-    --paper-lift: #161c22;
-    --ink:        #e6e9ed;
-    --ink-soft:   #a4b0ba;
-    --ink-faint:  #6f7d88;
-    --rule:       #263039;
-    --teal:       #34b79b;
-    --ember:      #e08a4e;
-    --indigo:     #9d8cff;
-  }
-}
+/* The reader's explicit choice. Absent these, `light dark` above means the
+ * page follows the operating system, which stays the default. */
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"]  { color-scheme: dark; }
 
 * { box-sizing: border-box; }
 
@@ -115,6 +115,7 @@ a:hover { text-decoration-thickness: 2px; }
   font-size: 0.82rem;
   letter-spacing: 0.02em;
 }
+.masthead-right { display: grid; gap: 0.7rem; justify-items: end; }
 .never {
   margin: 0; max-width: 32ch;
   font-size: 0.8rem; line-height: 1.45;
@@ -122,6 +123,23 @@ a:hover { text-decoration-thickness: 2px; }
   border-left: 2px solid var(--ember);
   padding-left: 0.7rem;
 }
+
+.theme { display: flex; gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; }
+.theme-btn {
+  appearance: none;
+  border: 0;
+  margin: 0;
+  padding: 0.3rem 0.6rem;
+  font: inherit;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  background: var(--paper);
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
+}
+.theme-btn:hover { color: var(--ink); }
+.theme-btn[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 
 /* ---------- the instrument strip: this page's signature ---------- */
 
@@ -275,11 +293,18 @@ h2.sec .count { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-f
 /* A row in any list of society records. */
 .row {
   display: grid;
-  grid-template-columns: 1fr auto;
+  /* minmax(0, 1fr), not 1fr: a grid track defaults to min-width:auto, so it
+   * refuses to shrink below its content and a long code block or an
+   * unbreakable hash pushes the whole PAGE sideways. This one declaration is
+   * the difference between a page that reflows on a phone and one that
+   * scrolls horizontally. */
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 0.2rem 1.2rem;
   padding: 0.85rem 0;
   border-bottom: 1px solid var(--rule);
 }
+/* Same reason, for every child that can hold wide content. */
+.row > *, .span, .quoted { min-width: 0; }
 .row:last-child { border-bottom: 0; }
 .row-title { margin: 0; font-size: 0.98rem; font-weight: 550; line-height: 1.35; }
 .row-title a { color: inherit; text-decoration: none; }
@@ -408,6 +433,10 @@ h2.sec .count { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-f
 
 @media (max-width: 34rem) {
   .never { max-width: none; }
-  .row { grid-template-columns: 1fr; }
+  .row { grid-template-columns: minmax(0, 1fr); }
   .row-side { text-align: left; }
+  /* Six levels of thread indent costs a quarter of a phone screen. Halve the
+   * step: the nesting still reads, and the text keeps its measure. */
+  .quoted { padding-left: 0.8rem; }
+  .masthead-right { justify-items: start; }
 }

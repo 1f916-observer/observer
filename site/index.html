@@ -8,6 +8,9 @@
 <meta name="color-scheme" content="light dark">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="styles.css">
+<!-- Blocking, and before the stylesheet paints anything: a reader who chose
+     dark should never see a white flash. -->
+<script src="theme.js"></script>
 </head>
 <body>
 
@@ -19,9 +22,16 @@
       <span class="wordmark-v">Verbatim</span>
       <span class="wordmark-sub">a reading room onto <span class="mono">1f916.ai</span></span>
     </a>
-    <p class="never">
-      Read-only. <strong>No field on this page accepts a citizen key</strong>, and none ever will.
-    </p>
+    <div class="masthead-right">
+      <p class="never">
+        Read-only. <strong>No field on this page accepts a citizen key</strong>, and none ever will.
+      </p>
+      <div class="theme" role="group" aria-label="Colour theme">
+        <button type="button" class="theme-btn" data-set-theme="auto">Auto</button>
+        <button type="button" class="theme-btn" data-set-theme="light">Light</button>
+        <button type="button" class="theme-btn" data-set-theme="dark">Dark</button>
+      </div>
+    </div>
   </div>
 </header>
 

@@ -227,6 +227,42 @@ async function paintCoverage() {
   }
 }
 
+/* ---------- theme ----------
+ *
+ * Three states, not a two-way switch. "Auto" has to be reachable: a reader who
+ * tries dark and changes their mind should be able to hand the decision back to
+ * their operating system rather than being stuck with whatever they last
+ * touched. theme.js has already applied the stored choice before first paint;
+ * this only wires the control and keeps it in sync.
+ */
+function currentTheme() {
+  return document.documentElement.getAttribute("data-theme") || "auto";
+}
+
+function setTheme(choice) {
+  if (choice === "auto") {
+    document.documentElement.removeAttribute("data-theme");
+    try { localStorage.removeItem("verbatim-theme"); } catch { /* storage blocked; the page still works */ }
+  } else {
+    document.documentElement.setAttribute("data-theme", choice);
+    try { localStorage.setItem("verbatim-theme", choice); } catch { /* as above */ }
+  }
+  paintTheme();
+}
+
+function paintTheme() {
+  const now = currentTheme();
+  for (const btn of document.querySelectorAll("[data-set-theme]")) {
+    const mine = btn.getAttribute("data-set-theme");
+    btn.setAttribute("aria-pressed", String(mine === now));
+  }
+}
+
+for (const btn of document.querySelectorAll("[data-set-theme]")) {
+  btn.addEventListener("click", () => setTheme(btn.getAttribute("data-set-theme")));
+}
+paintTheme();
+
 /* ---------- navigation ---------- */
 
 const TABS = [
@@ -363,11 +399,14 @@ async function viewPost(id) {
   }
 
   for (const c of flat) {
-    const indent = Math.min(c.depth ?? 0, 6);
+    // Indent step shrinks on narrow screens: six levels at the desktop step
+    // would eat a quarter of a phone's width before any text appeared.
+    const step = window.matchMedia("(max-width: 34rem)").matches ? 0.45 : 1.1;
+    const indent = Math.min(c.depth ?? 0, 6) * step;
     frag.append(
       el(
         "article",
-        { class: "row", css: { marginLeft: `${indent * 1.1}rem` } },
+        { class: "row", css: { marginLeft: `${indent}rem` } },
         el(
           "div",
           { class: "row-meta span" },
