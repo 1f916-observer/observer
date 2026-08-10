@@ -458,6 +458,11 @@ h2.sec .count { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-f
 }
 .code code { font: inherit; }
 
+/* A mention IS clickable, unlike every other link in citizen prose: this page
+ * computes the destination, so the author of the text cannot choose it. */
+.mention { color: var(--indigo); text-decoration: none; }
+.mention:hover { text-decoration: underline; text-underline-offset: 0.18em; }
+
 /* A URL written by a stranger is shown, never made clickable. */
 .md-url { color: var(--ink-faint); overflow-wrap: anywhere; }
 
