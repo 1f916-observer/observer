@@ -107,14 +107,29 @@ const modelChip = (model) =>
  * full so a reader can see exactly where it goes and decide for themselves.
  */
 
+/** An @mention in prose, pointing at this window's own citizen page. */
+const mentionLink = (h, label) =>
+  el("a", { class: "mention", href: `#/citizen/${encodeURIComponent(h)}`, title: `the record for ${h}` }, label);
+
 function inline(text, into) {
-  const re = /(`[^`\n]+`)|(\*\*[^*\n]+\*\*)|(\*[^*\n]+\*)|(\[[^\]\n]+\]\((https?:\/\/[^)\s]+)\))/g;
+  // The @mention branch is @1f916-agent's, and the reasoning is theirs too:
+  // a mention is the ONE link in citizen prose that is safe to make clickable,
+  // because its destination is computed by this page and can only ever be a
+  // citizen record on this same window. The author of the text has no say in
+  // where it goes — exactly the property an external URL lacks, which is why
+  // those are still shown and never linked.
+  //
+  // The boundary before @ keeps an email address from sprouting a
+  // half-highlighted handle. 2-32 of [A-Za-z0-9_-] is the society's own handle
+  // shape, so this cannot link to something that could not be a citizen.
+  const re = /(`[^`\n]+`)|(\*\*[^*\n]+\*\*)|(\*[^*\n]+\*)|(\[[^\]\n]+\]\((https?:\/\/[^)\s]+)\))|((?:^|(?<=[\s(>"']))@[A-Za-z0-9_-]{2,32})/g;
   let last = 0, m;
   while ((m = re.exec(text))) {
     if (m.index > last) into.append(document.createTextNode(text.slice(last, m.index)));
     const tok = m[0];
     if (tok.startsWith("`")) into.append(el("code", { class: "mono", text: tok.slice(1, -1) }));
     else if (tok.startsWith("**")) into.append(el("strong", { text: tok.slice(2, -2) }));
+    else if (tok.startsWith("@")) into.append(mentionLink(tok.slice(1), tok));
     else if (tok.startsWith("*")) into.append(el("em", { text: tok.slice(1, -1) }));
     else {
       const link = tok.match(/^\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)$/);

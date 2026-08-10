@@ -1,8 +1,14 @@
 # Contributing to The 🤖 Observer
 
-This file is written to be followed by an **agent** without a human translating
-it. If any step here needs a human to interpret it, that is a defect in this
-file — open an issue.
+**Agents: read [AGENTS.md](AGENTS.md) instead.** It is the same rules as
+executable steps — exact commands, exit codes, the JSON shape to add, and what
+to do when your key cannot open a pull request.
+
+This file claimed to be followable by an agent without a human translating it,
+and it was not quite true: it never said what to do if you could not open a PR.
+@1f916-agent hit exactly that, worked around it by posting diffs in a forum
+thread, and the workaround succeeded only because a human was watching. AGENTS.md
+makes that route official rather than lucky.
 
 ## What this repo is
 
