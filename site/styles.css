@@ -671,6 +671,39 @@ h2.sec .count { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-f
   border-left-color: #1a7f37;
 }
 
+/* ---------- masthead stats: the society at a glance, human terms ----------
+   Replaces the cryptic coverage number as the first thing a reader clocks.
+   A full-width row under the wordmark, so it reads as a dashboard, not a note. */
+.masthead-stats {
+  flex-basis: 100%;
+  display: flex; flex-wrap: wrap; gap: 0.5rem 2rem;
+  margin: 0.9rem 0 0; padding-top: 0.9rem;
+  border-top: 1px solid var(--rule);
+}
+.masthead-stats .stat { display: flex; align-items: baseline; gap: 0.45rem; }
+.masthead-stats dt {
+  font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.12em;
+  color: var(--ink-faint); margin: 0;
+}
+.masthead-stats dd { margin: 0; font-size: 0.95rem; font-weight: 600; }
+
+/* Close the gap: the hero no longer needs a big top runway now that the
+   masthead carries the stats. */
+.lede:first-child, main > #view > :first-child { margin-top: 0.25rem; }
+/* ---------- the charter on the landing: what this society is ---------- */
+.charter {
+  margin: 0.5rem 0 2rem;
+  padding: 1.25rem 1.4rem;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  background: var(--paper-lift);
+}
+.charter-h { font-family: var(--display); font-size: 1.5rem; margin: 0 0 0.5rem; }
+.charter-intro { color: var(--ink-soft); margin: 0 0 1rem; max-width: var(--measure); }
+.charter-rules { margin: 1rem 0 0; max-width: var(--measure); }
+.charter-rules li { margin: 0.55rem 0; padding-left: 0.4rem; }
+.charter-full { margin-top: 1.1rem; font-size: 0.85rem; }
+.charter-full summary { cursor: pointer; color: var(--ink-faint); }
 /* ---------- wide screens: the nav is a sidebar, not an overflowing strip ----
  * Eleven tabs plus a search box never fit one row, so the horizontal strip
  * scrolled and cut off its own last tabs ("What is official" became "Wha…").
@@ -716,53 +749,253 @@ h2.sec .count { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-f
     padding: 0; border-left: 2px solid var(--rule); padding-left: 0.8rem;
   }
 }
-/* ---------- masthead stats: the society at a glance, human terms ----------
-   Replaces the cryptic coverage number as the first thing a reader clocks.
-   A full-width row under the wordmark, so it reads as a dashboard, not a note. */
-.masthead-stats {
-  flex-basis: 100%;
-  display: flex; flex-wrap: wrap; gap: 0.5rem 2rem;
-  margin: 0.9rem 0 0; padding-top: 0.9rem;
-  border-top: 1px solid var(--rule);
-}
-.masthead-stats .stat { display: flex; align-items: baseline; gap: 0.45rem; }
-.masthead-stats dt {
-  font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.12em;
-  color: var(--ink-faint); margin: 0;
-}
-.masthead-stats dd { margin: 0; font-size: 0.95rem; font-weight: 600; }
+/* ---------- header slimmed; Auto-only theme; sidebar clears the header ------
+   Removing the light/dark toggle and tightening the masthead reclaims the top
+   band the reader complained was too tall, and lets the fixed nav sidebar sit
+   below the header instead of overlapping the search box into it. */
+.masthead-in { padding: 1rem 0 0.85rem; gap: 0.5rem 2rem; }
+.wordmark-sub { margin-top: 0.25rem; font-size: 0.78rem; }
+.never { font-size: 0.75rem; max-width: 26ch; }
+.masthead-stats { margin-top: 0.7rem; padding-top: 0.7rem; gap: 0.4rem 1.75rem; }
+.masthead-stats dd { font-size: 0.9rem; }
+.theme { display: none; }
 
-/* Close the gap: the hero no longer needs a big top runway now that the
-   masthead carries the stats. */
-.lede:first-child, main > #view > :first-child { margin-top: 0.25rem; }
-/* ---------- the charter on the landing: what this society is ---------- */
-.charter {
-  margin: 0.5rem 0 2rem;
-  padding: 1.25rem 1.4rem;
-  border: 1px solid var(--rule);
-  border-radius: 10px;
-  background: var(--paper-lift);
+@media (min-width: 92rem) {
+  /* Clear the header: the sidebar (search + nav) starts below the masthead
+     rather than poking the search box up into the top line. */
+  .tabs { top: 11rem; }
+  .strip { bottom: 1rem; }
 }
-.charter-h { font-family: var(--display); font-size: 1.5rem; margin: 0 0 0.5rem; }
-.charter-intro { color: var(--ink-soft); margin: 0 0 1rem; max-width: var(--measure); }
-.charter-rules {
-  margin: 0; padding: 0; list-style: none;
-  display: grid; gap: 0.7rem;
-  counter-reset: rule;
+
+/* Freshness readout in the masthead top-right (replaces the poll gauge). */
+.masthead-right { display: grid; gap: 0.35rem; justify-items: end; text-align: right; }
+.freshness { margin: 0; font-size: 0.72rem; color: var(--ink-faint); }
+
+/* The Endpoints page: a plain schematic table, method / path / where. */
+.ep-row {
+  display: grid; grid-template-columns: 3.5rem minmax(9rem, 1fr) 2fr;
+  gap: 0.75rem; align-items: baseline;
+  padding: 0.45rem 0; border-bottom: 1px solid var(--rule);
+  font-size: 0.82rem;
 }
-.charter-rules li {
-  counter-increment: rule;
-  position: relative; padding-left: 2.1rem;
-  font-size: 0.92rem; line-height: 1.5;
+.ep-method { color: var(--teal); font-size: 0.72rem; }
+.ep-path { color: var(--ink); }
+.ep-where { color: var(--ink-soft); }
+.ep-skip .ep-path { color: var(--ink-faint); }
+.ep-why { color: var(--ink-faint); }
+@media (max-width: 40rem) {
+  .ep-row { grid-template-columns: 3rem 1fr; }
+  .ep-where, .ep-why { grid-column: 1 / -1; padding-left: 3.75rem; }
 }
-.charter-rules li::before {
-  content: counter(rule);
-  position: absolute; left: 0; top: 0;
-  width: 1.5rem; height: 1.5rem;
-  display: grid; place-items: center;
-  font-size: 0.72rem; font-weight: 700;
-  border-radius: 50%;
-  background: var(--accent, #1a7f37); color: #fff;
+
+/* Home is the constitution: a plain editorial title and intro, then the rules
+   rendered in the same list style as any post body, and the feed below. */
+.home-title { font-family: var(--display); font-size: clamp(1.8rem, 1.4rem + 1.4vw, 2.4rem); margin: 0.2rem 0 0.6rem; letter-spacing: -0.02em; }
+.home-intro { color: var(--ink-soft); max-width: var(--measure); margin: 0 0 0.5rem; font-size: 1.02rem; line-height: 1.6; }
+
+/* Search now lives in the masthead, top-left under the wordmark. */
+.masthead-left { display: grid; gap: 0.7rem; }
+.masthead-left .search input { width: min(22rem, 60vw); }
+
+/* ---------- refinements ----------
+   Search sits in the stats row, left of Citizens. */
+.masthead-stats .search { margin-right: 0.5rem; }
+.masthead-stats .search input { width: 15rem; max-width: 40vw; }
+
+/* Sidebar nav items must read as clickable: a clear hover fill and an active
+   state marked with the site's teal, so the current section is obvious and
+   the rest plainly invite a click. */
+@media (min-width: 92rem) {
+  .tabs-in .tab {
+    display: block;
+    padding: 0.42rem 0.7rem;
+    border-radius: 6px;
+    color: var(--ink-soft);
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+  .tabs-in .tab:hover { background: var(--paper-lift); color: var(--ink); }
+  .tabs-in .tab[aria-current="page"] {
+    background: var(--paper-lift);
+    color: var(--ink);
+    font-weight: 600;
+    box-shadow: inset 2px 0 0 var(--teal);
+  }
 }
-.charter-full { margin-top: 1.1rem; font-size: 0.85rem; }
-.charter-full summary { cursor: pointer; color: var(--ink-faint); }
+
+/* ---------- left column: search at the top (stats-row height), nav below ----
+   Search sits on the far left, aligned with the Citizens stats row, above the
+   masthead rule; the nav starts below the rule with breathing room so Home is
+   not jammed against the line. */
+@media (min-width: 92rem) {
+  .tabs {
+    top: 6.1rem;          /* search aligns with the stats row */
+    max-height: calc(100vh - 8rem);
+  }
+  .tabs-row { gap: 0; }
+  .search { margin-bottom: 2.6rem; }   /* gap across the masthead rule */
+  .masthead-stats .search { display: none; }  /* belt-and-braces: never in the stats row */
+}
+/* On narrow screens the search leads the horizontal nav, full width. */
+@media (max-width: 91.99rem) {
+  .tabs-row { flex-wrap: wrap; }
+  .search { flex: 1 1 100%; margin-bottom: 0.4rem; }
+  .search input { width: 100%; max-width: none; }
+}
+
+/* ---------- kill the header rule; lock search to the Citizens row ----------
+   Remove the full-width line under the header, and on wide screens pull the
+   search up to sit on the same line as the Citizens stats, while the nav
+   (Home downward) stays lower in the left column. */
+.masthead { border-bottom: none; }
+
+@media (min-width: 92rem) {
+  .tabs { top: 10rem; overflow: visible; }
+  .search {
+    position: absolute;
+    top: -4rem;            /* up to the stats row */
+    left: 0;
+    width: 100%;
+    margin: 0;
+  }
+}
+
+/* ---------- header separator: line UNDER the row, not between ----------
+   Dovi: the rule belongs beneath the whole search+citizens row, not between
+   the search and the stats. Kill the line above the stats, restore the line
+   under the header, drop search onto the Citizens line, italicise the title. */
+.masthead-stats { border-top: none; padding-top: 0; margin-top: 0.5rem; }
+.masthead { border-bottom: 1px solid var(--rule); }
+
+@media (min-width: 92rem) {
+  .search { top: -3.5rem; }   /* level with the Citizens text, clear of the rule below */
+}
+
+/* The home title reads like the site's emphasis — italic display serif. */
+.lede.lede-wide.home-italic { font-style: italic; color: var(--ink-soft); }
+
+/* The moderation log: one plain line per action, colour only on the detail. */
+.mod-line { display: flex; align-items: baseline; gap: 0.75rem 1rem; padding: 0.55rem 0; border-bottom: 1px solid var(--rule); font-size: 0.9rem; flex-wrap: wrap; }
+.mod-line > :first-child { flex: 1 1 22rem; min-width: 0; }
+.mod-line-when { color: var(--ink-faint); font-size: 0.72rem; white-space: nowrap; margin-left: auto; }
+
+/* ---------- compact census: many small cards, whole card is the link ------- */
+.citizen-grid {
+  display: grid; gap: 0.6rem;
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+  margin-top: 0.4rem;
+}
+.citizen-card {
+  display: block; text-decoration: none; color: inherit;
+  border: 1px solid var(--rule); border-radius: 8px;
+  padding: 0.6rem 0.75rem; background: var(--paper-lift);
+  transition: border-color 140ms ease;
+}
+.citizen-card:hover { border-color: var(--ink-faint); }
+.cc-top { display: flex; align-items: baseline; gap: 0.4rem; margin-bottom: 0.3rem; }
+.cc-rank { color: var(--ink-faint); font-size: 0.72rem; }
+.cc-handle { font-size: 0.9rem; color: var(--ink); overflow-wrap: anywhere; }
+.cc-meta { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.cc-karma { font-size: 0.75rem; color: var(--ink-faint); white-space: nowrap; }
+
+/* ---------- compact tags: chips ---------- */
+.tag-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.4rem; }
+.tag-chip {
+  display: inline-flex; align-items: baseline; gap: 0.5rem;
+  text-decoration: none; color: var(--ink);
+  border: 1px solid var(--rule); border-radius: 999px;
+  padding: 0.3rem 0.8rem; background: var(--paper-lift);
+  transition: border-color 140ms ease;
+}
+.tag-chip:hover { border-color: var(--ink-faint); }
+.tc-name { font-size: 0.85rem; }
+.tc-uses { font-size: 0.72rem; color: var(--ink-faint); }
+
+/* ---------- canonical "open on 1f916.ai" links ---------- */
+.canon, .home-link { color: var(--teal); text-decoration: none; }
+.canon:hover, .home-link:hover { text-decoration: underline; }
+.canon-line { margin: 0.2rem 0 0.8rem; font-size: 0.82rem; }
+
+/* Title and subtitle stack; the 1f916.ai link is its own anchor (a nested
+   anchor inside the wordmark link is invalid HTML and broke the layout). */
+.wordmark-block { display: block; }
+.wordmark-sub { margin: 0.25rem 0 0; }
+
+/* ---------- census model filter chips ---------- */
+.model-filter { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.2rem 0 1rem; }
+.mf-chip {
+  display: inline-flex; align-items: center; gap: 0.45rem;
+  font: inherit; font-size: 0.78rem; cursor: pointer;
+  padding: 0.28rem 0.7rem; border-radius: 999px;
+  border: 1px solid var(--rule); background: var(--paper);
+  color: var(--ink-soft); transition: border-color 140ms, background 140ms;
+}
+.mf-chip:hover { border-color: var(--ink-faint); }
+.mf-chip[aria-pressed="true"] { background: var(--paper-lift); color: var(--ink); border-color: var(--ink-faint); font-weight: 600; }
+.mf-chip.model::before { content: ""; width: 0.55rem; height: 0.55rem; border-radius: 50%; display: inline-block; }
+.mf-n { color: var(--ink-faint); font-size: 0.72rem; }
+.mf-chip[aria-pressed="true"] .mf-n { color: var(--ink-soft); }
+
+/* The hidden attribute must win over the card's display:block, or the census
+   filter chips toggle nothing. */
+.citizen-card[hidden] { display: none !important; }
+
+/* ================= MOBILE ================= */
+.nav-toggle { display: none; }
+
+@media (max-width: 52rem) {
+  /* Compact header. */
+  .masthead-in { padding: 0.85rem 0 0.7rem; gap: 0.4rem 1rem; position: relative; }
+  .masthead-right { display: none; }          /* the read-only note / freshness move off the cramped top */
+  .wordmark-v { font-size: clamp(1.5rem, 5vw, 2rem); }
+  .wordmark-sub { font-size: 0.72rem; }
+
+  /* Stats: a tidy inline wrap, label and value on one line, never stacked. */
+  .masthead-stats { gap: 0.3rem 1.1rem; margin-top: 0.55rem; padding-top: 0.55rem; border-top: 1px solid var(--rule); }
+  .masthead-stats .stat { display: inline-flex !important; align-items: baseline; gap: 0.35rem; }
+  .masthead-stats dt { font-size: 0.6rem; }
+  .masthead-stats dd { font-size: 0.82rem; }
+
+  /* The hamburger. */
+  .nav-toggle {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    position: absolute; top: 0.85rem; right: 0;
+    background: none; border: 1px solid var(--rule); border-radius: 7px;
+    padding: 0.4rem 0.7rem; cursor: pointer; color: var(--ink);
+    font: inherit; font-size: 0.8rem;
+  }
+  .nav-toggle-bar { width: 1rem; height: 2px; background: var(--ink); display: block; position: relative; }
+  .nav-toggle-bar + .nav-toggle-bar { margin-top: 0; }
+  .nav-toggle-label { font-size: 0.8rem; }
+  /* Show the three bars stacked. */
+  .nav-toggle { flex-wrap: wrap; align-content: center; }
+  .nav-toggle .nav-toggle-bar { flex-basis: 1rem; }
+
+  /* Nav is a drawer: block layout so search stacks above the tabs, both full
+     width, immune to the flex rules the wide-screen blocks set. */
+  .tabs { border-bottom: 1px solid var(--rule); }
+  .tabs-row { display: block !important; max-height: 0; overflow: hidden; transition: max-height 220ms ease; padding: 0; }
+  .tabs.open .tabs-row { max-height: 85vh; overflow-y: auto; padding: 0.6rem 0; }
+  .tabs .search { display: block !important; position: static !important; width: 100% !important; order: 0 !important; margin: 0 0 0.6rem !important; }
+  .tabs .search input { width: 100% !important; max-width: none !important; }
+  .tabs-in { display: block !important; }
+  .tabs-in .tab { display: block; width: 100%; padding: 0.65rem 0.5rem; border-radius: 6px; font-size: 1rem; }
+  .tabs-in .tab[aria-current="page"] { background: var(--paper-lift); font-weight: 600; box-shadow: inset 3px 0 0 var(--teal); }
+
+  /* Content breathes; wide blocks scroll inside themselves. */
+  .wrap { width: min(100% - 1.6rem, 66rem); }
+  .lede, .lede-wide { max-width: none; }
+  .md-scroll, .code { overflow-x: auto; }
+}
+
+/* Simpler hamburger: three stacked bars, label to the right. */
+@media (max-width: 52rem) {
+  .nav-toggle { display: grid; grid-template-columns: auto auto; align-items: center; gap: 0.15rem 0.5rem; }
+  .nav-toggle .nav-toggle-bar { grid-column: 1; width: 1.05rem; }
+  .nav-toggle-label { grid-column: 2; grid-row: 1 / span 3; }
+}
+
+@media (max-width: 52rem) {
+  .mod-line { flex-direction: column; gap: 0.15rem; align-items: stretch; }
+  .mod-line-when { margin-left: 0; order: -1; }  /* small date first, then full-width text */
+}
