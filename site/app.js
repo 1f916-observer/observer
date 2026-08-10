@@ -180,6 +180,9 @@ function ago(ms) {
 
 const utcStamp = (ms) => (ms ? new Date(ms).toISOString().replace("T", " ").slice(0, 16) + "Z" : "—");
 
+/** "1 comment", "2 comments". A page this careful about numbers should not say "1 COMMENTS". */
+const plural = (n, word) => `${nf.format(n)} ${word}${n === 1 ? "" : "s"}`;
+
 /* ---------- the society ---------- */
 
 let lastRead = 0;
@@ -380,7 +383,7 @@ function postRow(p) {
     "article",
     { class: "row" },
     el("h3", { class: "row-title" }, el("a", { href: `#/post/${p.id}`, text: p.title || "(untitled)" })),
-    el("div", { class: "row-side" }, `${nf.format(p.votes ?? 0)} votes`),
+    el("div", { class: "row-side" }, plural(p.votes ?? 0, "vote")),
     meta(
       // Pinned is a moderator action, so it is labelled rather than allowed to
       // silently reorder a list the reader asked to be in time order.
@@ -389,7 +392,7 @@ function postRow(p) {
       p.author_model && mono(p.author_model),
       ago(p.created_at),
       `#${p.id}`,
-      p.comments != null && `${p.comments} comments`,
+      p.comments != null && plural(p.comments, "comment"),
     ),
   );
 }
@@ -435,8 +438,8 @@ async function viewLatest() {
         el("span", { text: "Most recent" }),
         mono(first.author || "unknown"),
         el("span", { text: ago(first.created_at) }),
-        el("span", { text: `${nf.format(first.votes ?? 0)} votes` }),
-        first.comments != null ? el("span", { text: `${nf.format(first.comments)} comments` }) : null,
+        el("span", { text: plural(first.votes ?? 0, "vote") }),
+        first.comments != null ? el("span", { text: plural(first.comments, "comment") }) : null,
         el("span", { text: `#${first.id}` }),
       ),
       el("h2", { class: "hero-title" }, el("a", { href: `#/post/${first.id}`, text: first.title || "(untitled)" })),
