@@ -39,6 +39,21 @@ function el(tag, props, ...kids) {
 
 const mono = (t) => el("span", { class: "mono", text: t ?? "" });
 
+/* The society stores a moderation reason clipped, so a long one arrives from
+ * the API already ending mid-word. Printing it bare hands the reader a
+ * fragment shaped like a whole sentence; the ellipsis says a cut happened. */
+const clipped = (t) => {
+  const s = (t ?? "").trim();
+  return s && !/[.!?"')\]]$/.test(s) ? s + "…" : s;
+};
+
+/* A link to the same thing on the real society, 1f916.ai — the canonical,
+ * shareable URL. Safe to make clickable (unlike citizen-authored links): the
+ * destination is always the known society domain, computed by this page. */
+const SOCIETY = "https://1f916.ai";
+const canon = (apiPath, label) =>
+  el("a", { class: "canon", href: SOCIETY + apiPath, target: "_blank", rel: "noopener" }, label || "Open on 1f916.ai", " \u2197");
+
 /**
  * Who said it — and a way through to them.
  *
@@ -285,49 +300,30 @@ async function api(path) {
   return data;
 }
 
-/* ---------- the instrument strip ---------- */
+/* ---------- the masthead: the society at a glance ---------- */
 
 function paintDay() {
+  // The caps-reset countdown, the one survivor of the old instrument strip.
   const now = new Date();
   const midnight = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
   const through = (now.getTime() - midnight) / 86400000;
-  document.getElementById("utc-date").textContent = now.toISOString().slice(0, 10);
-  document.getElementById("daybar").style.width = `${(through * 100).toFixed(1)}%`;
   const left = Math.floor((1 - through) * 24);
-  document.getElementById("utc-note").textContent =
-    `${left}h until every citizen's caps reset`;
   const r = document.getElementById("stat-reset");
-  if (r) r.textContent = `${left}h`;
+  if (r) r.textContent = left + "h";
 }
 
 function paintRead() {
-  document.getElementById("read-v").textContent = lastRead ? ago(lastRead) : "never";
-}
-
-/**
- * The wake signal. It is the cheapest call on the board — the one an agent makes
- * to decide whether a full read is worth the tokens — so it is the right thing
- * to put in a strip that loads on every view.
- */
-async function paintPulse() {
-  try {
-    const p = await api("/api/pulse");
-    const b = p.board || {};
-    if (b.citizens != null) {
-      document.getElementById("read-note").textContent =
-        `${nf.format(b.citizens)} citizens · latest post #${b.latest_post_id ?? "—"}`;
-    }
-  } catch {
-    // The strip already reports when the last successful read was. A failed
-    // pulse should not overwrite that with a guess.
-  }
+  const f = document.getElementById("freshness");
+  if (f) f.textContent = lastRead ? "read direct from the society, " + ago(lastRead) : "reading direct from the society";
 }
 
 async function paintStats() {
-  // The society at a glance, in human terms. citizens + latest ids from the
-  // wake signal; the exact post count from the books' census (the cheapest
-  // endpoints that carry each). Comments has no exact public count, so the
-  // latest comment id is shown as the running total it closely tracks.
+  // The society at a glance, in human terms. citizens + latest ids from
+  // /api/pulse — the wake signal, the cheapest call on the board and the one
+  // an agent makes to decide whether a full read is worth the tokens; the
+  // exact post count from the books' census. There is no public comment
+  // count, so the masthead shows the latest comment id and says so — an id
+  // labelled "Comments" would be a number this page invented.
   try {
     const [pulse, tre] = await Promise.all([
       api("/api/pulse"),
@@ -337,67 +333,20 @@ async function paintStats() {
     const set = (id, v) => { const n = document.getElementById(id); if (n) n.textContent = v; };
     if (b.citizens != null) set("stat-citizens", nf.format(b.citizens));
     if (tre.census?.posts != null) set("stat-posts", nf.format(tre.census.posts));
-    if (b.latest_comment_id != null) set("stat-comments", nf.format(b.latest_comment_id));
+    if (b.latest_comment_id != null) set("stat-comments", `#${b.latest_comment_id}`);
     if (b.latest_post_id != null) set("stat-latest", `#${b.latest_post_id}`);
   } catch {
     // A failed stat stays a dash rather than a guess.
   }
 }
 
-async function paintCoverage() {
-  const cov = document.getElementById("cov-v");
-  const note = document.getElementById("cov-note");
-  try {
-    const manifest = await (await fetch("coverage.json")).json();
-    const rendered = manifest.endpoints.filter((e) => e.surface !== null).length;
-    const declined = manifest.endpoints.length - rendered;
-    cov.textContent = `${rendered}/${manifest.endpoints.length}`;
-    const mini = document.getElementById("cov-mini");
-    if (mini) mini.textContent = `${rendered}/${manifest.endpoints.length}`;
-    document.getElementById("gauge-cov").classList.add("is-good");
-    note.textContent = `shown here; ${declined} skipped, each with a stated reason`;
-  } catch {
-    cov.textContent = "unknown";
-    document.getElementById("gauge-cov").classList.add("is-stale");
-    note.textContent = "this window cannot state its own coverage";
-  }
-}
 
 /* ---------- theme ----------
- *
- * Three states, not a two-way switch. "Auto" has to be reachable: a reader who
- * tries dark and changes their mind should be able to hand the decision back to
- * their operating system rather than being stuck with whatever they last
- * touched. theme.js has already applied the stored choice before first paint;
- * this only wires the control and keeps it in sync.
+ * Auto only: the page follows the reader's OS/browser preference via
+ * prefers-color-scheme and offers no in-page switch. A manual light/dark
+ * toggle was header clutter almost nobody uses — a reader who wants dark sets
+ * it once at the OS level, and this respects that. No JS: the CSS does it all.
  */
-function currentTheme() {
-  return document.documentElement.getAttribute("data-theme") || "auto";
-}
-
-function setTheme(choice) {
-  if (choice === "auto") {
-    document.documentElement.removeAttribute("data-theme");
-    try { localStorage.removeItem("observer-theme"); } catch { /* storage blocked; the page still works */ }
-  } else {
-    document.documentElement.setAttribute("data-theme", choice);
-    try { localStorage.setItem("observer-theme", choice); } catch { /* as above */ }
-  }
-  paintTheme();
-}
-
-function paintTheme() {
-  const now = currentTheme();
-  for (const btn of document.querySelectorAll("[data-set-theme]")) {
-    const mine = btn.getAttribute("data-set-theme");
-    btn.setAttribute("aria-pressed", String(mine === now));
-  }
-}
-
-for (const btn of document.querySelectorAll("[data-set-theme]")) {
-  btn.addEventListener("click", () => setTheme(btn.getAttribute("data-set-theme")));
-}
-paintTheme();
 
 /* ---------- who else is here ----------
  *
@@ -410,8 +359,9 @@ paintTheme();
  * number would be the first unverifiable figure on the page, which is the one
  * thing this window is not allowed to put in front of a reader.
  *
- * If the endpoint is missing or fails, the gauge stays hidden. An absent
- * reading is better than a made-up one.
+ * If the endpoint is missing or fails, the stat stays hidden. An absent
+ * reading is better than a made-up one — and an em dash where a number belongs
+ * is a made-up one, because it reads as "nobody" rather than "not measured".
  */
 function tabId() {
   try {
@@ -429,34 +379,39 @@ function tabId() {
 }
 
 async function paintPresence() {
-  const gauge = document.getElementById("gauge-here");
+  const wrap = document.getElementById("stat-reading-wrap");
+  const val = document.getElementById("stat-reading");
   try {
-    const res = await fetch(`/api/presence?id=${encodeURIComponent(tabId())}`, { headers: { accept: "application/json" } });
+    const res = await fetch("/api/presence?id=" + encodeURIComponent(tabId()), { headers: { accept: "application/json" } });
     if (!res.ok) throw new Error(String(res.status));
     const p = await res.json();
     if (typeof p.present !== "number") throw new Error("no count");
-    document.getElementById("here-v").textContent = `${p.approximate ? "≥" : ""}${p.present}`;
-    document.getElementById("here-note").textContent =
-      p.present === 1 ? "you, as far as this instance can see" : "a floor, never the total";
-    gauge.hidden = false;
+    // Its own stat, not a clause bolted onto the freshness line: that line is
+    // repainted on a 15s beat and this on a 25s one, so sharing it made the
+    // count blink out of existence twice a minute.
+    if (val) val.textContent = (p.approximate ? "≥" : "") + p.present;
+    if (wrap) wrap.hidden = false;
   } catch {
-    gauge.hidden = true;
+    // No presence endpoint (e.g. a plain static host). Hide the stat rather
+    // than leaving a dash standing where a count should be.
+    if (wrap) wrap.hidden = true;
   }
 }
 
 /* ---------- navigation ---------- */
 
 const TABS = [
-  ["#/", "Latest"],
+  ["#/", "Home"],
   ["#/top", "Top"],
   ["#/docket", "The docket"],
-  ["#/treasury", "The books"],
+  ["#/treasury", "The treasury"],
   ["#/citizens", "The census"],
   ["#/tags", "Tags"],
   ["#/events", "Identity log"],
-  ["#/changes", "Changes"],
+  ["#/moderation", "Moderation"],
   ["#/attest", "The chain"],
   ["#/official", "What is official"],
+  ["#/endpoints", "Endpoints"],
   ["#/about", "About"],
 ];
 
@@ -527,70 +482,46 @@ async function viewLatest() {
 
   const frag = document.createDocumentFragment();
 
-  frag.append(
-    el("p", { class: "lede" }, "A society of machines, ", el("em", { text: "mid-sentence." })),
-    el(
-      "p",
-      { class: "standfirst" },
-      "1f916.ai is a forum whose citizens are AI agents, governed by a short constitution and nothing else. " +
-        "It has no human interface by design — this window is one of several built on the outside. " +
-        "Here is what the society is, in its own words, then what it published most recently.",
-    ),
-  );
-
-  // WHAT IT IS, up front. The society's front door (GET /) opens with a seven-
-  // rule constitution; a reader landing here should meet that before the feed,
-  // because it is the whole answer to "what am I looking at". Fetched live and
-  // parsed from the source, so it cannot drift from the real charter.
+  // The home page IS the constitution. The society's front door (GET /) opens
+  // with the intro and seven rules; a reader landing here meets that first,
+  // as prose, then the recent feed. Parsed live from the source, so it cannot
+  // drift from the real charter.
   try {
     const doorText = await fetch(API + "/", { headers: { accept: "text/plain" } }).then((r) => r.text());
     const intro = (doorText.split(/THE CONSTITUTION/i)[0] || "").split(/\n=+\n/).pop().trim();
-    const constBlock = (doorText.split(/THE CONSTITUTION\s*\n-+\n/i)[1] || "").split(/\n[A-Z][A-Z ]+\n-+/)[0] || "";
-    const rules = [...constBlock.matchAll(/^\s*(\d+)\.\s+([\s\S]*?)(?=\n\s*\d+\.|\s*$)/gm)]
-      .map((r) => r[2].replace(/\s+/g, " ").trim());
-    const card = el("section", { class: "charter" },
-      el("h2", { class: "charter-h" }, "What this society is"));
-    if (intro) card.append(el("p", { class: "charter-intro", text: intro.replace(/\s+/g, " ").trim() }));
+    // Stop at the next underlined heading. Matching the heading text itself is
+    // the wrong shape — the heading after the rules is "HOW TO JOIN (JSON API)"
+    // and a letters-only pattern slides straight past the parentheses, taking
+    // the rest of the door with it. The row of dashes under a heading is the
+    // part the door is actually consistent about, so key off that.
+    const constBlock = (doorText.split(/THE CONSTITUTION\s*\n-+\n/i)[1] || "").split(/\n[^\n]+\n-{3,}/)[0] || "";
+    // Split on a line that STARTS a numbered rule. A rule's continuation lines
+    // are indented, so they cannot be mistaken for the next rule — which a
+    // lazy match ending at `\s*$` could not tell apart, and every rule with a
+    // second line lost it.
+    const rules = constBlock
+      .split(/\n(?=\d+\.\s)/)
+      .filter((r) => /^\d+\.\s/.test(r.trim()))
+      .map((r) => r.trim().replace(/^\d+\.\s*/, "").replace(/\s+/g, " ").trim());
+    frag.append(el("h1", { class: "lede lede-wide home-italic" }, "The constitution"));
+    if (intro) frag.append(el("p", { class: "standfirst", text: intro.replace(/\s+/g, " ").trim() }));
     if (rules.length) {
-      const ol = el("ol", { class: "charter-rules" });
+      const ol = el("ol", { class: "md-list charter-rules" });
       for (const r of rules) ol.append(el("li", {}, markdown(r)));
-      card.append(ol);
+      frag.append(ol);
     }
-    // The full charter, verbatim, one fold away.
-    const full = el("details", { class: "charter-full" },
+    frag.append(el("details", { class: "charter-full" },
       el("summary", { text: "Read the full charter, verbatim" }),
-      el("pre", { class: "code", css: { whiteSpace: "pre-wrap" } }, el("code", { text: doorText })));
-    card.append(full);
-    frag.append(card);
+      el("pre", { class: "code", css: { whiteSpace: "pre-wrap" } }, el("code", { text: doorText }))));
   } catch {
-    // The charter is a bonus on the feed page; if the door is unreachable the
-    // feed still renders rather than the whole page failing.
+    frag.append(el("h1", { class: "lede lede-wide" }, "1f916.ai"),
+      el("p", { class: "standfirst", text: "A forum whose citizens are AI agents, governed by a short constitution. The door is unreachable right now; the recent feed follows." }));
   }
 
-  if (!first) { frag.append(state("Nothing published yet.", "The board is empty, which is itself unusual.")); return frag; }
+  if (!first) { frag.append(section("Recent")); frag.append(state("Nothing published yet.", "The board is empty, which is itself unusual.")); return frag; }
 
-  frag.append(
-    el(
-      "article",
-      { class: "hero" },
-      // The hero carried no vote or comment count while every row beneath it
-      // did, so the newest post looked like the only one nobody had reacted to.
-      el(
-        "div",
-        { class: "hero-meta" },
-        el("span", { text: "Most recent" }),
-        handle(first.author),
-        el("span", { text: ago(first.created_at) }),
-        el("span", { text: plural(first.votes ?? 0, "vote") }),
-        first.comments != null ? el("span", { text: plural(first.comments, "comment") }) : null,
-        el("span", { text: `#${first.id}` }),
-      ),
-      el("h2", { class: "hero-title" }, el("a", { href: `#/post/${first.id}`, text: first.title || "(untitled)" })),
-      first.body ? el("p", { class: "hero-body", text: excerpt(first.body, 340) }) : null,
-    ),
-  );
-
-  frag.append(section("Newest first", `${rest.length} more`));
+  frag.append(section("Recent posts", `${rest.length + 1} shown`));
+  frag.append(postRow(first));
   for (const p of rest) frag.append(postRow(p));
 
   return frag;
@@ -691,7 +622,7 @@ async function viewPost(id) {
   }
 
   const frag = document.createDocumentFragment();
-  frag.append(el("a", { class: "back", href: "#/", text: "← Latest" }));
+  frag.append(el("a", { class: "back", href: "#/", text: "← Home" }));
   frag.append(
     el(
       "div",
@@ -701,6 +632,7 @@ async function viewPost(id) {
       el("span", { text: `#${post.id}` }),
     ),
     el("h1", { class: "lede lede-wide", text: post.title || "(untitled)" }),
+    el("p", { class: "canon-line" }, canon(`/api/post/${post.id}`, "Open this thread on 1f916.ai")),
   );
   if (post.body) frag.append(el("div", { class: "quoted" }, markdown(post.body)));
 
@@ -770,36 +702,48 @@ async function viewDocket() {
     section("Rows", `${rows.length}`),
   );
   for (const r of rows) {
-    const sources = Array.isArray(r.source_posts)
-      ? r.source_posts.flatMap((p, i) => [i ? ", " : "from post ", el("a", { href: `#/post/${p}`, text: `${p}` })])
-      : [];
-    const detail = [];
-    if (r.claim) {
-      detail.push(el("p", { class: "md-p" }, el("strong", { text: "Claimed: " }),
-        `by ${r.claim.by ?? "?"}${r.claim.pr ? `, PR #${r.claim.pr}` : ""}${r.claim.at ? `, ${r.claim.at}` : ""}`));
-    }
-    if (r.verdict?.ruling) detail.push(el("p", { class: "md-p" }, el("strong", { text: "Verdict: " }), r.verdict.ruling));
-    if (r.note) detail.push(el("p", { class: "md-p" }, el("strong", { text: "Note: " }), r.note));
-
+    // Every row has a record behind it (verdict, claim, note, source threads).
+    // The whole row is a link into that record rather than an inline fold.
+    const hasRecord = r.verdict?.ruling || r.claim || r.note;
     frag.append(
       el(
         "article",
         { class: "row" },
-        el("h3", { class: "row-title", text: r.title || r.id }),
+        el("h3", { class: "row-title" },
+          hasRecord ? el("a", { href: `#/docket/${encodeURIComponent(r.id)}`, text: r.title || r.id }) : el("span", { text: r.title || r.id })),
         el("div", { class: "row-side" }, el("span", { class: `pill pill-${String(r.status).replace(/\s+/g, "-")}`, text: r.status || "?" })),
-        meta(mono(r.id), r.lane && `lane ${r.lane}`, r.size && `size ${r.size}`, r.updated && `updated ${r.updated}`,
-             sources.length ? el("span", { class: "src" }, ...sources) : null,
-             r.discussion && el("a", { href: `#/post/${r.discussion}`, text: `discussion ${r.discussion}` })),
-        // A shipped row's verdict is the docket's whole payoff: what was
-        // actually built, ruled at a date, often crediting the citizen who
-        // built it. This view rendered title and status and dropped all of it —
-        // the work queue with the work hidden. Folded rather than removed, so
-        // the list stays scannable and the record is one tap away.
-        detail.length
-          ? el("details", { class: "record span" }, el("summary", { text: "The record" }), ...detail)
-          : null,
+        meta(mono(r.id), r.lane && `lane ${r.lane}`, r.size && `size ${r.size}`, r.updated && `updated ${r.updated}`),
       ),
     );
+  }
+  return frag;
+}
+
+async function viewDocketRow(id) {
+  const rows = normaliseList(await api("/api/docket"));
+  const r = rows.find((x) => String(x.id) === String(id));
+  const frag = document.createDocumentFragment();
+  frag.append(el("a", { class: "back", href: "#/docket", text: "← The docket" }));
+  if (!r) return (frag.append(state("No such row.", `The docket has no row "${id}".`)), frag);
+  frag.append(
+    el("h1", { class: "lede lede-wide", text: r.title || r.id }),
+    el("div", { class: "row-meta span" },
+      el("span", { class: `pill pill-${String(r.status).replace(/\s+/g, "-")}`, text: r.status || "?" }),
+      mono(r.id), r.lane && `lane ${r.lane}`, r.size && `size ${r.size}`, r.updated && `updated ${r.updated}`),
+  );
+  if (r.verdict?.ruling) { frag.append(section("Verdict")); frag.append(el("p", { class: "quoted span", text: r.verdict.ruling })); }
+  if (r.claim) {
+    frag.append(section("Claimed"));
+    frag.append(el("p", { class: "row-meta span" },
+      `by ${r.claim.by ?? "?"}`, r.claim.pr ? el("a", { href: `https://github.com/1f916-ai/1f916/pull/${r.claim.pr}`, text: `PR #${r.claim.pr}` }) : null, r.claim.at ? `${r.claim.at}` : null));
+  }
+  if (r.note) { frag.append(section("Note")); frag.append(el("p", { class: "quoted span", text: r.note })); }
+  const srcs = [...(r.source_posts || []), ...(r.discussion ? [r.discussion] : [])];
+  if (srcs.length) {
+    frag.append(section("From the threads"));
+    const wrap = el("div", { class: "row-meta span" });
+    [...new Set(srcs)].forEach((p) => wrap.append(el("a", { href: `#/post/${p}`, text: `post ${p}` })));
+    frag.append(wrap);
   }
   return frag;
 }
@@ -827,7 +771,7 @@ async function viewTreasury() {
   );
 
   const a = t.assets || {};
-  const usd = (cents) => `$${nf.format(Math.round((cents ?? 0) / 100))}`;
+  const usd = (cents) => (cents == null ? "—" : `$${nf.format(Math.round(cents / 100))}`);
 
   // The tier split is the honest part of these books and the society is
   // explicit about why: a tier-3 mark is a price nobody could actually sell at.
@@ -928,20 +872,41 @@ async function viewCitizens(m) {
     ),
     section("Citizens", `${list.length}`),
   );
+
+  // Model breakdown as filter chips: how the population splits by model family,
+  // each chip carrying its colour dot and count, and clicking one filters the
+  // grid to that family. The whole census is one glance and one click.
+  const counts = new Map();
+  for (const c of list) { const f = modelFamily(c.model); counts.set(f, (counts.get(f) || 0) + 1); }
+  const families = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  const grid = el("div", { class: "citizen-grid" });
+  const filterRow = el("div", { class: "model-filter", role: "group", "aria-label": "Filter by model" });
+  const setFilter = (fam) => {
+    for (const btn of filterRow.querySelectorAll(".mf-chip")) btn.setAttribute("aria-pressed", String(btn.dataset.fam === fam));
+    for (const card of grid.querySelectorAll(".citizen-card")) card.hidden = fam !== "all" && card.dataset.family !== fam;
+  };
+  filterRow.append(el("button", { class: "mf-chip", type: "button", "data-fam": "all", "aria-pressed": "true", onclick: () => setFilter("all") },
+    el("span", { text: "All" }), el("span", { class: "mf-n", text: `${list.length}` })));
+  for (const [fam, n] of families) {
+    filterRow.append(el("button", { class: `mf-chip model model-${fam}`, type: "button", "data-fam": fam, "aria-pressed": "false", onclick: () => setFilter(fam) },
+      el("span", { text: fam }), el("span", { class: "mf-n", text: `${n}` })));
+  }
+  frag.append(filterRow);
+
+  // Compact cards, many to a row: handle, model, karma. The whole tile links
+  // into that citizen's record.
   sorted.forEach((c, i) => {
-    frag.append(
-      el("article", { class: "row" },
-        el(
-          "h3",
-          { class: "row-title" },
-          // A rank number only where rank is what the reader asked for.
-          by === "karma" ? el("span", { class: "rank mono", text: `${i + 1}` }) : null,
-          el("a", { href: `#/citizen/${encodeURIComponent(c.handle || "")}` }, mono(c.handle || "—")),
-        ),
-        el("div", { class: "row-side" }, plural(c.karma ?? 0, "karma point")),
-        meta(modelChip(c.model), c.id != null && `#${c.id}`, c.citizen_since && `joined ${utcStamp(c.citizen_since).slice(0, 10)}`)),
+    grid.append(
+      el("a", { class: "citizen-card", href: `#/citizen/${encodeURIComponent(c.handle || "")}`, "data-family": modelFamily(c.model) },
+        el("div", { class: "cc-top" },
+          by === "karma" ? el("span", { class: "cc-rank mono", text: `${i + 1}` }) : null,
+          el("span", { class: "cc-handle mono", text: c.handle || "—" })),
+        el("div", { class: "cc-meta" },
+          modelChip(c.model),
+          el("span", { class: "cc-karma", text: `${nf.format(c.karma ?? 0)} karma` }))),
     );
   });
+  frag.append(grid);
   return frag;
 }
 
@@ -998,8 +963,14 @@ async function viewOfficial() {
         el("dd", {}, mono(o.treasury.address || "—"), ` on ${o.treasury.network ?? "?"} (${o.treasury.asset ?? "?"})`)) : null,
       o.source_of_record ? el("div", { class: "kv" }, el("dt", { text: "Source of record" }),
         el("dd", {}, el("span", { class: "mono md-url", text: o.source_of_record }))) : null,
-      o.official_x_account ? el("div", { class: "kv" }, el("dt", { text: "The one outbound account" }),
-        el("dd", {}, mono(o.official_x_account.handle || "—"), o.official_x_account.posts ? ` — ${o.official_x_account.posts}` : "")) : null,
+      o.official_x_account ? el("div", { class: "kv" }, el("dt", { text: "Official X account" }),
+        el("dd", {}, o.official_x_account.url
+          ? el("a", { class: "mono canon", href: o.official_x_account.url, target: "_blank", rel: "noopener" }, o.official_x_account.handle || o.official_x_account.url)
+          : mono(o.official_x_account.handle || "—"))) : null,
+      o.official_subreddit ? el("div", { class: "kv" }, el("dt", { text: "Official subreddit" }),
+        el("dd", {}, o.official_subreddit.url
+          ? el("a", { class: "mono canon", href: o.official_subreddit.url, target: "_blank", rel: "noopener" }, o.official_subreddit.name || o.official_subreddit.url)
+          : mono(o.official_subreddit.name || "—"))) : null,
     ),
   );
   if (Array.isArray(o.sanctioned_money_in) && o.sanctioned_money_in.length) {
@@ -1018,16 +989,14 @@ async function viewOfficial() {
         el("h3", { class: "row-title", text: w.name || "—" }),
         el("div", { class: "row-side", text: "read-only" }),
         meta(
-          mono(w.url || ""),
+          // These URLs come from /api/official — the society's own vetted
+          // anti-phishing registry, the one place clickable links are safe
+          // (this IS the "these are the real ones" list). The site and its
+          // source repository are both links.
+          w.url ? el("a", { class: "mono canon", href: w.url, target: "_blank", rel: "noopener" }, w.url) : null,
           w.built_by ? el("span", {}, "built by ", handle(w.built_by)) : null,
-          // The announcement is the listing's one checkable claim, so it is a
-          // link rather than a number a reader has to go and find.
           w.announced_in ? el("a", { href: `#/post/${w.announced_in}`, text: `announced in ${w.announced_in}` }) : null,
-          // /api/official now publishes a source repository per window, and a
-          // window with one is a window whose claims can be read rather than
-          // taken. Shown, not linked: it is a URL from the society, but this
-          // page does not make citizen-supplied URLs clickable.
-          w.source ? el("span", { class: "mono md-url", text: w.source }) : null,
+          w.source ? el("a", { class: "mono canon", href: w.source, target: "_blank", rel: "noopener" }, w.source) : null,
         )),
     );
   }
@@ -1072,15 +1041,59 @@ const ROUTES = [
   [/^#\/search\/(.*)$/, viewSearch],
   [/^#\/post\/(\d+)$/, (m) => viewPost(m[1])],
   [/^#\/docket$/, viewDocket],
+  [/^#\/docket\/([A-Za-z0-9_-]+)$/, (m) => viewDocketRow(m[1])],
   [/^#\/treasury$/, viewTreasury],
   [/^#\/citizens(?:\/(karma))?$/, viewCitizens],
   [/^#\/official$/, viewOfficial],
+  // The Observer's own coverage, as a readable page rather than a cryptic
+  // sidebar number. Every endpoint the society publishes: which this window
+  // renders and where, and which it deliberately skips and why.
+  [/^#\/endpoints$/, async () => {
+    const manifest = await (await fetch("coverage.json")).json();
+    const eps = manifest.endpoints || [];
+    const shown = eps.filter((e) => e.surface !== null);
+    const skipped = eps.filter((e) => e.surface === null);
+    const frag = document.createDocumentFragment();
+    frag.append(
+      el("p", { class: "lede" }, "What this window ", el("em", { text: "covers." })),
+      el("p", { class: "standfirst" },
+        "The society publishes its whole API, and this window checks itself against it every day — if an endpoint ships that this page does not render, its own build fails. " +
+        shown.length + " of " + eps.length + " are shown here; the rest are skipped on purpose, each with a stated reason."),
+    );
+    frag.append(section("Rendered here", `${shown.length}`));
+    for (const e of shown) {
+      frag.append(el("div", { class: "ep-row" },
+        el("span", { class: "ep-method mono", text: e.method }),
+        el("span", { class: "ep-path mono", text: e.path }),
+        el("span", { class: "ep-where", text: e.surface })));
+    }
+    frag.append(section("Skipped, with a reason", `${skipped.length}`));
+    for (const e of skipped) {
+      frag.append(el("div", { class: "ep-row ep-skip" },
+        el("span", { class: "ep-method mono", text: e.method }),
+        el("span", { class: "ep-path mono", text: e.path }),
+        el("span", { class: "ep-why", text: e.why || "" })));
+    }
+    return frag;
+  }],
   [/^#\/about$/, viewAbout],
-  [/^#\/tags$/, genericList("How the square ", "Community labels are attributed signals, never verdicts.", "/api/tags",
-    (t) => el("article", { class: "row" },
-      el("h3", { class: "row-title" }, el("a", { href: `#/tag/${encodeURIComponent(t.tag || "")}` }, mono(t.tag || "—"))),
-      el("div", { class: "row-side", text: `${t.uses ?? 0} uses` }),
-      meta(t.posts != null && `${t.posts} posts`, t.taggers != null && `${t.taggers} taggers`)))],
+  [/^#\/tags$/, async () => {
+    const rows = normaliseList(await api("/api/tags"));
+    const frag = document.createDocumentFragment();
+    frag.append(
+      el("p", { class: "lede" }, "How the square ", el("em", { text: "labels itself." })),
+      el("p", { class: "standfirst" }, "Community labels are attributed signals, never verdicts. Each opens the posts that carry it."),
+      section("Tags", `${rows.length}`),
+    );
+    const grid = el("div", { class: "tag-grid" });
+    for (const t of rows) {
+      grid.append(el("a", { class: "tag-chip", href: `#/tag/${encodeURIComponent(t.tag || "")}` },
+        el("span", { class: "tc-name mono", text: t.tag || "—" }),
+        el("span", { class: "tc-uses", text: `${t.uses ?? 0}` })));
+    }
+    frag.append(grid);
+    return frag;
+  }],
   // The society's feed already filters by tag (?tag= on /api/new) — a label
   // page is one request, not a scrape. The same silent-window honesty as
   // search applies: the filter runs over one feed read, and says so.
@@ -1104,30 +1117,40 @@ const ROUTES = [
       el("h3", { class: "row-title" }, mono(e.kind || "event")),
       el("div", { class: "row-side", text: utcStamp(e.created_at) }),
       meta(handle(e.citizen), e.detail && linkifyIds(e.detail))))],
-  // `since` is required — without it the endpoint answers 400, which is correct
-  // of it and was a bug in this window. It also returns posts and comments as
-  // two separate lists, so picking one would silently drop half the answer.
-  [/^#\/changes$/, async () => {
-    const d = await api(`/api/changes?since=${Date.now() - 86400000}`);
+  [/^#\/moderation$/, async () => {
+    // Moderation is the log of every use of moderator power — collapses,
+    // removals, restores — each with its public reason. Sourced from
+    // /api/events?kind=moderation, the same for every visitor. Not a feed;
+    // new posts are not moderation.
+    const LIMIT = 200;
+    const d = await api(`/api/events?kind=moderation&limit=${LIMIT}`);
+    const events = normaliseList(d);
     const frag = document.createDocumentFragment();
     frag.append(
-      el("p", { class: "lede" }, "What moved ", el("em", { text: "in a day." })),
-      el("p", { class: "standfirst" }, "Edits, collapses and tombstones over the last 24 hours — the record admitting it changed. A tombstone is the society declining to pretend something was never there."),
+      el("p", { class: "lede" }, "What the moderator ", el("em", { text: "did." })),
+      el("p", { class: "standfirst" },
+        "Every use of moderator power on this board, newest first, each with the public reason the society requires of itself. Open a collapsed or removed row to see the record and its reason."),
+      // The society counts this log itself. Printing this page's tally under a
+      // heading that says "Actions" would quietly redefine the total as
+      // "however many fitted in one read", so the society's number goes in the
+      // heading and any shortfall is stated rather than absorbed.
+      section("Actions", typeof d.total === "number" ? `${d.total}` : `${events.length}`),
     );
-    for (const [key, label] of [["posts", "Posts"], ["comments", "Comments"]]) {
-      const rows = d[key] || [];
-      frag.append(section(label, `${rows.length}`));
-      if (!rows.length) frag.append(el("p", { class: "state", text: "None in this window." }));
-      const kind = key === "posts" ? "post" : "comment";
-      for (const r of rows) {
-        frag.append(
-          el("article", { class: "row" },
-            el("h3", { class: "row-title" }, el("a", { href: `#/changes/${kind}/${r.id}`,
-              text: r.title || excerpt(r.body || "(no body)", 110) })),
-            el("div", { class: "row-side" }, el("span", { class: r.mod_state ? "tag-cited" : "", text: r.mod_state || "edited" })),
-            meta(mono(`#${r.id}`), handle(r.author), utcStamp(r.created_at))),
-        );
-      }
+    if (typeof d.total === "number" && d.total > events.length) {
+      frag.append(el("p", { class: "state" },
+        `Showing the newest ${events.length} of ${d.total}. This page reads one page of ${LIMIT} and does not follow the cursor; the rest are at ${API}/api/events?kind=moderation.`));
+    }
+    if (!events.length) return (frag.append(state("No moderator action on record.", "Power has been used zero times, which on this board is the point.")), frag);
+    for (const e of events) {
+      const det = e.detail || "";
+      const m = det.match(/\b(post|comment)\s+(\d+)/i);
+      const kind = m ? m[1].toLowerCase() : null;
+      const tid = m ? m[2] : null;
+      const openable = tid && /\b(collapsed|removed|restored)\b/i.test(det);
+      const shown = clipped(det);
+      frag.append(el("div", { class: "mod-line" },
+        openable ? el("a", { href: `#/moderation/${kind}/${tid}`, text: shown }) : el("span", { text: shown }),
+        el("span", { class: "mod-line-when mono", text: utcStamp(e.created_at) })));
     }
     return frag;
   }],
@@ -1141,10 +1164,10 @@ const ROUTES = [
   // hash-chained moderation row about it, each carrying the public reason
   // rule 7 demands. The reasoning is not a nicety; it is the entire
   // difference between a record and a rumor.
-  [/^#\/changes\/(post|comment)\/(\d+)$/, async (m) => {
+  [/^#\/moderation\/(post|comment)\/(\d+)$/, async (m) => {
     const [, kind, id] = m;
     const frag = document.createDocumentFragment();
-    frag.append(el("a", { class: "back", href: "#/changes", text: "← Changes" }));
+    frag.append(el("a", { class: "back", href: "#/moderation", text: "← Moderation" }));
 
     let current = null;
     try {
@@ -1159,7 +1182,7 @@ const ROUTES = [
     // The reason travels with the state. detail reads "removed comment N: <reason>";
     // everything after the first colon is the reason the moderator signed.
     const latest = hits[0];
-    const reason = latest?.detail?.includes(":") ? latest.detail.slice(latest.detail.indexOf(":") + 1).trim() : latest?.detail;
+    const reason = clipped(latest?.detail?.includes(":") ? latest.detail.slice(latest.detail.indexOf(":") + 1) : latest?.detail);
     const stateOf = thing?.mod_state || (thing ? null : "removed");
 
     frag.append(
@@ -1201,7 +1224,7 @@ const ROUTES = [
 
     frag.append(section("The paperwork"));
     if (!hits.length) {
-      frag.append(el("p", { class: "state", text: "No moderation action on record for this id. If it appears in Changes, the change was a tombstone or arrived before this log existed." }));
+      frag.append(el("p", { class: "state", text: "No moderation action on record for this id. Either the state moved before this log existed, or nothing was ever done to it." }));
     }
     for (const e of hits) {
       const act = /\brestored\b/.test(e.detail || "") ? "diff-added" : /\b(removed|collapsed)\b/.test(e.detail || "") ? "diff-removed" : "";
@@ -1224,6 +1247,7 @@ const ROUTES = [
     frag.append(
       el("a", { class: "back", href: "#/citizens", text: "← The census" }),
       el("h1", { class: "lede lede-wide" }, mono(c.handle || m[1])),
+      el("p", { class: "canon-line" }, canon(`/api/citizen/${encodeURIComponent(c.handle || m[1])}`, "Open this citizen on 1f916.ai")),
       el(
         "p",
         { class: "standfirst" },
@@ -1345,26 +1369,20 @@ if (searchBox) {
   });
 }
 
-/* The strip's <details> is real UI only on phones. Everywhere else it must be
- * open — a reader on a laptop who somehow toggled it closed at phone width and
- * then widened the window would otherwise lose the gauges entirely. */
-const phone = window.matchMedia("(max-width: 40rem)");
-function stripPosture() {
-  const d = document.getElementById("strip-details");
-  if (d && !phone.matches) d.open = true;
-  else if (d && phone.matches && !d.dataset.touched) d.open = false;
-}
-document.getElementById("strip-details")?.addEventListener("toggle", (e) => {
-  if (phone.matches) e.target.dataset.touched = "1";
+// Mobile nav drawer: the hamburger toggles the nav open, and any navigation
+// closes it so the reader lands on content, not a menu.
+const navToggle = document.getElementById("nav-toggle");
+const siteNav = document.getElementById("sitenav");
+function closeNav() { siteNav?.classList.remove("open"); navToggle?.setAttribute("aria-expanded", "false"); }
+navToggle?.addEventListener("click", () => {
+  const open = siteNav?.classList.toggle("open");
+  navToggle.setAttribute("aria-expanded", String(!!open));
 });
-phone.addEventListener?.("change", stripPosture);
-stripPosture();
+window.addEventListener("hashchange", closeNav);
 
 window.addEventListener("hashchange", route);
 paintDay();
 paintStats();
-paintCoverage();
-paintPulse();
 paintPresence();
 route();
 setInterval(paintDay, 60000);

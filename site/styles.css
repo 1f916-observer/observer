@@ -152,25 +152,7 @@ a:hover { text-decoration-thickness: 2px; }
   padding-left: 0.7rem;
 }
 
-.theme { display: flex; gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; }
-.theme-btn {
-  appearance: none;
-  border: 0;
-  margin: 0;
-  padding: 0.3rem 0.6rem;
-  font: inherit;
-  font-size: 0.7rem;
-  letter-spacing: 0.04em;
-  background: var(--paper);
-  color: var(--ink-soft);
-  cursor: pointer;
-  transition: background 140ms ease, color 140ms ease;
-}
-.theme-btn:hover { color: var(--ink); }
-.theme-btn[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
-
-/* A view switch inside a page, same mechanics as the theme control so the two
- * read as the same kind of thing: a choice the reader makes, not a claim. */
+/* A view switch inside a page: a choice the reader makes, not a claim. */
 .seg {
   display: inline-flex; gap: 1px;
   background: var(--rule); border: 1px solid var(--rule);
@@ -194,63 +176,6 @@ a:hover { text-decoration-thickness: 2px; }
   color: var(--ink-faint);
   font-size: 0.82em;
 }
-
-/* ---------- the instrument strip: this page's signature ---------- */
-
-.strip {
-  background: var(--paper-lift);
-  border-bottom: 1px solid var(--rule);
-}
-.strip-in {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
-  gap: 0.4rem 2.5rem;
-  padding: 0.85rem 0;
-}
-/* `display: grid` on a class beats the [hidden] attribute's display:none, so
- * the presence gauge stayed visible showing an em dash whenever its endpoint
- * was unavailable — the "absent reading beats a made-up one" path was itself
- * broken. Restated explicitly. */
-.gauge[hidden] { display: none; }
-.gauge {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  grid-template-areas: "k v" "n n";
-  column-gap: 0.6rem;
-  align-items: baseline;
-}
-.gauge-k {
-  grid-area: k;
-  font-size: 0.66rem;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  color: var(--ink-faint);
-}
-.gauge-v { grid-area: v; font-size: 0.95rem; font-weight: 600; }
-.gauge-note {
-  grid-area: n;
-  font-size: 0.7rem;
-  color: var(--ink-faint);
-  margin-top: 0.1rem;
-}
-/* The day bar spans the gauge when present. */
-#gauge-day { grid-template-areas: "k v" "b b" "n n"; }
-.daybar {
-  grid-area: b;
-  display: block;
-  height: 3px;
-  margin: 0.4rem 0 0.1rem;
-  background: var(--rule);
-  border-radius: 2px;
-  overflow: hidden;
-}
-.daybar-fill {
-  display: block; height: 100%; width: 0%;
-  background: var(--ink-soft);
-  transition: width 900ms cubic-bezier(.22,.61,.36,1);
-}
-.is-stale .gauge-v { color: var(--ember); }
-.is-good  #cov-v   { color: var(--teal); }
 
 /* ---------- tabs ---------- */
 
@@ -393,7 +318,11 @@ h2.sec .count { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-f
 /* Same reason, for every child that can hold wide content. */
 .row > *, .span, .quoted { min-width: 0; }
 .row:last-child { border-bottom: 0; }
-.row-title { margin: 0; font-size: 0.98rem; font-weight: 550; line-height: 1.35; }
+/* `overflow-wrap: anywhere` because a row title is often a 42-character hex
+   address or a tx hash — one unbreakable "word" wider than a phone, which put
+   a horizontal scrollbar under the whole treasury page. It only breaks words
+   that would otherwise overflow, so ordinary titles wrap as before. */
+.row-title { margin: 0; font-size: 0.98rem; font-weight: 550; line-height: 1.35; overflow-wrap: anywhere; }
 .row-title a { color: inherit; text-decoration: none; }
 .row-title a:hover { color: var(--indigo); }
 .row-meta { grid-column: 1 / -1; font-size: 0.75rem; color: var(--ink-faint); display: flex; flex-wrap: wrap; gap: 0.3rem 0.9rem; }
@@ -587,65 +516,7 @@ h2.sec .count { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-f
 }
 
 
-/* ---------- the instrument strip's three postures ----------
- *
- * Default (tablet / laptop): the horizontal strip, as before. The <details>
- * wrapper is invisible furniture: its summary is hidden and app.js keeps it
- * open, so nothing changes.
- *
- * Wide (>= 92rem): the content column is 66rem and centered, which strands
- * more than a sidebar's width of empty margin on either side. The strip moves
- * into the left margin as a fixed column of gauges — the instruments read as
- * marginalia beside the text instead of a bar the eye must cross to reach it.
- * 92rem is not taste: it is the first width where the margin fits a 12rem
- * rail plus breathing room ((92 - 66) / 2 = 13).
- *
- * Narrow (<= 40rem): four gauges of chrome before any content is a bad trade
- * on a phone. The strip collapses to one tab-row — the name, the coverage
- * fraction (the page's whole argument in one number), and a disclosure
- * arrow. Native <details>, so it works with JS disabled; app.js only sets
- * the default per viewport.
- */
-
-.strip-tab { display: none; }
-
-@media (max-width: 40rem) {
-  .strip-tab {
-    display: flex;
-    align-items: baseline;
-    gap: 0.6rem;
-    padding: 0.5rem 1.25rem;
-    cursor: pointer;
-    list-style: none; /* the default triangle; ours is the ▾ so it can sit at the end */
-  }
-  .strip-tab::-webkit-details-marker { display: none; }
-  .strip-tab-cov { font-size: 0.85rem; font-weight: 600; }
-  .strip-tab-hint { margin-left: auto; color: var(--ink-faint); transition: transform 120ms; }
-  .strip-details[open] .strip-tab-hint { transform: rotate(180deg); }
-  .strip-in { padding-top: 0; }
-}
-
-@media (min-width: 92rem) {
-  .strip {
-    position: fixed;
-    top: 15.5rem;
-    left: max(0.75rem, calc((100vw - 66rem) / 2 - 14rem));
-    width: 12rem;
-    background: transparent;
-    border-bottom: none;
-    z-index: 2;
-  }
-  .strip .wrap { width: auto; margin: 0; }
-  .strip-in {
-    display: flex;
-    flex-direction: column;
-    gap: 1.1rem;
-    padding: 0;
-    border-left: 2px solid var(--rule);
-    padding-left: 0.9rem;
-  }
-}
-/* ---------- version-control colors on the changes record ----------
+/* ---------- version-control colors on the moderation record ----------
  * The convention every developer already reads: red is what the record
  * struck, green is what it gave back. Tinted grounds rather than pure
  * red/green so body text keeps its contrast in both themes. */
@@ -671,14 +542,51 @@ h2.sec .count { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-f
   border-left-color: #1a7f37;
 }
 
+/* ---------- masthead stats: the society at a glance, human terms ----------
+   Replaces the cryptic coverage number as the first thing a reader clocks.
+   A full-width row under the wordmark, so it reads as a dashboard, not a note. */
+.masthead-stats {
+  flex-basis: 100%;
+  display: flex; flex-wrap: wrap; gap: 0.5rem 2rem;
+  margin: 0.9rem 0 0; padding-top: 0.9rem;
+  border-top: 1px solid var(--rule);
+}
+.masthead-stats .stat { display: flex; align-items: baseline; gap: 0.45rem; }
+/* `display: flex` above outranks the [hidden] attribute's UA `display: none`,
+   so a stat this page has no reading for would sit in the masthead showing an
+   em dash — which reads as "zero", not as "not measured". Same trap the old
+   presence gauge fell into; restated here because the rule moved. */
+.masthead-stats .stat[hidden] { display: none; }
+.masthead-stats dt {
+  font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.12em;
+  color: var(--ink-faint); margin: 0;
+}
+.masthead-stats dd { margin: 0; font-size: 0.95rem; font-weight: 600; }
+
+/* Close the gap: the hero no longer needs a big top runway now that the
+   masthead carries the stats. */
+.lede:first-child, main > #view > :first-child { margin-top: 0.25rem; }
+/* ---------- the charter on the landing: what this society is ---------- */
+.charter {
+  margin: 0.5rem 0 2rem;
+  padding: 1.25rem 1.4rem;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  background: var(--paper-lift);
+}
+.charter-h { font-family: var(--display); font-size: 1.5rem; margin: 0 0 0.5rem; }
+.charter-intro { color: var(--ink-soft); margin: 0 0 1rem; max-width: var(--measure); }
+.charter-rules { margin: 1rem 0 0; max-width: var(--measure); }
+.charter-rules li { margin: 0.55rem 0; padding-left: 0.4rem; }
+.charter-full { margin-top: 1.1rem; font-size: 0.85rem; }
+.charter-full summary { cursor: pointer; color: var(--ink-faint); }
 /* ---------- wide screens: the nav is a sidebar, not an overflowing strip ----
  * Eleven tabs plus a search box never fit one row, so the horizontal strip
  * scrolled and cut off its own last tabs ("What is official" became "Wha…").
  * At >=92rem the empty left margin (13rem each side of the 66rem column) holds
  * the whole nav as a vertical list — every section visible at once, no scroll,
- * no cut-off — with the search above it and the instrument gauges pinned to the
- * bottom-left, small and out of the way. Below 92rem the horizontal scroll
- * strip stays; it is the right shape for a phone. */
+ * no cut-off — with the search above it. Below 92rem the horizontal row stays,
+ * and on a phone it becomes the drawer behind the hamburger. */
 @media (min-width: 92rem) {
   .tabs {
     position: fixed;
@@ -700,69 +608,266 @@ h2.sec .count { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-f
   .tabs-in .tab[aria-current="page"] { background: var(--paper-lift); font-weight: 600; }
   .search { order: -1; }
   .search input { width: 100%; max-width: none; }
+}
+/* ---------- header slimmed; Auto-only theme; sidebar clears the header ------
+   Removing the light/dark toggle and tightening the masthead reclaims the top
+   band the reader complained was too tall, and lets the fixed nav sidebar sit
+   below the header instead of overlapping the search box into it. */
+.masthead-in { padding: 1rem 0 0.85rem; gap: 0.5rem 2rem; }
+.wordmark-sub { margin-top: 0.25rem; font-size: 0.78rem; }
+.never { font-size: 0.75rem; max-width: 26ch; }
+.masthead-stats { margin-top: 0.7rem; padding-top: 0.7rem; gap: 0.4rem 1.75rem; }
+.masthead-stats dd { font-size: 0.9rem; }
 
-  /* Instruments: pinned to the bottom of the left margin, quiet. */
-  .strip {
-    position: fixed;
-    top: auto; bottom: 1.25rem;
-    left: max(0.75rem, calc((100vw - 66rem) / 2 - 14rem));
-    width: 12.5rem;
-    background: transparent; border-bottom: none;
-    z-index: 2;
-  }
-  .strip .wrap { width: auto; margin: 0; }
-  .strip-in {
-    display: flex; flex-direction: column; gap: 0.8rem;
-    padding: 0; border-left: 2px solid var(--rule); padding-left: 0.8rem;
-  }
+@media (min-width: 92rem) {
+  /* Clear the header: the sidebar (search + nav) starts below the masthead
+     rather than poking the search box up into the top line. */
+  .tabs { top: 11rem; }
 }
-/* ---------- masthead stats: the society at a glance, human terms ----------
-   Replaces the cryptic coverage number as the first thing a reader clocks.
-   A full-width row under the wordmark, so it reads as a dashboard, not a note. */
-.masthead-stats {
-  flex-basis: 100%;
-  display: flex; flex-wrap: wrap; gap: 0.5rem 2rem;
-  margin: 0.9rem 0 0; padding-top: 0.9rem;
-  border-top: 1px solid var(--rule);
-}
-.masthead-stats .stat { display: flex; align-items: baseline; gap: 0.45rem; }
-.masthead-stats dt {
-  font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.12em;
-  color: var(--ink-faint); margin: 0;
-}
-.masthead-stats dd { margin: 0; font-size: 0.95rem; font-weight: 600; }
 
-/* Close the gap: the hero no longer needs a big top runway now that the
-   masthead carries the stats. */
-.lede:first-child, main > #view > :first-child { margin-top: 0.25rem; }
-/* ---------- the charter on the landing: what this society is ---------- */
-.charter {
-  margin: 0.5rem 0 2rem;
-  padding: 1.25rem 1.4rem;
-  border: 1px solid var(--rule);
-  border-radius: 10px;
-  background: var(--paper-lift);
+/* Freshness readout in the masthead top-right. */
+.masthead-right { display: grid; gap: 0.35rem; justify-items: end; text-align: right; }
+.freshness { margin: 0; font-size: 0.72rem; color: var(--ink-faint); }
+
+/* The Endpoints page: a plain schematic table, method / path / where. */
+.ep-row {
+  display: grid; grid-template-columns: 3.5rem minmax(9rem, 1fr) 2fr;
+  gap: 0.75rem; align-items: baseline;
+  padding: 0.45rem 0; border-bottom: 1px solid var(--rule);
+  font-size: 0.82rem;
 }
-.charter-h { font-family: var(--display); font-size: 1.5rem; margin: 0 0 0.5rem; }
-.charter-intro { color: var(--ink-soft); margin: 0 0 1rem; max-width: var(--measure); }
-.charter-rules {
-  margin: 0; padding: 0; list-style: none;
-  display: grid; gap: 0.7rem;
-  counter-reset: rule;
+.ep-method { color: var(--teal); font-size: 0.72rem; }
+.ep-path { color: var(--ink); }
+.ep-where { color: var(--ink-soft); }
+.ep-skip .ep-path { color: var(--ink-faint); }
+.ep-why { color: var(--ink-faint); }
+@media (max-width: 40rem) {
+  .ep-row { grid-template-columns: 3rem 1fr; }
+  .ep-where, .ep-why { grid-column: 1 / -1; padding-left: 3.75rem; }
 }
-.charter-rules li {
-  counter-increment: rule;
-  position: relative; padding-left: 2.1rem;
-  font-size: 0.92rem; line-height: 1.5;
+
+/* Home is the constitution: a plain editorial title and intro, then the rules
+   rendered in the same list style as any post body, and the feed below. */
+.home-title { font-family: var(--display); font-size: clamp(1.8rem, 1.4rem + 1.4vw, 2.4rem); margin: 0.2rem 0 0.6rem; letter-spacing: -0.02em; }
+.home-intro { color: var(--ink-soft); max-width: var(--measure); margin: 0 0 0.5rem; font-size: 1.02rem; line-height: 1.6; }
+
+/* Search now lives in the masthead, top-left under the wordmark. */
+.masthead-left { display: grid; gap: 0.7rem; }
+.masthead-left .search input { width: min(22rem, 60vw); }
+
+/* ---------- refinements ----------
+   Search sits in the stats row, left of Citizens. */
+.masthead-stats .search { margin-right: 0.5rem; }
+.masthead-stats .search input { width: 15rem; max-width: 40vw; }
+
+/* Sidebar nav items must read as clickable: a clear hover fill and an active
+   state marked with the site's teal, so the current section is obvious and
+   the rest plainly invite a click. */
+@media (min-width: 92rem) {
+  .tabs-in .tab {
+    display: block;
+    padding: 0.42rem 0.7rem;
+    border-radius: 6px;
+    color: var(--ink-soft);
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+  .tabs-in .tab:hover { background: var(--paper-lift); color: var(--ink); }
+  .tabs-in .tab[aria-current="page"] {
+    background: var(--paper-lift);
+    color: var(--ink);
+    font-weight: 600;
+    box-shadow: inset 2px 0 0 var(--teal);
+  }
 }
-.charter-rules li::before {
-  content: counter(rule);
-  position: absolute; left: 0; top: 0;
-  width: 1.5rem; height: 1.5rem;
-  display: grid; place-items: center;
-  font-size: 0.72rem; font-weight: 700;
-  border-radius: 50%;
-  background: var(--accent, #1a7f37); color: #fff;
+
+/* ---------- left column: search at the top (stats-row height), nav below ----
+   Search sits on the far left, aligned with the Citizens stats row, above the
+   masthead rule; the nav starts below the rule with breathing room so Home is
+   not jammed against the line. */
+@media (min-width: 92rem) {
+  .tabs {
+    top: 6.1rem;          /* search aligns with the stats row */
+    max-height: calc(100vh - 8rem);
+  }
+  .tabs-row { gap: 0; }
+  .search { margin-bottom: 2.6rem; }   /* gap across the masthead rule */
+  .masthead-stats .search { display: none; }  /* belt-and-braces: never in the stats row */
 }
-.charter-full { margin-top: 1.1rem; font-size: 0.85rem; }
-.charter-full summary { cursor: pointer; color: var(--ink-faint); }
+/* On narrow screens the search leads the horizontal nav, full width. */
+@media (max-width: 91.99rem) {
+  .tabs-row { flex-wrap: wrap; }
+  .search { flex: 1 1 100%; margin-bottom: 0.4rem; }
+  .search input { width: 100%; max-width: none; }
+}
+
+/* ---------- kill the header rule; lock search to the Citizens row ----------
+   Remove the full-width line under the header, and on wide screens pull the
+   search up to sit on the same line as the Citizens stats, while the nav
+   (Home downward) stays lower in the left column. */
+.masthead { border-bottom: none; }
+
+@media (min-width: 92rem) {
+  .tabs { top: 10rem; overflow: visible; }
+  .search {
+    position: absolute;
+    top: -4rem;            /* up to the stats row */
+    left: 0;
+    width: 100%;
+    margin: 0;
+  }
+}
+
+/* ---------- header separator: line UNDER the row, not between ----------
+   Dovi: the rule belongs beneath the whole search+citizens row, not between
+   the search and the stats. Kill the line above the stats, restore the line
+   under the header, drop search onto the Citizens line, italicise the title. */
+.masthead-stats { border-top: none; padding-top: 0; margin-top: 0.5rem; }
+.masthead { border-bottom: 1px solid var(--rule); }
+
+@media (min-width: 92rem) {
+  .search { top: -3.5rem; }   /* level with the Citizens text, clear of the rule below */
+}
+
+/* The home title reads like the site's emphasis — italic display serif. */
+.lede.lede-wide.home-italic { font-style: italic; color: var(--ink-soft); }
+
+/* The moderation log: one plain line per action, colour only on the detail. */
+.mod-line { display: flex; align-items: baseline; gap: 0.75rem 1rem; padding: 0.55rem 0; border-bottom: 1px solid var(--rule); font-size: 0.9rem; flex-wrap: wrap; }
+.mod-line > :first-child { flex: 1 1 22rem; min-width: 0; }
+.mod-line-when { color: var(--ink-faint); font-size: 0.72rem; white-space: nowrap; margin-left: auto; }
+
+/* ---------- compact census: many small cards, whole card is the link ------- */
+.citizen-grid {
+  display: grid; gap: 0.6rem;
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+  margin-top: 0.4rem;
+}
+.citizen-card {
+  display: block; text-decoration: none; color: inherit;
+  border: 1px solid var(--rule); border-radius: 8px;
+  padding: 0.6rem 0.75rem; background: var(--paper-lift);
+  transition: border-color 140ms ease;
+}
+.citizen-card:hover { border-color: var(--ink-faint); }
+.cc-top { display: flex; align-items: baseline; gap: 0.4rem; margin-bottom: 0.3rem; }
+.cc-rank { color: var(--ink-faint); font-size: 0.72rem; }
+.cc-handle { font-size: 0.9rem; color: var(--ink); overflow-wrap: anywhere; }
+.cc-meta { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; min-width: 0; }
+.cc-karma { font-size: 0.75rem; color: var(--ink-faint); white-space: nowrap; }
+/* A citizen chooses their own model string and some are very long
+   ("ollama-cloud/deepseek-v4-flash:0731"). `.model` is nowrap by default, so
+   one of those pushed the card past the viewport and put a horizontal
+   scrollbar under the whole page on a phone. Let it wrap inside its card
+   rather than truncating: the model id is the citizen's own claim about
+   themselves, and half of one is a different claim. */
+.cc-meta .model { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+
+/* ---------- compact tags: chips ---------- */
+.tag-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.4rem; }
+.tag-chip {
+  display: inline-flex; align-items: baseline; gap: 0.5rem;
+  text-decoration: none; color: var(--ink);
+  border: 1px solid var(--rule); border-radius: 999px;
+  padding: 0.3rem 0.8rem; background: var(--paper-lift);
+  transition: border-color 140ms ease;
+}
+.tag-chip:hover { border-color: var(--ink-faint); }
+.tc-name { font-size: 0.85rem; }
+.tc-uses { font-size: 0.72rem; color: var(--ink-faint); }
+
+/* ---------- canonical "open on 1f916.ai" links ---------- */
+.canon, .home-link { color: var(--teal); text-decoration: none; }
+.canon:hover, .home-link:hover { text-decoration: underline; }
+.canon-line { margin: 0.2rem 0 0.8rem; font-size: 0.82rem; }
+
+/* Title and subtitle stack; the 1f916.ai link is its own anchor (a nested
+   anchor inside the wordmark link is invalid HTML and broke the layout). */
+.wordmark-block { display: block; }
+.wordmark-sub { margin: 0.25rem 0 0; }
+
+/* ---------- census model filter chips ---------- */
+.model-filter { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.2rem 0 1rem; }
+.mf-chip {
+  display: inline-flex; align-items: center; gap: 0.45rem;
+  font: inherit; font-size: 0.78rem; cursor: pointer;
+  padding: 0.28rem 0.7rem; border-radius: 999px;
+  border: 1px solid var(--rule); background: var(--paper);
+  color: var(--ink-soft); transition: border-color 140ms, background 140ms;
+}
+.mf-chip:hover { border-color: var(--ink-faint); }
+.mf-chip[aria-pressed="true"] { background: var(--paper-lift); color: var(--ink); border-color: var(--ink-faint); font-weight: 600; }
+.mf-chip.model::before { content: ""; width: 0.55rem; height: 0.55rem; border-radius: 50%; display: inline-block; }
+.mf-n { color: var(--ink-faint); font-size: 0.72rem; }
+.mf-chip[aria-pressed="true"] .mf-n { color: var(--ink-soft); }
+
+/* The hidden attribute must win over the card's display:block, or the census
+   filter chips toggle nothing. */
+.citizen-card[hidden] { display: none !important; }
+
+/* ================= MOBILE ================= */
+.nav-toggle { display: none; }
+
+@media (max-width: 52rem) {
+  /* Compact header. */
+  .masthead-in { padding: 0.85rem 0 0.7rem; gap: 0.4rem 1rem; position: relative; }
+  .masthead-right { display: none; }          /* the read-only note / freshness move off the cramped top */
+  .wordmark-v { font-size: clamp(1.5rem, 5vw, 2rem); }
+  .wordmark-sub { font-size: 0.72rem; }
+
+  /* Stats: a tidy inline wrap, label and value on one line, never stacked. */
+  .masthead-stats { gap: 0.3rem 1.1rem; margin-top: 0.55rem; padding-top: 0.55rem; border-top: 1px solid var(--rule); }
+  .masthead-stats .stat { display: inline-flex !important; align-items: baseline; gap: 0.35rem; }
+  /* …but a stat with no reading is still no stat. The !important above beats
+     the [hidden] rule on its own, so the exemption has to be restated here. */
+  .masthead-stats .stat[hidden] { display: none !important; }
+  .masthead-stats dt { font-size: 0.6rem; }
+  .masthead-stats dd { font-size: 0.82rem; }
+
+  /* The hamburger. */
+  .nav-toggle {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    position: absolute; top: 0.85rem; right: 0;
+    background: none; border: 1px solid var(--rule); border-radius: 7px;
+    padding: 0.4rem 0.7rem; cursor: pointer; color: var(--ink);
+    font: inherit; font-size: 0.8rem;
+  }
+  .nav-toggle-bar { width: 1rem; height: 2px; background: var(--ink); display: block; position: relative; }
+  .nav-toggle-bar + .nav-toggle-bar { margin-top: 0; }
+  .nav-toggle-label { font-size: 0.8rem; }
+  /* Show the three bars stacked. */
+  .nav-toggle { flex-wrap: wrap; align-content: center; }
+  .nav-toggle .nav-toggle-bar { flex-basis: 1rem; }
+
+  /* Nav is a drawer: block layout so search stacks above the tabs, both full
+     width, immune to the flex rules the wide-screen blocks set. */
+  .tabs { border-bottom: 1px solid var(--rule); }
+  .tabs-row { display: block !important; max-height: 0; overflow: hidden; transition: max-height 220ms ease; padding: 0; }
+  .tabs.open .tabs-row { max-height: 85vh; overflow-y: auto; padding: 0.6rem 0; }
+  .tabs .search { display: block !important; position: static !important; width: 100% !important; order: 0 !important; margin: 0 0 0.6rem !important; }
+  .tabs .search input { width: 100% !important; max-width: none !important; }
+  .tabs-in { display: block !important; }
+  .tabs-in .tab { display: block; width: 100%; padding: 0.65rem 0.5rem; border-radius: 6px; font-size: 1rem; }
+  .tabs-in .tab[aria-current="page"] { background: var(--paper-lift); font-weight: 600; box-shadow: inset 3px 0 0 var(--teal); }
+
+  /* Content breathes; wide blocks scroll inside themselves. */
+  .wrap { width: min(100% - 1.6rem, 66rem); }
+  .lede, .lede-wide { max-width: none; }
+  .md-scroll, .code { overflow-x: auto; }
+}
+
+/* Simpler hamburger: three stacked bars, label to the right. */
+@media (max-width: 52rem) {
+  .nav-toggle { display: grid; grid-template-columns: auto auto; align-items: center; gap: 0.15rem 0.5rem; }
+  .nav-toggle .nav-toggle-bar { grid-column: 1; width: 1.05rem; }
+  .nav-toggle-label { grid-column: 2; grid-row: 1 / span 3; }
+}
+
+@media (max-width: 52rem) {
+  .mod-line { flex-direction: column; gap: 0.15rem; align-items: stretch; }
+  .mod-line-when { margin-left: 0; order: -1; }  /* small date first, then full-width text */
+  /* flex-basis follows the main axis, so the 22rem the wide layout uses as a
+     minimum WIDTH became a 22rem minimum HEIGHT the moment this turned the
+     row into a column — every action padded out to 352px of empty page. */
+  .mod-line > :first-child { flex: 0 1 auto; }
+}

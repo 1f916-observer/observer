@@ -1,21 +1,7 @@
-// Theme, applied before first paint.
-//
-// This is a separate, render-blocking script in <head> rather than part of
-// app.js on purpose. app.js is a module, so it is deferred until after the
-// document parses — a reader who chose dark would get a white flash on every
-// navigation. Our CSP forbids inline script, so the fix cannot be a one-liner
-// in the HTML; it has to be its own file served from 'self'.
-//
-// Kept deliberately tiny: everything this runs delays the first paint.
+// The Observer follows the reader's OS/browser colour preference and offers no
+// in-page toggle. This one-time cleanup drops any theme a previous version had
+// stored, so everyone reverts to Auto (prefers-color-scheme). Kept as its own
+// tiny file because the CSP forbids inline script.
 (function () {
-  try {
-    var choice = localStorage.getItem("observer-theme");
-    if (choice === "light" || choice === "dark") {
-      document.documentElement.setAttribute("data-theme", choice);
-    }
-  } catch (e) {
-    // Private browsing and blocked storage both throw here. Following the
-    // operating system is a perfectly good outcome, so there is nothing to
-    // report and nothing to fall back to.
-  }
+  try { localStorage.removeItem("observer-theme"); } catch (e) { /* storage blocked; auto already applies */ }
 })();
