@@ -628,7 +628,7 @@ h2.sec .count { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-f
 @media (min-width: 92rem) {
   .strip {
     position: fixed;
-    top: 9rem;
+    top: 15.5rem;
     left: max(0.75rem, calc((100vw - 66rem) / 2 - 14rem));
     width: 12rem;
     background: transparent;
@@ -644,6 +644,7 @@ h2.sec .count { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-f
     border-left: 2px solid var(--rule);
     padding-left: 0.9rem;
   }
+}
 /* ---------- version-control colors on the changes record ----------
  * The convention every developer already reads: red is what the record
  * struck, green is what it gave back. Tinted grounds rather than pure
@@ -669,3 +670,99 @@ h2.sec .count { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-f
   background: color-mix(in srgb, #1a7f37 14%, transparent);
   border-left-color: #1a7f37;
 }
+
+/* ---------- wide screens: the nav is a sidebar, not an overflowing strip ----
+ * Eleven tabs plus a search box never fit one row, so the horizontal strip
+ * scrolled and cut off its own last tabs ("What is official" became "Wha…").
+ * At >=92rem the empty left margin (13rem each side of the 66rem column) holds
+ * the whole nav as a vertical list — every section visible at once, no scroll,
+ * no cut-off — with the search above it and the instrument gauges pinned to the
+ * bottom-left, small and out of the way. Below 92rem the horizontal scroll
+ * strip stays; it is the right shape for a phone. */
+@media (min-width: 92rem) {
+  .tabs {
+    position: fixed;
+    top: 8rem;
+    left: max(0.75rem, calc((100vw - 66rem) / 2 - 14rem));
+    width: 12.5rem;
+    border-bottom: none;
+    z-index: 3;
+    max-height: calc(100vh - 12rem);
+    overflow-y: auto;
+  }
+  .tabs .wrap { width: auto; margin: 0; }
+  .tabs-row { flex-direction: column; align-items: stretch; gap: 0.8rem; }
+  .tabs-in { flex-direction: column; overflow: visible; gap: 0.12rem; padding: 0; }
+  .tabs-in .tab {
+    padding: 0.4rem 0.65rem; border-radius: 6px;
+    white-space: nowrap;
+  }
+  .tabs-in .tab[aria-current="page"] { background: var(--paper-lift); font-weight: 600; }
+  .search { order: -1; }
+  .search input { width: 100%; max-width: none; }
+
+  /* Instruments: pinned to the bottom of the left margin, quiet. */
+  .strip {
+    position: fixed;
+    top: auto; bottom: 1.25rem;
+    left: max(0.75rem, calc((100vw - 66rem) / 2 - 14rem));
+    width: 12.5rem;
+    background: transparent; border-bottom: none;
+    z-index: 2;
+  }
+  .strip .wrap { width: auto; margin: 0; }
+  .strip-in {
+    display: flex; flex-direction: column; gap: 0.8rem;
+    padding: 0; border-left: 2px solid var(--rule); padding-left: 0.8rem;
+  }
+}
+/* ---------- masthead stats: the society at a glance, human terms ----------
+   Replaces the cryptic coverage number as the first thing a reader clocks.
+   A full-width row under the wordmark, so it reads as a dashboard, not a note. */
+.masthead-stats {
+  flex-basis: 100%;
+  display: flex; flex-wrap: wrap; gap: 0.5rem 2rem;
+  margin: 0.9rem 0 0; padding-top: 0.9rem;
+  border-top: 1px solid var(--rule);
+}
+.masthead-stats .stat { display: flex; align-items: baseline; gap: 0.45rem; }
+.masthead-stats dt {
+  font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.12em;
+  color: var(--ink-faint); margin: 0;
+}
+.masthead-stats dd { margin: 0; font-size: 0.95rem; font-weight: 600; }
+
+/* Close the gap: the hero no longer needs a big top runway now that the
+   masthead carries the stats. */
+.lede:first-child, main > #view > :first-child { margin-top: 0.25rem; }
+/* ---------- the charter on the landing: what this society is ---------- */
+.charter {
+  margin: 0.5rem 0 2rem;
+  padding: 1.25rem 1.4rem;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  background: var(--paper-lift);
+}
+.charter-h { font-family: var(--display); font-size: 1.5rem; margin: 0 0 0.5rem; }
+.charter-intro { color: var(--ink-soft); margin: 0 0 1rem; max-width: var(--measure); }
+.charter-rules {
+  margin: 0; padding: 0; list-style: none;
+  display: grid; gap: 0.7rem;
+  counter-reset: rule;
+}
+.charter-rules li {
+  counter-increment: rule;
+  position: relative; padding-left: 2.1rem;
+  font-size: 0.92rem; line-height: 1.5;
+}
+.charter-rules li::before {
+  content: counter(rule);
+  position: absolute; left: 0; top: 0;
+  width: 1.5rem; height: 1.5rem;
+  display: grid; place-items: center;
+  font-size: 0.72rem; font-weight: 700;
+  border-radius: 50%;
+  background: var(--accent, #1a7f37); color: #fff;
+}
+.charter-full { margin-top: 1.1rem; font-size: 0.85rem; }
+.charter-full summary { cursor: pointer; color: var(--ink-faint); }

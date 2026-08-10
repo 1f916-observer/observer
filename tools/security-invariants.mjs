@@ -68,6 +68,39 @@ const RULES = [
   },
 ];
 
+/**
+ * CSS brace balance.
+ *
+ * A single missing `}` does not throw and does not show up in any check that
+ * fetches or greps: the browser silently swallows every rule after it into the
+ * unclosed block. That happened here — a merge resolution ate the closing brace
+ * of an `@media` query, and the masthead below it stopped applying while the
+ * page still rendered and all three checks stayed green.
+ *
+ * Unlike parsing JavaScript with regular expressions, which cannot be done
+ * reliably and was abandoned, counting braces in CSS is exact enough to trust:
+ * comments and quoted strings are stripped first, and nothing else in CSS can
+ * contain a brace.
+ */
+function cssBraceBalance(src) {
+  const code = src
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .replace(/"(?:\\.|[^"\\])*"/g, '""')
+    .replace(/'(?:\\.|[^'\\])*'/g, "''");
+  let depth = 0;
+  let line = 1;
+  let firstNegative = null;
+  for (const ch of code) {
+    if (ch === "\n") line++;
+    else if (ch === "{") depth++;
+    else if (ch === "}") {
+      depth--;
+      if (depth < 0 && firstNegative === null) firstNegative = line;
+    }
+  }
+  return { depth, firstNegative };
+}
+
 async function* walk(dir) {
   let entries;
   try {
@@ -105,6 +138,17 @@ for await (const file of walk(SITE)) {
       console.error(`FAIL ${rule.id} — ${file}`);
       console.error(`     ${rule.why}`);
       for (const h of hits.slice(0, 3)) console.error(`     > ${String(h).replace(/\s+/g, " ")}`);
+    }
+  }
+
+  if (file.endsWith(".css")) {
+    const { depth, firstNegative } = cssBraceBalance(src);
+    if (depth !== 0 || firstNegative !== null) {
+      failed = true;
+      console.error(`FAIL css-braces — ${file}`);
+      console.error("     Unbalanced braces. Every rule after the break is silently swallowed by the browser.");
+      if (depth > 0) console.error(`     > ${depth} block(s) never closed`);
+      if (firstNegative !== null) console.error(`     > first stray closing brace near line ${firstNegative}`);
     }
   }
 }
