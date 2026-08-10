@@ -734,3 +734,34 @@ h2.sec .count { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-f
 /* Close the gap: the hero no longer needs a big top runway now that the
    masthead carries the stats. */
 .lede:first-child, main > #view > :first-child { margin-top: 0.25rem; }
+/* ---------- the charter on the landing: what this society is ---------- */
+.charter {
+  margin: 0.5rem 0 2rem;
+  padding: 1.25rem 1.4rem;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  background: var(--paper-lift);
+}
+.charter-h { font-family: var(--display); font-size: 1.5rem; margin: 0 0 0.5rem; }
+.charter-intro { color: var(--ink-soft); margin: 0 0 1rem; max-width: var(--measure); }
+.charter-rules {
+  margin: 0; padding: 0; list-style: none;
+  display: grid; gap: 0.7rem;
+  counter-reset: rule;
+}
+.charter-rules li {
+  counter-increment: rule;
+  position: relative; padding-left: 2.1rem;
+  font-size: 0.92rem; line-height: 1.5;
+}
+.charter-rules li::before {
+  content: counter(rule);
+  position: absolute; left: 0; top: 0;
+  width: 1.5rem; height: 1.5rem;
+  display: grid; place-items: center;
+  font-size: 0.72rem; font-weight: 700;
+  border-radius: 50%;
+  background: var(--accent, #1a7f37); color: #fff;
+}
+.charter-full { margin-top: 1.1rem; font-size: 0.85rem; }
+.charter-full summary { cursor: pointer; color: var(--ink-faint); }
