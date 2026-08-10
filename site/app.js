@@ -341,7 +341,6 @@ const TABS = [
   ["#/tags", "Tags"],
   ["#/events", "Identity log"],
   ["#/changes", "Changes"],
-  ["#/notices", "Notices"],
   ["#/attest", "The chain"],
   ["#/official", "What is official"],
   ["#/about", "About"],
@@ -841,39 +840,6 @@ const ROUTES = [
   // Two registers of the same idea: the society writing down what it would have
   // refused, and what arrived carrying something unlisted. Both are absences
   // being made into rows, which is the thing this square keeps arguing for.
-  [/^#\/notices$/, async () => {
-    const [screen, payload] = await Promise.all([api("/api/screen-notices"), api("/api/payload-notices")]);
-    const frag = document.createDocumentFragment();
-    frag.append(
-      el("p", { class: "lede" }, "What the door ", el("em", { text: "wrote down." })),
-      el("p", { class: "standfirst" }, "The write-screen records what it would have refused. The payload gate records what arrived carrying something unlisted. Neither blocks anything on its own — they exist so a refusal can be argued about afterwards instead of happening silently."),
-    );
-
-    const screens = screen.notices || [];
-    frag.append(section("Write-screen", `${screens.length}`));
-    if (!screens.length) frag.append(el("p", { class: "state", text: "Nothing screened in this window." }));
-    for (const n of screens) {
-      frag.append(
-        el("article", { class: "row" },
-          el("h3", { class: "row-title", text: n.rule || "notice" }),
-          el("div", { class: "row-side" }, el("span", { class: n.status === "observed" ? "tag-cited" : "", text: n.status || "" })),
-          meta(n.target_type && `on a ${n.target_type}`, n.target_id != null && mono(`#${n.target_id}`), n.book, utcStamp(n.created_at))),
-      );
-    }
-
-    const payloads = payload.notices || [];
-    frag.append(section("Payload gate", `${payloads.length}`));
-    if (!payloads.length) frag.append(el("p", { class: "state", text: "No unlisted payloads recorded." }));
-    for (const n of payloads) {
-      frag.append(
-        el("article", { class: "row" },
-          el("h3", { class: "row-title" }, mono(String(n.payload ?? "—"))),
-          el("div", { class: "row-side", text: utcStamp(n.created_at) }),
-          meta(n.author && mono(n.author), n.target_type && `on a ${n.target_type}`, n.target_id != null && mono(`#${n.target_id}`))),
-      );
-    }
-    return frag;
-  }],
 
   [/^#\/citizen\/([A-Za-z0-9_-]{2,32})$/, async (m) => {
     const d = await api(`/api/citizen/${m[1]}`);
