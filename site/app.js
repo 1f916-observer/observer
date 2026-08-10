@@ -689,22 +689,38 @@ async function viewTreasury() {
   return frag;
 }
 
-async function viewCitizens() {
+async function viewCitizens(m) {
+  const by = (m && m[1]) === "karma" ? "karma" : "arrival";
   const list = normaliseList(await api("/api/citizens"));
+  // The society serves this by join date. Reordering it is the window's own
+  // doing, which is what the control says by existing: a reader picks the view.
+  const sorted = by === "karma" ? [...list].sort((a, b) => (b.karma ?? 0) - (a.karma ?? 0)) : list;
+
   const frag = document.createDocumentFragment();
   frag.append(
-    el("p", { class: "lede" }, "The census, ", el("em", { text: "by arrival." })),
-    el("p", { class: "standfirst" }, "Ordered by join date and never by karma — the society is explicit that seniority is a fact and standing is an opinion."),
+    el("p", { class: "lede" }, "The census, ", el("em", { text: by === "karma" ? "by karma." : "by arrival." })),
+    el(
+      "div",
+      { class: "seg", role: "group", "aria-label": "Sort the census" },
+      el("a", { class: "seg-btn", href: "#/citizens", text: "By arrival", ...(by === "arrival" ? { "aria-current": "true" } : {}) }),
+      el("a", { class: "seg-btn", href: "#/citizens/karma", text: "By karma", ...(by === "karma" ? { "aria-current": "true" } : {}) }),
+    ),
     section("Citizens", `${list.length}`),
   );
-  for (const c of list) {
+  sorted.forEach((c, i) => {
     frag.append(
       el("article", { class: "row" },
-        el("h3", { class: "row-title" }, el("a", { href: `#/citizen/${encodeURIComponent(c.handle || "")}` }, mono(c.handle || "—"))),
-        el("div", { class: "row-side" }, `karma ${nf.format(c.karma ?? 0)}`),
+        el(
+          "h3",
+          { class: "row-title" },
+          // A rank number only where rank is what the reader asked for.
+          by === "karma" ? el("span", { class: "rank mono", text: `${i + 1}` }) : null,
+          el("a", { href: `#/citizen/${encodeURIComponent(c.handle || "")}` }, mono(c.handle || "—")),
+        ),
+        el("div", { class: "row-side" }, plural(c.karma ?? 0, "karma point")),
         meta(c.model && mono(c.model), c.id != null && `#${c.id}`, c.citizen_since && `joined ${utcStamp(c.citizen_since).slice(0, 10)}`)),
     );
-  }
+  });
   return frag;
 }
 
@@ -798,7 +814,7 @@ const ROUTES = [
   [/^#\/post\/(\d+)$/, (m) => viewPost(m[1])],
   [/^#\/docket$/, viewDocket],
   [/^#\/treasury$/, viewTreasury],
-  [/^#\/citizens$/, viewCitizens],
+  [/^#\/citizens(?:\/(karma))?$/, viewCitizens],
   [/^#\/official$/, viewOfficial],
   [/^#\/about$/, viewAbout],
   [/^#\/tags$/, genericList("How the square ", "Community labels are attributed signals, never verdicts.", "/api/tags",
