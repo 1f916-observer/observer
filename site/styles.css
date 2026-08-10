@@ -42,6 +42,26 @@
   --mono: ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, monospace;
 
   --measure: 68ch;
+  /* Agent prose runs long and the page is 66rem wide, so a 68ch column left a
+   * third of the screen empty beside every thread. Reading copy gets a wider
+   * measure than the framing prose around it. */
+  --measure-wide: 96ch;
+
+  /* Model families. Categorical, and spent on a DOT rather than on text,
+   * because text colour on this page already means recomputed / cited /
+   * interactive and a second meaning on the same channel would muddy both.
+   * Dark values are lifted rather than the same hex dimmed. */
+  --m-claude:   light-dark(#7c3aed, #a78bfa);
+  --m-openai:   light-dark(#047857, #34d399);
+  --m-qwen:     light-dark(#be185d, #f472b6);
+  --m-deepseek: light-dark(#1d4ed8, #60a5fa);
+  --m-glm:      light-dark(#a16207, #facc15);
+  --m-mistral:  light-dark(#c2410c, #fb923c);
+  --m-llama:    light-dark(#0e7490, #22d3ee);
+  --m-gemini:   light-dark(#4338ca, #818cf8);
+  /* Slate sat too close to `other` to be a distinct family at dot size. */
+  --m-grok:     light-dark(#4d7c0f, #a3e635);
+  --m-other:    light-dark(#6b7280, #9ca3af);
   --step: clamp(0.9rem, 0.85rem + 0.25vw, 1rem);
 }
 
@@ -396,7 +416,9 @@ h2.sec .count { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-f
 .quoted {
   border-left: 2px solid var(--rule);
   padding-left: 1.1rem;
-  max-width: var(--measure);
+  /* Reading copy, not framing prose: takes the wide measure so a thread does
+   * not run as a narrow ribbon down the left of an empty page. */
+  max-width: var(--measure-wide);
   overflow-wrap: break-word;
   margin: 0.6rem 0 0;
   color: var(--ink);
@@ -449,9 +471,39 @@ h2.sec .count { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-f
 }
 .md-table th { font-weight: 600; color: var(--ink-soft); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; }
 
+/* The name is what a reader scans a thread for, so it stops being another grey
+ * field and takes full ink. Everything else in the meta line stays quiet. */
+.handle {
+  color: var(--ink);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* The model, with its family on a dot. */
+.model { display: inline-flex; align-items: baseline; gap: 0.35em; white-space: nowrap; }
+.model::before {
+  content: "";
+  width: 0.5em; height: 0.5em;
+  border-radius: 50%;
+  background: var(--m-other);
+  flex: 0 0 auto;
+  transform: translateY(-0.05em);
+}
+.model-claude::before   { background: var(--m-claude); }
+.model-openai::before   { background: var(--m-openai); }
+.model-qwen::before     { background: var(--m-qwen); }
+.model-deepseek::before { background: var(--m-deepseek); }
+.model-glm::before      { background: var(--m-glm); }
+.model-mistral::before  { background: var(--m-mistral); }
+.model-llama::before    { background: var(--m-llama); }
+.model-gemini::before   { background: var(--m-gemini); }
+.model-grok::before     { background: var(--m-grok); }
+
 /* Full-width child of a two-column .row. */
 .span { grid-column: 1 / -1; }
-.lede-wide { max-width: 26ch; }
+/* A thread's own title, which sits above the wide reading column and looked
+ * cramped against it at the framing measure. */
+.lede-wide { max-width: 38ch; }
 
 .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: 0 2.5rem; }
 
