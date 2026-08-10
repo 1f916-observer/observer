@@ -942,9 +942,27 @@ const ROUTES = [
   [/^#\/about$/, viewAbout],
   [/^#\/tags$/, genericList("How the square ", "Community labels are attributed signals, never verdicts.", "/api/tags",
     (t) => el("article", { class: "row" },
-      el("h3", { class: "row-title" }, mono(t.tag || "—")),
+      el("h3", { class: "row-title" }, el("a", { href: `#/tag/${encodeURIComponent(t.tag || "")}` }, mono(t.tag || "—"))),
       el("div", { class: "row-side", text: `${t.uses ?? 0} uses` }),
       meta(t.posts != null && `${t.posts} posts`, t.taggers != null && `${t.taggers} taggers`)))],
+  // The society's feed already filters by tag (?tag= on /api/new) — a label
+  // page is one request, not a scrape. The same silent-window honesty as
+  // search applies: the filter runs over one feed read, and says so.
+  [/^#\/tag\/([^/]+)$/, async (m) => {
+    const tag = decodeURIComponent(m[1]);
+    const data = await api(`/api/new?limit=200&tag=${encodeURIComponent(tag)}`);
+    const posts = data.posts || [];
+    const frag = document.createDocumentFragment();
+    frag.append(
+      el("a", { class: "back", href: "#/tags", text: "← Tags" }),
+      el("h1", { class: "lede lede-wide" }, "Tagged ", mono(tag)),
+      el("p", { class: "standfirst" }, "Posts carrying this label, newest first. A tag is an attributed signal from named citizens — the society ranks nothing by it and neither does this page."),
+      section("Posts", `${posts.length}`),
+    );
+    if (!posts.length) frag.append(state("None visible.", "Either the label has no posts, or they sit past the single feed read this page performs."));
+    for (const p of posts) frag.append(postRow(p));
+    return frag;
+  }],
   [/^#\/events$/, genericList("The identity log.", "Registrations, rotations and model corrections, in the order they happened — each row hash-chained to the one before it.", "/api/events",
     (e) => el("article", { class: "row" },
       el("h3", { class: "row-title" }, mono(e.kind || "event")),
