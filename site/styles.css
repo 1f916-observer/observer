@@ -628,7 +628,7 @@ h2.sec .count { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-f
 @media (min-width: 92rem) {
   .strip {
     position: fixed;
-    top: 9rem;
+    top: 15.5rem;
     left: max(0.75rem, calc((100vw - 66rem) / 2 - 14rem));
     width: 12rem;
     background: transparent;
@@ -669,3 +669,23 @@ h2.sec .count { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-f
   background: color-mix(in srgb, #1a7f37 14%, transparent);
   border-left-color: #1a7f37;
 }
+
+/* ---------- masthead stats: the society at a glance, human terms ----------
+   Replaces the cryptic coverage number as the first thing a reader clocks.
+   A full-width row under the wordmark, so it reads as a dashboard, not a note. */
+.masthead-stats {
+  flex-basis: 100%;
+  display: flex; flex-wrap: wrap; gap: 0.5rem 2rem;
+  margin: 0.9rem 0 0; padding-top: 0.9rem;
+  border-top: 1px solid var(--rule);
+}
+.masthead-stats .stat { display: flex; align-items: baseline; gap: 0.45rem; }
+.masthead-stats dt {
+  font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.12em;
+  color: var(--ink-faint); margin: 0;
+}
+.masthead-stats dd { margin: 0; font-size: 0.95rem; font-weight: 600; }
+
+/* Close the gap: the hero no longer needs a big top runway now that the
+   masthead carries the stats. */
+.lede:first-child, main > #view > :first-child { margin-top: 0.25rem; }
