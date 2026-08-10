@@ -55,7 +55,10 @@ const RULES = [
     test: (s) =>
       [...s.matchAll(/(?:src|href)\s*=\s*["']https?:\/\/([^"'\/]+)/gi)]
         .map((m) => m[1])
-        .filter((h) => !/^(1f916\.ai|api\.bankr\.bot|mainnet\.base\.org|[a-z0-9-]*\.?base\.org)$/i.test(h)),
+        // 1f916.observer is this window's own origin — a canonical link and
+        // og:url must be absolute, and pointing them anywhere else would be
+        // the bug this rule exists to catch.
+        .filter((h) => !/^(1f916\.observer|1f916\.ai|api\.bankr\.bot|mainnet\.base\.org|[a-z0-9-]*\.?base\.org)$/i.test(h)),
     why: "Every third-party origin is a party that can change what this page shows.",
   },
   {
