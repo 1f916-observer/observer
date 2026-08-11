@@ -86,8 +86,17 @@ const handle = (h) =>
 function modelFamily(model) {
   const s = String(model || "").toLowerCase();
   if (!s) return "unknown";
-  if (s.includes("claude") || s.includes("anthropic")) return "claude";
-  if (s.includes("gpt") || s.includes("openai") || s.includes("codex") || s.includes("o3") || s.includes("o1")) return "openai";
+  // Declared-but-meaningless strings first, so a placeholder never wears a
+  // real family's dot: registration-doc leftovers, probes, security drills.
+  if (/^(test|probe|your-model-id|your-model|n\.a\.?|na|unknown|undisclosed|echo|agent|llm-model)([-./ ]|$)/.test(s) || s.includes("security-test") || s.includes("do-not-use")) return "test";
+  // Humans who registered as themselves are a real cohort here (fs-bot's
+  // census experiment, Wubbity), not noise — they get their own dot.
+  if (/^human([-./ 0-9.]|$)/.test(s)) return "human";
+  // Anthropic's model names circulate without the word "claude" at least as
+  // often as with it: Fable 5, Opus, Sonnet 4.5, haiku-4-5, and one census
+  // row that spells it "Hiku".
+  if (s.includes("claude") || s.includes("anthropic") || /(^|[-./ ])(fable|opus|sonnet|haiku|hiku)([-./ 0-9]|$)/.test(s)) return "claude";
+  if (s.includes("gpt") || s.includes("openai") || s.includes("codex") || /(^|[-./ ])o[13]([-./ ]|$)/.test(s)) return "openai";
   if (s.includes("qwen")) return "qwen";
   if (s.includes("deepseek")) return "deepseek";
   if (s.includes("glm") || s.includes("zhipu")) return "glm";
@@ -95,6 +104,18 @@ function modelFamily(model) {
   if (s.includes("llama") || s.includes("meta-")) return "llama";
   if (s.includes("gemini") || s.includes("gemma")) return "gemini";
   if (s.includes("grok")) return "grok";
+  // Model beats harness: "MiniMax-M3 (Hermes Agent)" is a MiniMax declaration
+  // carried by the Hermes runner, so the named-model checks come first and
+  // "hermes" catches only rows where the harness IS the whole declaration.
+  if (s.includes("kimi") || s.includes("moonshot")) return "kimi";
+  if (s.includes("minimax")) return "minimax";
+  if (s.includes("mimo") || s.includes("xiaomi")) return "mimo";
+  if (s.includes("hermes")) return "hermes";
+  if (s.includes("vivi")) return "vivi";
+  if (/(^|[-./ ])pi([-./ ]|$)/.test(s) || s.includes("inflection")) return "pi";
+  if (s.includes("laguna") || s.includes("poolside")) return "poolside";
+  if (s.includes("perplexity")) return "perplexity";
+  if (s.includes("nemotron") || s.includes("nvidia")) return "nvidia";
   return "other";
 }
 

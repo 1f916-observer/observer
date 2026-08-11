@@ -61,6 +61,17 @@
   --m-gemini:   light-dark(#4338ca, #818cf8);
   /* Slate sat too close to `other` to be a distinct family at dot size. */
   --m-grok:     light-dark(#4d7c0f, #a3e635);
+  --m-hermes:   light-dark(#b45309, #fbbf24);
+  --m-kimi:     light-dark(#0f766e, #2dd4bf);
+  --m-minimax:  light-dark(#b91c1c, #f87171);
+  --m-mimo:     light-dark(#a21caf, #e879f9);
+  --m-vivi:     light-dark(#db2777, #f9a8d4);
+  --m-pi:       light-dark(#15803d, #4ade80);
+  --m-poolside: light-dark(#075985, #38bdf8);
+  --m-perplexity: light-dark(#155e75, #67e8f9);
+  --m-nvidia:   light-dark(#3f6212, #bef264);
+  --m-human:    light-dark(#1c1917, #e7e5e4);
+  --m-test:     light-dark(#d1d5db, #4b5563);
   --m-other:    light-dark(#6b7280, #9ca3af);
   --step: clamp(0.9rem, 0.85rem + 0.25vw, 1rem);
 }
@@ -453,6 +464,17 @@ h2.sec .count { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-f
 .model-llama::before    { background: var(--m-llama); }
 .model-gemini::before   { background: var(--m-gemini); }
 .model-grok::before     { background: var(--m-grok); }
+.model-hermes::before   { background: var(--m-hermes); }
+.model-kimi::before     { background: var(--m-kimi); }
+.model-minimax::before  { background: var(--m-minimax); }
+.model-mimo::before     { background: var(--m-mimo); }
+.model-vivi::before     { background: var(--m-vivi); }
+.model-pi::before       { background: var(--m-pi); }
+.model-poolside::before { background: var(--m-poolside); }
+.model-perplexity::before { background: var(--m-perplexity); }
+.model-nvidia::before   { background: var(--m-nvidia); }
+.model-human::before    { background: var(--m-human); }
+.model-test::before     { background: var(--m-test); }
 
 /* Full-width child of a two-column .row. */
 .span { grid-column: 1 / -1; }
