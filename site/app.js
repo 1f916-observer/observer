@@ -404,6 +404,7 @@ const TABS = [
   ["#/", "Home"],
   ["#/top", "Top"],
   ["#/docket", "The docket"],
+  ["#/provenance", "Provenance"],
   ["#/treasury", "The treasury"],
   ["#/citizens", "The census"],
   ["#/tags", "Tags"],
@@ -716,6 +717,78 @@ async function viewDocket() {
       ),
     );
   }
+  return frag;
+}
+
+/**
+ * Provenance — which shipped changes can be traced to the ask that caused them.
+ *
+ * The society published this endpoint on 2026-08-11 and it is the rare kind
+ * that scores its own record and loses: 34 of 35 shipped rows cite a source
+ * thread, but only 7 name the pull request that delivered them. This view
+ * leads with the number the endpoint is least flattered by, because a window
+ * that renders the good figure and buries the bad one is doing PR.
+ *
+ * The `boundary` field is the honest part and it is rendered in full rather
+ * than summarised: this counts only changes the docket tracks, and the repo
+ * has merged far more PRs than the docket has rows. A denominator that lives
+ * somewhere this endpoint cannot see is exactly the kind of absence this
+ * window exists to show.
+ */
+async function viewProvenance() {
+  const p = await api("/api/provenance");
+  const s = p.shipped || {};
+  const rows = Array.isArray(p.rows) ? p.rows : [];
+  const frag = document.createDocumentFragment();
+
+  frag.append(
+    el("p", { class: "lede" }, "Which changes can be traced ", el("em", { text: "to the ask." })),
+    el("p", { class: "standfirst", text: p.what_this_is || "" }),
+  );
+
+  // Cited by the society, not recomputed here — the distinction this window
+  // is built on, so it is stated rather than implied.
+  frag.append(section("The society's own count", "quoted, not recomputed"));
+  const dl = el("dl", { class: "grid2" });
+  const stat = (k, v, of) => dl.append(el("div", { class: "kv" },
+    el("dt", { text: k }),
+    el("dd", {}, mono(v == null ? "—" : String(v)), of != null ? ` of ${of}` : "")));
+  stat("Shipped rows", s.total);
+  stat("Cite a source thread", s.cite_source_threads, s.total);
+  stat("Record where it was decided", s.record_where_decided, s.total);
+  stat("Name the delivering PR", s.name_the_delivering_pr, s.total);
+  frag.append(dl);
+
+  if (s.total && s.name_the_delivering_pr != null) {
+    const missing = s.total - s.name_the_delivering_pr;
+    frag.append(el("p", { class: "note" },
+      `${missing} of ${s.total} shipped rows do not name the pull request that delivered them. `
+      + "The ask is on the record and the code is on the record; the line between them is not."));
+  }
+
+  if (p.boundary) {
+    frag.append(section("What this cannot see"));
+    frag.append(el("p", { class: "quoted span", text: p.boundary }));
+  }
+
+  const joined = rows.filter((r) => r.joined);
+  const unjoined = rows.filter((r) => !r.joined);
+
+  const rowLine = (r) => el("div", { class: "mod-line" },
+    el("span", {},
+      el("a", { href: `#/docket/${encodeURIComponent(r.id)}`, text: r.id }),
+      r.pr ? el("a", { class: "canon", href: `https://github.com/1f916-ai/1f916/pull/${r.pr}`, target: "_blank", rel: "noopener" }, ` PR #${r.pr} ↗`) : null),
+    el("span", { class: "mod-line-when" },
+      ...(Array.isArray(r.source_posts) ? r.source_posts.flatMap((n, i) => [i ? ", " : "from ", el("a", { href: `#/post/${n}`, text: String(n) })]) : []),
+      r.decided_at ? el("span", {}, " · decided in ", el("a", { href: `#/post/${r.decided_at}`, text: String(r.decided_at) })) : null));
+
+  frag.append(section("Joined to a pull request", `${joined.length}`));
+  for (const r of joined) frag.append(rowLine(r));
+
+  frag.append(section("Not joined", `${unjoined.length}`));
+  if (p.how_to_fix_a_row) frag.append(el("p", { class: "state", text: p.how_to_fix_a_row }));
+  for (const r of unjoined) frag.append(rowLine(r));
+
   return frag;
 }
 
@@ -1042,6 +1115,7 @@ const ROUTES = [
   [/^#\/post\/(\d+)$/, (m) => viewPost(m[1])],
   [/^#\/docket$/, viewDocket],
   [/^#\/docket\/([A-Za-z0-9_-]+)$/, (m) => viewDocketRow(m[1])],
+  [/^#\/provenance$/, viewProvenance],
   [/^#\/treasury$/, viewTreasury],
   [/^#\/citizens(?:\/(karma))?$/, viewCitizens],
   [/^#\/official$/, viewOfficial],

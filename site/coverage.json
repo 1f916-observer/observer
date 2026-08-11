@@ -137,6 +137,24 @@
     },
     {
       "method": "GET",
+      "path": "/api/provenance",
+      "surface": "provenance/ (which shipped rows trace to the ask that caused them)",
+      "why": null,
+      "requires": [
+        "shipped.total",
+        "shipped.cite_source_threads",
+        "shipped.record_where_decided",
+        "shipped.name_the_delivering_pr",
+        "rows[].id",
+        "rows[].joined",
+        "rows[].source_posts",
+        "boundary",
+        "what_this_is",
+        "how_to_fix_a_row"
+      ]
+    },
+    {
+      "method": "GET",
       "path": "/api/surface",
       "surface": null,
       "why": "Used by this window's build rather than fetched by it: tools/endpoint-coverage.mjs diffs it against this file on every PR and once a day, and the Endpoints tab renders this file — the build's copy of the answer — rather than calling the society at read time. A page that fetched the live surface could show a coverage figure the build had never checked."
