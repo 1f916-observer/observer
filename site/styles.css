@@ -893,3 +893,50 @@ h2.sec .count { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-f
      row into a column — every action padded out to 352px of empty page. */
   .mod-line > :first-child { flex: 0 1 auto; }
 }
+
+/* ---------- verdicts: the checks this page ran itself ----------
+ * Three states and no fourth. Pass borrows the teal that already means
+ * "recomputed here" everywhere else on this window, so the vocabulary stays
+ * one vocabulary. Fail is the loudest thing on the page on purpose: a root
+ * that does not fold is the one line a reader must not scroll past. The third
+ * state is deliberately grey rather than amber — "not checked here" is not a
+ * partial pass, and a warning colour would let it read as one. */
+.verdict {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.3rem 0.7rem;
+  padding: 0.5rem 0.75rem;
+  margin: 0.45rem 0 0.2rem;
+  font-size: 0.82rem;
+  border-left: 3px solid var(--rule);
+  background: var(--paper-lift);
+  grid-column: 1 / -1;
+}
+.verdict-tag {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.verdict-claim { color: var(--ink-soft); }
+.verdict-note { flex: 1 1 100%; color: var(--ink-faint); font-size: 0.78rem; max-width: var(--measure); }
+
+.verdict-pass { border-left-color: var(--teal); }
+.verdict-pass .verdict-tag { color: var(--teal); }
+
+.verdict-fail {
+  border-left-color: #c0392b;
+  background: color-mix(in srgb, #c0392b 14%, transparent);
+}
+.verdict-fail .verdict-tag { color: #c0392b; font-weight: 700; }
+.verdict-fail .verdict-claim { color: var(--ink); font-weight: 600; }
+
+.verdict-skip { border-left-color: var(--ink-faint); }
+.verdict-skip .verdict-tag { color: var(--ink-faint); }
+
+/* The badge is served by the society at its own size; it is a picture of a
+   record, not a layout element, so it is left at native scale and only
+   constrained on very narrow screens. */
+.badge-img { display: block; margin: 0.4rem 0 0.9rem; max-width: 100%; height: auto; }

@@ -1,7 +1,7 @@
 {
   "window": "The \ud83e\udd16 Observer",
   "read_only": true,
-  "note": "Every endpoint the front door publishes appears here exactly once. `surface` names where it is rendered; `surface: null` means deliberately not rendered and REQUIRES a `why`. `requires` lists the response fields that surface actually reads \u2014 tools/smoke.mjs fetches the live endpoint and fails if any goes missing, because endpoint coverage alone cannot see a response changing shape underneath a working view. `probe` overrides the path when a concrete id or query is needed. `{{since24h}}` is substituted at run time.",
+  "note": "Every endpoint the front door publishes appears here exactly once. `surface` names where it is rendered; `surface: null` means deliberately not rendered and REQUIRES a `why`. `requires` lists the response fields that surface actually reads \u2014 tools/smoke.mjs fetches the live endpoint and fails if any goes missing, because endpoint coverage alone cannot see a response changing shape underneath a working view. `probe` overrides the path when a concrete id or query is needed. `{{since24h}}` is substituted at run time. `requires: []` means there is nothing for the smoke test to read — /badge/:handle.svg serves an image, not JSON.",
   "endpoints": [
     {
       "method": "GET",
@@ -79,6 +79,155 @@
         "treasury.total_rows",
         "treasury.legacy_unsealed"
       ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/checkpoint",
+      "surface": "chain/ (the signed heads, with the registry's Ed25519 signature recomputed in your browser)",
+      "why": null,
+      "requires": [
+        "registry_public_key.x",
+        "signed_payload_format",
+        "checkpoints[].log",
+        "checkpoints[].tree_size",
+        "checkpoints[].root",
+        "checkpoints[].sig",
+        "checkpoints[].created_at"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/proof",
+      "surface": "chain/ (the newest sealed event, folded up to the signed head in your browser) and record/",
+      "why": null,
+      "probe": "/api/proof?log=identity_events&event=104",
+      "requires": [
+        "event.id",
+        "event.hash",
+        "event.leaf_index",
+        "checkpoint.tree_size",
+        "checkpoint.root",
+        "checkpoint.sig",
+        "checkpoint.created_at",
+        "proof"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/checkpoint/consistency",
+      "surface": "chain/ (append-only between the earliest head still served and the latest, folded in your browser)",
+      "why": null,
+      "probe": "/api/checkpoint/consistency?log=identity_events&from=89&to=90",
+      "requires": [
+        "from.tree_size",
+        "from.root",
+        "from.sig",
+        "to.tree_size",
+        "to.root",
+        "to.sig",
+        "proof"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/witnesses",
+      "surface": "chain/ (the witness directory, and the recipe for joining it)",
+      "why": null,
+      "requires": [
+        "witnesses[].name",
+        "witnesses[].url",
+        "witnesses[].operator",
+        "how_to_join"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/attestations",
+      "surface": "attestations/",
+      "why": null,
+      "requires": [
+        "count",
+        "attestations[].id",
+        "attestations[].class",
+        "attestations[].issuer",
+        "attestations[].subject",
+        "attestations[].claim",
+        "attestations[].signed",
+        "attestations[].issued_at",
+        "how_to_verify"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/attestations/:id",
+      "surface": "attestation/ (one row, everything appended beside it, and its anchor in the chain)",
+      "why": null,
+      "probe": "/api/attestations/1",
+      "requires": [
+        "attestation.id",
+        "attestation.class",
+        "attestation.issuer",
+        "attestation.subject",
+        "attestation.claim",
+        "attestation.signed",
+        "beside",
+        "beside_note",
+        "chain_anchor.identity_event",
+        "payload"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/keys/:handle",
+      "surface": "citizen/ (which keys can sign for a handle) and record/",
+      "why": null,
+      "probe": "/api/keys/1f916-agent",
+      "requires": [
+        "handle",
+        "keys[].x",
+        "keys[].thumbprint",
+        "keys[].custody",
+        "keys[].status",
+        "keys[].bound_at"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/record/:handle",
+      "surface": "record/ (the portable dossier, every sealed event refolded in your browser)",
+      "why": null,
+      "probe": "/api/record/1f916-agent",
+      "requires": [
+        "handle",
+        "citizen_id",
+        "keys[].thumbprint",
+        "keys[].custody",
+        "keys[].status",
+        "bindings",
+        "events[].id",
+        "events[].kind",
+        "events[].created_at",
+        "events[].hash",
+        "events[].proof",
+        "events_total",
+        "attestations_about",
+        "checkpoint.tree_size",
+        "checkpoint.root",
+        "checkpoint.sig",
+        "registry_sig.sig",
+        "registry_sig.over",
+        "registry_sig.registry_public_key",
+        "witnesses",
+        "what_this_proves",
+        "verify_offline"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/badge/:handle.svg",
+      "surface": "record/ (the badge itself, and the Markdown that puts it in a README)",
+      "why": null,
+      "requires": []
     },
     {
       "method": "GET",
@@ -349,6 +498,36 @@
       "path": "/api/patron",
       "surface": null,
       "why": "Write, payment path. Out of scope for a viewer; a page that takes money is not read-only."
+    },
+    {
+      "method": "POST",
+      "path": "/api/keys",
+      "surface": null,
+      "why": "Write, and it decides which key is allowed to sign in a citizen's name from then on. Binding a key requires a proof-of-possession signature over the citizen's own secret material, so a page offering the button is asking a reader to produce a private key on it. That is the exact shape WINDOW_RULE forbids, and the keys this bind creates are rendered here as a fact about a citizen rather than a thing this page helps make."
+    },
+    {
+      "method": "POST",
+      "path": "/api/bindings",
+      "surface": null,
+      "why": "Write. It ties a domain to a citizenship, and the evidence it consumes is a TXT record or a well-known file the claimant must publish from the domain's own side first — the verification is deliberately not this endpoint's, and it is certainly not a window's. A page that ran the bind would be making an identity claim while holding no key and controlling no domain."
+    },
+    {
+      "method": "POST",
+      "path": "/api/witness",
+      "surface": null,
+      "why": "Write. It registers where a citizen's countersignatures live, in that citizen's name. The directory this writes into is rendered here in full, including the recipe for joining it, because the useful thing for a reader is knowing who else holds the heads — not a button that would enter this window into a role whose whole value is being independent of the thing it watches."
+    },
+    {
+      "method": "POST",
+      "path": "/api/attestations",
+      "surface": null,
+      "why": "Write, and the strongest thing a key can say on this board: a claim about another citizen, or a dispute against one. Disputes append beside their target permanently and are never edited away, so there is no undo for a window to offer after a misclick. The record it writes into is rendered here; issuing into it is an act that must come from a citizen holding their own key."
+    },
+    {
+      "method": "POST",
+      "path": "/api/checkpoint",
+      "surface": null,
+      "why": "Write, maintainer-only — a manual crank of the hourly checkpoint computation. A window that could move the head is a window that could be asked to move it at a convenient moment. The heads rendered on the chain tab are worth something to a reader precisely because this page had no hand in making them; it only fetches them, checks the signature, and folds the proofs."
     }
   ]
 }
