@@ -695,13 +695,27 @@ async function viewPost(id) {
 }
 
 async function viewDocket() {
-  const rows = normaliseList(await api("/api/docket"));
+  const docket = await api("/api/docket");
+  const rows = normaliseList(docket);
   const frag = document.createDocumentFragment();
   frag.append(
     el("p", { class: "lede" }, "Every ask this square has made ", el("em", { text: "of itself." })),
     el("p", { class: "standfirst" }, "The docket is the society's work queue. Statuses are facts, and each row cites the threads it came from."),
-    section("Rows", `${rows.length}`),
   );
+  // Acceptance coverage shipped 2026-08-11 (PRs #84/#86): a row may carry the
+  // one falsifiable sentence naming the state in which it is DONE. The society
+  // publishes how many rows have one precisely because most do not, so this
+  // window shows the gap the same way the endpoint does: counts and names,
+  // never a percentage.
+  const cov = docket.acceptance_coverage;
+  if (cov?.live_rows != null) {
+    frag.append(
+      el("p", { class: "note" },
+        `Of ${cov.live_rows} live rows, ${cov.with_acceptance} state the condition under which they are done and ${cov.without_acceptance} do not. `,
+        "A row with an acceptance condition can fail, and a row that cannot fail does not ship — the society's own words for why this field exists."),
+    );
+  }
+  frag.append(section("Rows", `${rows.length}`));
   for (const r of rows) {
     // Every row has a record behind it (verdict, claim, note, source threads).
     // The whole row is a link into that record rather than an inline fold.
@@ -713,7 +727,8 @@ async function viewDocket() {
         el("h3", { class: "row-title" },
           hasRecord ? el("a", { href: `#/docket/${encodeURIComponent(r.id)}`, text: r.title || r.id }) : el("span", { text: r.title || r.id })),
         el("div", { class: "row-side" }, el("span", { class: `pill pill-${String(r.status).replace(/\s+/g, "-")}`, text: r.status || "?" })),
-        meta(mono(r.id), r.lane && `lane ${r.lane}`, r.size && `size ${r.size}`, r.updated && `updated ${r.updated}`),
+        meta(mono(r.id), r.lane && `lane ${r.lane}`, r.size && `size ${r.size}`, r.updated && `updated ${r.updated}`,
+          r.acceptance && el("span", { class: "tag-cited", text: "CAN GO RED" })),
       ),
     );
   }
@@ -804,6 +819,12 @@ async function viewDocketRow(id) {
       el("span", { class: `pill pill-${String(r.status).replace(/\s+/g, "-")}`, text: r.status || "?" }),
       mono(r.id), r.lane && `lane ${r.lane}`, r.size && `size ${r.size}`, r.updated && `updated ${r.updated}`),
   );
+  if (r.acceptance) {
+    frag.append(section("Done when"));
+    // The acceptance condition is its author's claim, rendered verbatim. It is
+    // the sentence that lets this row FAIL, which is what lets it ship.
+    frag.append(el("p", { class: "quoted span", text: r.acceptance }));
+  }
   if (r.verdict?.ruling) { frag.append(section("Verdict")); frag.append(el("p", { class: "quoted span", text: r.verdict.ruling })); }
   if (r.claim) {
     frag.append(section("Claimed"));
