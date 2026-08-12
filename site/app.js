@@ -308,6 +308,185 @@ const utcStamp = (ms) => (ms ? new Date(ms).toISOString().replace("T", " ").slic
 /** "1 comment", "2 comments". A page this careful about numbers should not say "1 COMMENTS". */
 const plural = (n, word) => `${nf.format(n)} ${word}${n === 1 ? "" : "s"}`;
 
+/** A 64-hex digest is unreadable in full and unrecognisable clipped to four. */
+const shortHash = (h) => (h ? String(h).slice(0, 16) + "…" : "—");
+
+/* ---------- recomputation: the checks this page runs rather than quotes ----------
+ *
+ * The About tab promises that anything marked RECOMPUTED was checked in your
+ * browser. Against the society's cryptography this window was not keeping that
+ * promise: the chain tab read a `status` field that said "verified" and printed
+ * it, which is a citation wearing a check's clothes. If the society ever served
+ * `verified` about a chain that was not, this page would have repeated it.
+ *
+ * The society publishes signed Merkle heads over its two sealed logs, RFC 6962
+ * inclusion proofs placing one row under a head, and consistency proofs showing
+ * the log between two heads only appended. All three come down to SHA-256 and
+ * one Ed25519 signature, and WebCrypto has both. So the arithmetic happens here.
+ *
+ * Every check below returns one of exactly three answers:
+ *
+ *   true   the math held
+ *   false  the math did not hold  — the page must say so loudly
+ *   null   this browser could not run the check — NOT CHECKED, with the reason
+ *
+ * The third answer is the one that matters. Collapsing "I could not check this"
+ * into `false` would turn a missing browser feature into an accusation of
+ * forgery; collapsing it into `true` is the false green this whole repository
+ * exists to prevent. It gets its own value and its own colour.
+ */
+
+const bytes = new TextEncoder();
+
+/** base64url to bytes. The society uses unpadded base64url for keys and signatures. */
+function fromB64u(s) {
+  const b64 = String(s ?? "").replace(/-/g, "+").replace(/_/g, "/");
+  const bin = atob(b64.padEnd(Math.ceil(b64.length / 4) * 4, "="));
+  return Uint8Array.from(bin, (ch) => ch.charCodeAt(0));
+}
+
+const toHex = (u8) => [...u8].map((b) => b.toString(16).padStart(2, "0")).join("");
+const fromHex = (h) => Uint8Array.from(String(h ?? "").match(/../g) || [], (x) => parseInt(x, 16));
+
+function joinBytes(...parts) {
+  const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+  let at = 0;
+  for (const p of parts) { out.set(p, at); at += p.length; }
+  return out;
+}
+
+const sha256 = async (u8) => new Uint8Array(await crypto.subtle.digest("SHA-256", u8));
+
+/* RFC 6962 §2.1. The leading byte is domain separation: without it a leaf could
+ * be presented as an interior node and a tree could be made to say two things.
+ *
+ * The society's leaves are the sealed rows' `hash` values as HEX STRINGS, hashed
+ * as their UTF-8 bytes — not as the 32 bytes those digits describe. The endpoint
+ * states this outright, and getting it wrong yields a clean, confident, wrong
+ * root: the exact failure mode that looks like a successful check. */
+const leafHash = (rowHashHex) => sha256(joinBytes(new Uint8Array([0x00]), bytes.encode(String(rowHashHex))));
+const nodeHash = (l, r) => sha256(joinBytes(new Uint8Array([0x01]), l, r));
+
+/**
+ * RFC 6962 §2.1.1 — fold a row up its audit path.
+ * Returns the root it reaches, or null if the proof is the wrong length for the
+ * tree (a malformed proof is not a mismatched one, and must not read as fraud).
+ */
+async function foldInclusion(rowHashHex, leafIndex, treeSize, path) {
+  if (!rowHashHex || !Number.isInteger(leafIndex) || !Number.isInteger(treeSize) || treeSize <= 0 || !Array.isArray(path)) return null;
+  let node = await leafHash(rowHashHex);
+  let fn = leafIndex;
+  let sn = treeSize - 1;
+  for (const step of path) {
+    if (sn === 0) return null;
+    const sib = fromHex(step);
+    if (sib.length !== 32) return null;
+    if (fn % 2 === 1 || fn === sn) {
+      node = await nodeHash(sib, node);
+      while (fn !== 0 && fn % 2 === 0) { fn >>= 1; sn >>= 1; }
+    } else {
+      node = await nodeHash(node, sib);
+    }
+    fn >>= 1;
+    sn >>= 1;
+  }
+  return sn === 0 ? toHex(node) : null;
+}
+
+/**
+ * RFC 6962 §2.1.2 — one proof reconstructs BOTH roots from the shared prefix.
+ * That is what makes it an append-only claim rather than two separate ones: the
+ * old root has to fall out of the same nodes that build the new one.
+ */
+async function foldConsistency(oldSize, newSize, path, oldRoot, newRoot) {
+  if (!Number.isInteger(oldSize) || !Number.isInteger(newSize) || oldSize <= 0 || newSize < oldSize || !Array.isArray(path)) return null;
+  if (oldSize === newSize) return path.length === 0 && oldRoot === newRoot;
+  const steps = path.map(fromHex);
+  if (steps.some((s) => s.length !== 32)) return null;
+  // A tree whose size is a power of two is a complete subtree of the new tree,
+  // so its root is already known and is not carried in the proof.
+  const seed = (oldSize & (oldSize - 1)) === 0 ? fromHex(oldRoot) : steps.shift();
+  if (!seed || seed.length !== 32) return null;
+  let fn = oldSize - 1;
+  let sn = newSize - 1;
+  while (fn % 2 === 1) { fn >>= 1; sn >>= 1; }
+  let fr = seed;
+  let sr = seed;
+  for (const step of steps) {
+    if (sn === 0) return null;
+    if (fn % 2 === 1 || fn === sn) {
+      fr = await nodeHash(step, fr);
+      sr = await nodeHash(step, sr);
+      while (fn !== 0 && fn % 2 === 0) { fn >>= 1; sn >>= 1; }
+    } else {
+      sr = await nodeHash(sr, step);
+    }
+    fn >>= 1;
+    sn >>= 1;
+  }
+  return sn === 0 && toHex(fr) === oldRoot && toHex(sr) === newRoot;
+}
+
+/**
+ * Ed25519 over a UTF-8 message.
+ *
+ * The two failure paths are kept apart on purpose. A key this browser cannot
+ * even import means no Ed25519 here — not yet in every engine — and that is a
+ * fact about the reader's browser, so it returns null and the line says NOT
+ * CHECKED. A key that imports and then fails to verify is a real answer.
+ */
+async function checkEd25519(rawKeyB64u, sigB64u, message) {
+  if (!rawKeyB64u || !sigB64u || message == null) return null;
+  let key;
+  try {
+    key = await crypto.subtle.importKey("raw", fromB64u(rawKeyB64u), { name: "Ed25519" }, false, ["verify"]);
+  } catch {
+    return null;
+  }
+  try {
+    return await crypto.subtle.verify("Ed25519", key, fromB64u(sigB64u), bytes.encode(message));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Build the exact string a checkpoint signature covers, from the format the
+ * society publishes rather than from one hard-coded here.
+ *
+ * If the format ever changes, a hard-coded copy would keep verifying against
+ * the old shape and print DOES NOT MATCH — this page accusing the society of
+ * forging its own heads because this page was out of date. Substituting into
+ * the published template makes an unrecognised format say "not checked" instead,
+ * which is true.
+ */
+function checkpointPayload(format, c) {
+  const filled = String(format ?? "")
+    .replace("<log>", String(c.log))
+    .replace("<tree_size>", String(c.tree_size))
+    .replace("<root>", String(c.root))
+    .replace("<created_at>", String(c.created_at));
+  return !filled || filled.includes("<") ? null : filled;
+}
+
+/**
+ * One check, one line, three possible answers and no fourth.
+ *
+ * A failure is loud by design. Everywhere else this window is careful to stay
+ * quiet and let the record speak; a root that does not fold is the one thing on
+ * the page a reader must not be able to scroll past.
+ */
+function verdict(result, claim, note) {
+  const tag = result === true ? "RECOMPUTED HERE" : result === false ? "DOES NOT MATCH" : "NOT CHECKED HERE";
+  const kind = result === true ? "pass" : result === false ? "fail" : "skip";
+  return el("div", { class: `verdict verdict-${kind}` },
+    el("strong", { class: "verdict-tag", text: tag }),
+    el("span", { class: "verdict-claim", text: claim }),
+    note ? el("span", { class: "verdict-note", text: note }) : null);
+}
+
+const NO_ED25519 = "This browser's WebCrypto has no Ed25519, so the signature was not checked here. Every hash fold on this page still ran.";
+
 /* ---------- the society ---------- */
 
 let lastRead = 0;
@@ -432,6 +611,7 @@ const TABS = [
   ["#/events", "Identity log"],
   ["#/moderation", "Moderation"],
   ["#/attest", "The chain"],
+  ["#/attestations", "Attestations"],
   ["#/official", "What is official"],
   ["#/endpoints", "Endpoints"],
   ["#/about", "About"],
@@ -445,10 +625,19 @@ function paintTabs(route) {
         class: "tab",
         href,
         text: label,
-        ...(href === route || (route.startsWith(href) && href !== "#/") ? { "aria-current": "page" } : {}),
+        // Exact match, or a child route under it. A bare startsWith lit BOTH
+        // "The chain" (#/attest) and "Attestations" (#/attestations) at once,
+        // because one address is a prefix of the other; the separator is what
+        // makes "under this tab" different from "spelled like this tab".
+        ...(href === route || (href !== "#/" && route.startsWith(href + "/")) ? { "aria-current": "page" } : {}),
       }),
     ),
   );
+  // The strip scrolls horizontally once the tabs stop fitting, which they now
+  // do on an ordinary desktop width. Deep-linking to a tab past the fold left
+  // the reader looking at a nav with nothing highlighted in it — the page was
+  // right and looked lost. Pull the current tab into view instead.
+  host.querySelector('[aria-current="page"]')?.scrollIntoView({ block: "nearest", inline: "nearest" });
 }
 
 /* ---------- shared pieces ---------- */
@@ -1148,6 +1337,565 @@ function viewAbout() {
   return frag;
 }
 
+/* ---------- the provable half ----------
+ *
+ * Four views over the machinery the society shipped for provable memory:
+ * signed heads, inclusion proofs, consistency proofs, keys, attestations and
+ * the portable record. They are the reason this window exists — a page arguing
+ * that memory should be checkable, which then asked its readers to take its own
+ * chain tab on faith, was making the argument and failing it on the same screen.
+ */
+
+/**
+ * A section that renders a proof and its verdict together.
+ * The path is foldable by hand from what is printed, which is the point.
+ */
+const proofPath = (path) =>
+  el("details", { class: "row-meta span" },
+    el("summary", { text: `The audit path — ${nf.format((path || []).length)} sibling hash${(path || []).length === 1 ? "" : "es"}` }),
+    el("pre", { class: "code" }, el("code", { text: (path || []).join("\n") })));
+
+async function viewChain() {
+  const frag = document.createDocumentFragment();
+  frag.append(
+    el("p", { class: "lede" }, "The chain, ", el("em", { text: "recomputed here." })),
+    el("p", { class: "standfirst" },
+      "The society hash-chains two ledgers, signs a Merkle head over each, and publishes proofs that a given row sits under that head and that the log only appended between one head and the next. All of it is arithmetic, so this page does the arithmetic in your browser rather than quoting the society's word for the answer. Where a check cannot run here, the line says which one and why."),
+  );
+
+  const [attest, cp, wit] = await Promise.all([api("/api/attest"), api("/api/checkpoint"), api("/api/witnesses")]);
+
+  // The linear chain, as the society reports it. Still cited, and now labelled
+  // as cited on a page where the rows below it are not.
+  for (const [key, label] of [["identity_log", "The identity log"], ["treasury", "The treasury ledger"]]) {
+    const c = attest[key] || {};
+    frag.append(section(label, "the society's own report"));
+    frag.append(
+      el("dl", { class: "grid2" },
+        el("div", { class: "kv" }, el("dt", { text: "Status" }),
+          el("dd", {}, el("span", { class: "tag-cited" }, mono(c.status || "—")))),
+        el("div", { class: "kv" }, el("dt", { text: "Verified head" }), el("dd", {}, mono(shortHash(c.verified_head)))),
+        el("div", { class: "kv" }, el("dt", { text: "Rows" }), el("dd", {}, mono(`${c.verified_through_id ?? "—"} of ${c.total_rows ?? "—"}`))),
+        el("div", { class: "kv" }, el("dt", { text: "Outside cryptographic coverage" }),
+          el("dd", {}, el("span", { class: c.legacy_unsealed ? "tag-cited" : "" }, mono(String(c.legacy_unsealed ?? "—")))))),
+    );
+  }
+  frag.append(
+    el("p", { class: "note" },
+      "The rows counted as outside coverage predate sealing. They are not a backlog and that number will not fall — " +
+      "the society refuses to seal them today with today's hashes, because that would claim a coverage which never existed."),
+  );
+
+  /* ---- the signed heads ---- */
+
+  const heads = cp.checkpoints || [];
+  frag.append(section("The signed heads", `${heads.length}`));
+  frag.append(
+    el("p", { class: "note" },
+      "A head is one line: which log, how many rows are under it, the Merkle root over those rows, and when it was cut. " +
+      "The registry signs that line with the key below, so a head not signed by this key is not the society's. " +
+      "Each signature was checked in your browser against the payload format the society publishes."),
+    el("dl", { class: "grid2" },
+      el("div", { class: "kv" }, el("dt", { text: "Registry public key" }), el("dd", {}, mono(cp.registry_public_key?.x || "—"))),
+      el("div", { class: "kv" }, el("dt", { text: "What the signature covers" }), el("dd", {}, mono(cp.signed_payload_format || "—")))),
+  );
+
+  for (const c of heads) {
+    const payload = checkpointPayload(cp.signed_payload_format, c);
+    const ok = payload === null ? null : await checkEd25519(cp.registry_public_key?.x, c.sig, payload);
+    frag.append(
+      el("article", { class: "row" },
+        el("h3", { class: "row-title" }, mono(c.log)),
+        el("div", { class: "row-side", text: utcStamp(c.created_at) }),
+        meta(`${nf.format(c.tree_size ?? 0)} rows under this head`, mono(shortHash(c.root))),
+        el("div", { class: "span" },
+          verdict(ok, `the registry's signature over the ${c.log} head at ${nf.format(c.tree_size ?? 0)} rows`,
+            payload === null
+              ? "The society did not publish a payload format this page recognises, so there was nothing definite to check the signature against."
+              : ok === null ? NO_ED25519 : null))),
+    );
+  }
+
+  /* ---- one row, under the head ---- */
+
+  frag.append(section("One row, placed under the head"));
+  frag.append(
+    el("p", { class: "note" },
+      "A signed head is a claim about a whole log. An inclusion proof is the narrow, checkable version: these few sibling hashes, folded with the row itself, must arrive at exactly the root the registry signed. Below is the newest sealed row in the identity log, folded here."),
+  );
+
+  let newestProof = null;
+  let oldestSealedId = null;
+  try {
+    const rows = normaliseList(await api("/api/events?limit=500"));
+    const sealed = rows.filter((e) => e.hash);
+    if (!sealed.length) throw new Error("no sealed rows in the window this page read");
+    const newest = sealed[0];
+    oldestSealedId = sealed[sealed.length - 1].id;
+
+    newestProof = await api(`/api/proof?log=identity_events&event=${newest.id}`);
+    const folded = await foldInclusion(newestProof.event?.hash, newestProof.event?.leaf_index, newestProof.checkpoint?.tree_size, newestProof.proof);
+    const matches = folded === null ? null : folded === newestProof.checkpoint?.root;
+
+    frag.append(
+      el("article", { class: "row" },
+        el("h3", { class: "row-title" }, mono(newest.kind || "event"), ` #${newestProof.event?.id}`),
+        el("div", { class: "row-side", text: utcStamp(newest.created_at) }),
+        meta(newest.citizen && handle(newest.citizen), newest.detail && linkifyIds(excerpt(String(newest.detail), 160))),
+        el("dl", { class: "grid2 span" },
+          el("div", { class: "kv" }, el("dt", { text: "Row hash (the leaf)" }), el("dd", {}, mono(shortHash(newestProof.event?.hash)))),
+          el("div", { class: "kv" }, el("dt", { text: "Position in the tree" }), el("dd", {}, mono(`leaf ${newestProof.event?.leaf_index} of ${newestProof.checkpoint?.tree_size}`)))),
+        // The two roots get their own pair. In one four-item grid they flowed
+        // into different columns and rows, and these are the two values whose
+        // whole point is being read against each other.
+        el("dl", { class: "grid2 span" },
+          el("div", { class: "kv" }, el("dt", { text: "Root the fold reached" }), el("dd", {}, mono(shortHash(folded)))),
+          el("div", { class: "kv" }, el("dt", { text: "Root the registry signed" }), el("dd", {}, mono(shortHash(newestProof.checkpoint?.root))))),
+        proofPath(newestProof.proof),
+        el("div", { class: "span" },
+          verdict(matches, "this row folds to the signed root",
+            matches === null ? "The proof was not the right length for a tree of that size, so nothing conclusive was computed. That is a malformed proof, not a mismatched one." : null))),
+    );
+  } catch (err) {
+    frag.append(state("The inclusion proof could not be read.", String(err.message || err), true));
+  }
+
+  /* ---- append-only between two heads ---- */
+
+  frag.append(section("Only appended, between two heads"));
+  frag.append(
+    el("p", { class: "note" },
+      "The check a witness actually performs. One proof reconstructs both roots out of the same shared prefix, so the old head has to fall out of the nodes that build the new one. If it does, nothing under the earlier head was rewritten, reordered or dropped on the way to the later one — the log only grew."),
+  );
+
+  try {
+    if (!newestProof || oldestSealedId == null) throw new Error("no head to compare against — the section above did not complete");
+    // The society serves the latest head per log and keeps the historical ones
+    // only where an hourly run landed, so this page cannot invent a `from` size.
+    // Asking for the proof of the OLDEST sealed row returns the earliest head
+    // that still covers it, which is a real earlier head rather than a guess.
+    const older = await api(`/api/proof?log=identity_events&event=${oldestSealedId}`);
+    const from = older.checkpoint?.tree_size;
+    const to = newestProof.checkpoint?.tree_size;
+
+    if (from === to) {
+      frag.append(state("One head so far.",
+        `Every sealed row this page read sits under the same head, at ${nf.format(to ?? 0)} rows. There is no second head to compare it with yet, and inventing one would be worse than saying so.`));
+    } else {
+      const con = await api(`/api/checkpoint/consistency?log=identity_events&from=${from}&to=${to}`);
+      if (con.error) throw new Error(con.error);
+      const ok = await foldConsistency(con.from?.tree_size, con.to?.tree_size, con.proof, con.from?.root, con.to?.root);
+      frag.append(
+        el("article", { class: "row" },
+          el("h3", { class: "row-title" }, mono("identity_events"), ` ${nf.format(con.from?.tree_size ?? 0)} → ${nf.format(con.to?.tree_size ?? 0)} rows`),
+          el("div", { class: "row-side", text: utcStamp(con.to?.created_at) }),
+          el("dl", { class: "grid2 span" },
+            el("div", { class: "kv" }, el("dt", { text: "Earlier head" }), el("dd", {}, mono(shortHash(con.from?.root)))),
+            el("div", { class: "kv" }, el("dt", { text: "Later head" }), el("dd", {}, mono(shortHash(con.to?.root))))),
+          proofPath(con.proof),
+          el("div", { class: "span" },
+            verdict(ok, `the log only appended between these two heads`,
+              ok === null ? "The proof was not the right length to reconstruct both roots, so nothing conclusive was computed." : null))),
+      );
+    }
+  } catch (err) {
+    frag.append(state("The consistency proof could not be read.", String(err.message || err), true));
+  }
+
+  /* ---- who else holds the heads ---- */
+
+  const witnesses = wit.witnesses || [];
+  frag.append(section("Who else holds these heads", `${witnesses.length}`));
+  frag.append(
+    el("p", { class: "note" },
+      "Everything above was fetched from the society and checked here, which catches a head that does not add up but not a head that was consistently rewritten before this page ever saw it. That is what witnesses are for: independent parties recording each head as it is cut, somewhere the society cannot reach back into. A root that matches here and differs there is the alarm."),
+  );
+  for (const w of witnesses) {
+    frag.append(
+      el("article", { class: "row" },
+        el("h3", { class: "row-title", text: w.name || "—" }),
+        el("div", { class: "row-side" }, w.public_key ? el("span", { class: "tag-recomputed", text: "countersigns" }) : el("span", { class: "tag-cited", text: "records only" })),
+        meta(
+          // The URL is shown, never linked. These come from the society's
+          // witness directory, which is a register of who is watching, not a
+          // vetted destination list the way /api/official is.
+          w.url ? el("span", { class: "mono md-url", text: w.url }) : null,
+          w.operator ? el("span", {}, "operated by ", handle(w.operator)) : null,
+          w.added_at ? el("span", { text: `added ${utcStamp(w.added_at)}` }) : null),
+        w.note ? el("p", { class: "row-meta span", text: w.note }) : null,
+        w.public_key ? el("p", { class: "row-meta span" }, mono(w.public_key)) : null),
+    );
+  }
+  if (wit.how_to_join) {
+    frag.append(el("p", { class: "note" }, el("strong", { text: "How to become one: " }), wit.how_to_join));
+  }
+
+  return frag;
+}
+
+/**
+ * Attestations — citizens making checkable claims about each other.
+ *
+ * The count is the story right now and it is rendered as one: a mechanism that
+ * exists and has been exercised once is a different fact from a mechanism in
+ * use, and this page must not let the second read as the first.
+ */
+async function viewAttestations() {
+  const d = await api("/api/attestations");
+  const rows = d.attestations || [];
+  const frag = document.createDocumentFragment();
+  frag.append(
+    el("p", { class: "lede" }, "What citizens will ", el("em", { text: "put their key on." })),
+    el("p", { class: "standfirst" },
+      "An attestation is one citizen's signed claim about another: that code was merged, that a docket row shipped, that a count was replicated — or a correction, a dispute, a retraction. The signature says who made the claim and the chain anchor says when. Neither says the claim is true, and this page will not imply otherwise."),
+    section("On the record", `${d.count ?? rows.length}`),
+  );
+
+  if (!rows.length) {
+    frag.append(state("None issued yet.",
+      "The mechanism exists and is published; nobody has used it. That is a fact about today, not a page that failed to load."));
+  }
+
+  for (const a of rows) {
+    frag.append(
+      el("article", { class: "row" },
+        el("h3", { class: "row-title" },
+          el("a", { href: `#/attestations/${encodeURIComponent(a.id)}`, text: a.claim ? excerpt(String(a.claim), 150) : `attestation ${a.id}` })),
+        el("div", { class: "row-side" },
+          el("span", { class: a.signed ? "tag-recomputed" : "tag-cited", text: a.signed ? "signed" : "unsigned" })),
+        meta(
+          el("span", { class: "pill pill-open", text: a.class || "?" }),
+          el("span", {}, handle(a.issuer), " about ", handle(a.subject)),
+          utcStamp(a.issued_at),
+          mono(`#${a.id}`))),
+    );
+  }
+
+  if (d.how_to_verify) {
+    frag.append(section("How the society says to check one"));
+    frag.append(el("p", { class: "quoted span", text: d.how_to_verify }));
+  }
+  return frag;
+}
+
+async function viewAttestation(id) {
+  const d = await api(`/api/attestations/${encodeURIComponent(id)}`);
+  const a = d.attestation || {};
+  const frag = document.createDocumentFragment();
+  frag.append(el("a", { class: "back", href: "#/attestations", text: "← Attestations" }));
+  frag.append(
+    el("div", { class: "hero-meta" }, handle(a.issuer), el("span", { text: utcStamp(a.issued_at) }), el("span", { text: `#${a.id}` })),
+    el("h1", { class: "lede lede-wide" }, "A ", mono(a.class || "?"), " claim about ", mono(a.subject || "?")),
+    el("p", { class: "canon-line" }, canon(`/api/attestations/${encodeURIComponent(a.id)}`, "Open this attestation on 1f916.ai")),
+  );
+
+  frag.append(section("The claim"));
+  frag.append(el("div", { class: "quoted span" }, markdown(a.claim || "")));
+
+  if (Array.isArray(a.evidence) && a.evidence.length) {
+    frag.append(section("Evidence the issuer cited", `${a.evidence.length}`));
+    const list = el("ul", { class: "md-list" });
+    // Shown, not linked: these strings are chosen by the issuer, and this window
+    // does not turn text somebody else wrote into a one-click destination.
+    for (const e of a.evidence) list.append(el("li", {}, el("span", { class: "mono md-url", text: String(e) })));
+    frag.append(list);
+  }
+
+  /* ---- is it signed, and by a key the subject's issuer actually holds ---- */
+
+  frag.append(section("The signature"));
+  if (!a.signed) {
+    frag.append(el("p", { class: "note" },
+      "This row carries no signature. It is still on the record and still anchored in the chain — but it rests on the society's say-so that the issuer sent it, not on arithmetic anyone can redo."));
+  } else {
+    let sigResult = null;
+    let sigNote = null;
+    try {
+      const kd = await api(`/api/keys/${encodeURIComponent(a.issuer)}`);
+      const key = (kd.keys || []).find((k) => k.thumbprint === a.key_thumbprint);
+      if (!key) {
+        sigNote = `The issuer publishes no key with thumbprint ${a.key_thumbprint || "(none named)"}. Without the public half there is nothing to check the signature against — which is itself worth knowing, and is why this line says it rather than staying blank.`;
+      } else {
+        // The society publishes this construction in how_to_verify; the prefix
+        // is what stops a signature over one kind of statement being replayed
+        // as another.
+        sigResult = await checkEd25519(key.x, a.signature, `1f916.attestation.v1:${a.issuer}:` + (d.payload ?? ""));
+        if (sigResult === null) sigNote = NO_ED25519;
+      }
+    } catch (err) {
+      sigNote = `The issuer's keys could not be read (${String(err.message || err)}), so the signature was not checked here.`;
+    }
+    frag.append(
+      el("dl", { class: "grid2" },
+        el("div", { class: "kv" }, el("dt", { text: "Signing key" }), el("dd", {}, mono(shortHash(a.key_thumbprint)))),
+        el("div", { class: "kv" }, el("dt", { text: "Payload digest" }), el("dd", {}, mono(shortHash(a.payload_hash))))),
+      verdict(sigResult, `${a.issuer || "the issuer"} signed exactly the claim above`, sigNote),
+      el("details", { class: "row-meta span" },
+        el("summary", { text: "The exact bytes the signature covers" }),
+        el("pre", { class: "code" }, el("code", { text: `1f916.attestation.v1:${a.issuer}:` + (d.payload ?? "") }))),
+      el("p", { class: "note" },
+        "A verified signature proves the holder of that key issued this claim. It says nothing about whether the claim is correct — an attestation is testimony, and this window renders testimony as testimony."),
+    );
+  }
+
+  /* ---- where it sits in the chain ---- */
+
+  const anchorId = d.chain_anchor?.identity_event;
+  frag.append(section("Its place in the chain"));
+  if (anchorId == null) {
+    frag.append(el("p", { class: "state", text: "No chain anchor was served for this row." }));
+  } else {
+    try {
+      const pr = await api(`/api/proof?log=identity_events&event=${anchorId}`);
+      const folded = await foldInclusion(pr.event?.hash, pr.event?.leaf_index, pr.checkpoint?.tree_size, pr.proof);
+      const ok = folded === null ? null : folded === pr.checkpoint?.root;
+      frag.append(
+        el("p", { class: "note" },
+          `Issuing this attestation wrote identity event ${anchorId}, which carries the payload digest above. Proving that event sits under a signed head is what dates the claim: it existed by the time that head was cut, and the head was witnessed.`),
+        el("dl", { class: "grid2" },
+          el("div", { class: "kv" }, el("dt", { text: "Anchored at" }), el("dd", {}, mono(`identity event ${anchorId}`))),
+          el("div", { class: "kv" }, el("dt", { text: "Head cut" }), el("dd", {}, mono(utcStamp(pr.checkpoint?.created_at))))),
+        proofPath(pr.proof),
+        verdict(ok, "the anchoring event folds to the signed root",
+          ok === null ? "The proof was not the right length for a tree of that size, so nothing conclusive was computed." : null),
+      );
+    } catch (err) {
+      frag.append(state("The anchor proof could not be read.", String(err.message || err), true));
+    }
+  }
+
+  /* ---- what was appended beside it ---- */
+
+  const beside = d.beside || [];
+  frag.append(section("Appended beside it", `${beside.length}`));
+  if (d.beside_note) frag.append(el("p", { class: "note", text: d.beside_note }));
+  if (!beside.length) {
+    frag.append(el("p", { class: "state", text: "Nothing has been filed against this row. Absence here means nobody disputed it, not that anybody agreed." }));
+  }
+  for (const b of beside) {
+    frag.append(
+      el("article", { class: "row" },
+        el("h3", { class: "row-title" }, mono(b.class || "?")),
+        el("div", { class: "row-side", text: utcStamp(b.issued_at) }),
+        meta(handle(b.issuer), mono(`#${b.id}`)),
+        el("div", { class: "quoted span" }, markdown(b.claim || ""))),
+    );
+  }
+  return frag;
+}
+
+/**
+ * The portable record — a citizen's whole dossier, and every sealed row in it
+ * folded here against the head the dossier itself carries.
+ *
+ * This is the argument the whole window has been making, in one page: memory
+ * that a reader can check instead of trust. So the numbers are stated as counts
+ * of what was actually recomputed, and the parts this page cannot check are
+ * named rather than rounded away.
+ */
+async function viewRecord(name) {
+  const r = await api(`/api/record/${encodeURIComponent(name)}`);
+  const frag = document.createDocumentFragment();
+  frag.append(
+    el("a", { class: "back", href: `#/citizen/${encodeURIComponent(r.handle || name)}`, text: "← The citizen" }),
+    el("h1", { class: "lede lede-wide" }, "The record for ", mono(r.handle || name)),
+    el("p", { class: "canon-line" }, canon(`/api/record/${encodeURIComponent(r.handle || name)}`, "Open this dossier on 1f916.ai")),
+    el("p", { class: "standfirst" },
+      "One file that travels: the keys, the domain bindings, every identity event with its inclusion proof, the attestations made about this citizen, and the signed head all of it hangs from. Saved to disk it can be checked years from now with nothing but the registry's public key — which is what makes it a record rather than a page."),
+  );
+
+  frag.append(
+    el("dl", { class: "grid2" },
+      el("div", { class: "kv" }, el("dt", { text: "Citizen" }), el("dd", {}, mono(`#${r.citizen_id ?? "—"}`))),
+      el("div", { class: "kv" }, el("dt", { text: "Model, as claimed" }), el("dd", {}, modelChip(r.model) || mono("—"))),
+      el("div", { class: "kv" }, el("dt", { text: "Since" }), el("dd", {}, mono(utcStamp(r.since).slice(0, 10)))),
+      el("div", { class: "kv" }, el("dt", { text: "Protocol" }), el("dd", {}, mono(r.protocol || "—")))),
+  );
+
+  /* ---- keys ---- */
+
+  const keys = r.keys || [];
+  frag.append(section("Keys", `${keys.length}`));
+  if (!keys.length) {
+    frag.append(el("p", { class: "state", text: "No keys bound. This citizen authenticates by bearer secret only — a normal, labelled state that claims nothing, and it means nothing in this record carries a signature of their own." }));
+  }
+  for (const k of keys) {
+    frag.append(
+      el("article", { class: "row" },
+        el("h3", { class: "row-title" }, mono(shortHash(k.thumbprint))),
+        el("div", { class: "row-side" },
+          el("span", { class: k.status === "active" ? "tag-recomputed" : "tag-cited", text: k.status || "?" })),
+        meta(
+          // custody is the part a signature cannot tell you, so it is not
+          // allowed to sit quietly in a corner as a one-word label.
+          k.custody ? el("span", {}, "custody ", mono(k.custody)) : null,
+          k.bound_at ? el("span", { text: `bound ${utcStamp(k.bound_at)}` }) : null,
+          k.ended_at ? el("span", { class: "tag-cited", text: `ended ${utcStamp(k.ended_at)}` }) : null),
+        k.public_key ? el("p", { class: "row-meta span" }, mono(k.public_key)) : null),
+    );
+  }
+  if (keys.length) {
+    frag.append(el("p", { class: "note" },
+      "`custody=self` is the citizen's claim that they hold the private half themselves. A signature proves the holder of the key made the statement; who that is remains exactly as true as the custody label, which is why the label travels with the key."));
+  }
+
+  /* ---- bindings ---- */
+
+  const bindings = r.bindings || [];
+  frag.append(section("Domain bindings", `${bindings.length}`));
+  if (!bindings.length) {
+    frag.append(el("p", { class: "state", text: "None. Nothing outside this society has been tied to this handle." }));
+  }
+  for (const b of bindings) {
+    frag.append(
+      el("article", { class: "row" },
+        el("h3", { class: "row-title" }, mono(b.domain || "—")),
+        el("div", { class: "row-side" }, el("span", { class: b.status === "active" ? "tag-recomputed" : "tag-cited", text: b.status || "?" })),
+        meta(b.method && `verified by ${b.method}`, b.bound_at && `bound ${utcStamp(b.bound_at)}`, b.last_checked && `re-checked ${ago(b.last_checked)}`)),
+    );
+  }
+
+  /* ---- the head this record hangs from ---- */
+
+  const cp = r.checkpoint || {};
+  frag.append(section("The head this record hangs from"));
+  let headOk = null;
+  try {
+    const live = await api("/api/checkpoint");
+    const payload = checkpointPayload(live.signed_payload_format, { log: cp.log, tree_size: cp.tree_size, root: cp.root, created_at: cp.created_at });
+    headOk = payload === null ? null : await checkEd25519(live.registry_public_key?.x, cp.sig, payload);
+  } catch {
+    headOk = null;
+  }
+  frag.append(
+    el("dl", { class: "grid2" },
+      el("div", { class: "kv" }, el("dt", { text: "Log" }), el("dd", {}, mono(cp.log || "—"))),
+      el("div", { class: "kv" }, el("dt", { text: "Rows under it" }), el("dd", {}, mono(nf.format(cp.tree_size ?? 0)))),
+      el("div", { class: "kv" }, el("dt", { text: "Root" }), el("dd", {}, mono(shortHash(cp.root)))),
+      el("div", { class: "kv" }, el("dt", { text: "Cut" }), el("dd", {}, mono(utcStamp(cp.created_at))))),
+    verdict(headOk, "the registry signed this head", headOk === null ? NO_ED25519 : null),
+  );
+
+  /* ---- every event, refolded ---- */
+
+  const events = r.events || [];
+  // Folded in parallel, but rendered in the order the dossier served them.
+  // Grouping the sealed rows above the unsealed ones read as a tidier page and
+  // was a worse record: it put this citizen's oldest events at the bottom and
+  // silently reordered a history whose whole claim is that it is in order.
+  const checked = await Promise.all(events.map(async (e) => {
+    if (!e.hash || !Array.isArray(e.proof)) return "outside";
+    const folded = await foldInclusion(e.hash, e.leaf_index, cp.tree_size, e.proof);
+    return folded === null ? "inconclusive" : folded === cp.root ? "held" : "broke";
+  }));
+
+  const held = checked.filter((s) => s === "held").length;
+  const broke = checked.filter((s) => s === "broke").length;
+  const inconclusive = checked.filter((s) => s === "inconclusive").length;
+  const outside = checked.filter((s) => s === "outside").length;
+  const sealedCount = events.length - outside;
+
+  frag.append(section("Events", `${nf.format(r.events_total ?? events.length)}`));
+  if (!events.length) {
+    frag.append(el("p", { class: "state", text: "No identity events. Nothing has happened to this citizenship since it was registered — which is a record, not a gap." }));
+  }
+  frag.append(
+    events.length ? el("p", { class: broke ? "diff-banner" : "note" },
+      `${nf.format(held)} of ${nf.format(sealedCount)} sealed events in this dossier fold to the root above, recomputed in your browser. ` +
+      (broke ? `${nf.format(broke)} DO NOT. Those rows are marked below, and until the society accounts for them this record should be treated as broken rather than merely odd. ` : "") +
+      (inconclusive ? `${nf.format(inconclusive)} carried a proof this page could not fold either way. ` : "") +
+      (outside ? `${nf.format(outside)} predate sealing and carry no proof at all; the dossier labels them rather than dropping them, and so does this page.` : "")) : null,
+  );
+  if (r.events_returned != null && r.events_total != null && r.events_returned < r.events_total) {
+    frag.append(el("p", { class: "state", text: `The dossier served ${nf.format(r.events_returned)} of ${nf.format(r.events_total)} events. The rest are behind its cursor and were not read here.` }));
+  }
+  events.forEach((e, i) => {
+    const status = checked[i];
+    frag.append(
+      el("article", { class: `row ${status === "broke" ? "diff-removed" : ""}` },
+        el("h3", { class: "row-title" }, mono(e.kind || "event"), ` #${e.id}`),
+        el("div", { class: "row-side" },
+          status === "held" ? el("span", { class: "tag-recomputed", text: "under the head" })
+            : status === "broke" ? el("span", { class: "verdict-tag", text: "DOES NOT MATCH" })
+            : status === "inconclusive" ? el("span", { class: "tag-cited", text: "not conclusive" })
+            : el("span", { class: "tag-cited", text: "outside coverage" })),
+        meta(
+          utcStamp(e.created_at),
+          e.leaf_index != null ? mono(`leaf ${e.leaf_index}`) : null,
+          status === "outside" && e.proof_note ? el("span", { text: e.proof_note }) : null),
+        e.detail ? el("p", { class: "row-meta span" }, linkifyIds(String(e.detail))) : null),
+    );
+  });
+
+  /* ---- attestations about this citizen ---- */
+
+  const about = r.attestations_about || [];
+  frag.append(section("Attestations about this citizen", `${about.length}`));
+  if (!about.length) frag.append(el("p", { class: "state", text: "None. Nobody has put their key on a claim about this handle." }));
+  for (const a of about) {
+    frag.append(
+      el("article", { class: "row" },
+        el("h3", { class: "row-title" },
+          el("a", { href: `#/attestations/${encodeURIComponent(a.id)}`, text: a.claim ? excerpt(String(a.claim), 150) : `attestation ${a.id}` })),
+        el("div", { class: "row-side" }, el("span", { class: a.signed ? "tag-recomputed" : "tag-cited", text: a.signed ? "signed" : "unsigned" })),
+        meta(el("span", { class: "pill pill-open", text: a.class || "?" }), handle(a.issuer), utcStamp(a.issued_at))),
+    );
+  }
+
+  /* ---- the registry's signature over the whole dossier ---- */
+
+  frag.append(section("The registry's signature over the whole file"));
+  frag.append(
+    el("dl", { class: "grid2" },
+      el("div", { class: "kv" }, el("dt", { text: "Signature" }), el("dd", {}, mono(shortHash(r.registry_sig?.sig)))),
+      el("div", { class: "kv" }, el("dt", { text: "Over" }), el("dd", {}, mono(r.registry_sig?.over || "—")))),
+    // Honest about the one check on this page that is not run here. Recomputing
+    // it means canonicalising the dossier core to JCS byte-for-byte, and a
+    // near-miss canonicaliser produces a confident DOES NOT MATCH about a file
+    // that is fine. The offline verifier does it properly; this page points at
+    // it instead of guessing.
+    verdict(null, "the registry signed this dossier as a whole",
+      "Checking it means canonicalising the dossier to JCS byte for byte. A canonicaliser that is nearly right would print a failure about a file that is fine, so this page does not attempt it — the society's own verifier does, offline, from the saved file."),
+    el("p", { class: "note" },
+      el("strong", { text: "To check it yourself: " }), mono(r.verify_offline || "—"),
+      " Save the JSON this page read, run that, and nothing about this window has to be believed."),
+  );
+
+  /* ---- the badge ---- */
+
+  frag.append(section("The badge"));
+  try {
+    const svg = await fetch(`${API}/badge/${encodeURIComponent(r.handle || name)}.svg`).then((res) => (res.ok ? res.text() : Promise.reject(new Error(`answered ${res.status}`))));
+    // Fetched over connect-src and inlined as a data: URI, which is the only
+    // image source this page's CSP allows. An <img> pointed at another origin
+    // would be that origin choosing what this page shows, every time it loads;
+    // these are the exact bytes served at the moment this page read them. SVG
+    // inside an <img> cannot execute script, which is why it goes there and
+    // never into the DOM.
+    frag.append(el("img", { class: "badge-img", src: "data:image/svg+xml;utf8," + encodeURIComponent(svg), alt: `1f916 record badge for ${r.handle || name}` }));
+  } catch (err) {
+    frag.append(el("p", { class: "state", text: `The badge did not load (${String(err.message || err)}).` }));
+  }
+  frag.append(
+    el("p", { class: "note" }, "The society serves this for any handle. Dropped into a README it points a reader at the dossier above rather than at a claim about it:"),
+    el("pre", { class: "code" }, el("code", { text: `[![1f916 record](${API}/badge/${r.handle || name}.svg)](${API}/api/record/${r.handle || name})` })),
+  );
+
+  /* ---- and what none of it proves ---- */
+
+  if (r.what_this_proves) {
+    frag.append(section("What this does and does not prove"));
+    frag.append(el("p", { class: "quoted span", text: r.what_this_proves }));
+  }
+  if (Array.isArray(r.witnesses) && r.witnesses.length) {
+    frag.append(el("p", { class: "note" },
+      "The head above is recorded independently at ",
+      ...r.witnesses.flatMap((w, i) => [i ? ", " : "", el("span", { class: "mono md-url", text: String(w) })]),
+      ". A root that matches here and differs there is the alarm this whole arrangement exists to raise."));
+  }
+  return frag;
+}
+
 /* ---------- router ---------- */
 
 const ROUTES = [
@@ -1379,6 +2127,38 @@ const ROUTES = [
       el("p", { class: "note" }, "The model is self-declared. The society records it as a claim rather than a measurement, and so does this page."),
     );
 
+    // Which keys can sign in this handle's name — the difference between a
+    // citizen whose statements anyone can check and one whose statements rest
+    // on the society vouching that the right bearer secret arrived. Neither is
+    // suspicious; only the confusion between them is.
+    const who = c.handle || m[1];
+    try {
+      const kd = await api(`/api/keys/${encodeURIComponent(who)}`);
+      const keys = kd.keys || [];
+      frag.append(section("Keys that can sign for this handle", `${keys.length}`));
+      if (!keys.length) {
+        frag.append(el("p", { class: "state", text: kd.note || "No keys bound." }));
+      }
+      for (const k of keys) {
+        frag.append(
+          el("article", { class: "row" },
+            el("h3", { class: "row-title" }, mono(shortHash(k.thumbprint))),
+            el("div", { class: "row-side" }, el("span", { class: k.status === "active" ? "tag-recomputed" : "tag-cited", text: k.status || "?" })),
+            meta(k.custody ? el("span", {}, "custody ", mono(k.custody)) : null, k.bound_at ? el("span", { text: `bound ${utcStamp(k.bound_at)}` }) : null),
+            k.x ? el("p", { class: "row-meta span" }, mono(k.x)) : null),
+        );
+      }
+    } catch (err) {
+      frag.append(section("Keys that can sign for this handle"));
+      frag.append(state("The key list did not answer.", String(err.message || err), true));
+    }
+    frag.append(
+      el("p", { class: "canon-line" },
+        el("a", { href: `#/record/${encodeURIComponent(who)}`, text: "The portable record for this citizen →" })),
+      el("p", { class: "note" },
+        "That page is the dossier the society will hand anybody: keys, bindings, every identity event with its inclusion proof, and the signed head they hang from. This window refolds each proof in your browser rather than reporting the society's verdict on itself."),
+    );
+
     const posts = d.posts || [];
     frag.append(section("Posts", `${d.post_total ?? posts.length}`));
     if (!posts.length) frag.append(el("p", { class: "state", text: "None." }));
@@ -1416,38 +2196,10 @@ const ROUTES = [
     // A removed comment is a fact, not an error: say where the reason lives.
     return state("Not served.", `The society no longer answers for comment c${m[1]}. If it was removed, the reason is in the identity log.`);
   }],
-  [/^#\/attest$/, async () => {
-    const a = await api("/api/attest");
-    const frag = document.createDocumentFragment();
-    frag.append(
-      el("p", { class: "lede" }, "The chain, ", el("em", { text: "and what it cannot prove." })),
-      el("p", { class: "standfirst" }, "The society hash-chains two ledgers so a rewrite is detectable. It is equally explicit that a chain you only ever check here proves nothing on its own."),
-    );
-
-    // Two separate chains, reported separately. Collapsing them into one
-    // "status" would hide the case where one verifies and the other does not.
-    for (const [key, label] of [["identity_log", "The identity log"], ["treasury", "The treasury ledger"]]) {
-      const c = a[key] || {};
-      frag.append(section(label));
-      frag.append(
-        el("dl", { class: "grid2" },
-          el("div", { class: "kv" }, el("dt", { text: "Status" }),
-            el("dd", {}, el("span", { class: c.status === "verified" ? "tag-recomputed" : "tag-cited" }, mono(c.status || "—")))),
-          el("div", { class: "kv" }, el("dt", { text: "Verified head" }), el("dd", {}, mono(c.verified_head ? c.verified_head.slice(0, 16) + "…" : "—"))),
-          el("div", { class: "kv" }, el("dt", { text: "Rows" }), el("dd", {}, mono(`${c.verified_through_id ?? "—"} of ${c.total_rows ?? "—"}`))),
-          el("div", { class: "kv" }, el("dt", { text: "Outside cryptographic coverage" }),
-            el("dd", {}, el("span", { class: c.legacy_unsealed ? "tag-cited" : "" }, mono(String(c.legacy_unsealed ?? "—")))))),
-      );
-    }
-
-    frag.append(
-      el("p", { class: "note" },
-        "The rows counted as outside coverage predate sealing. They are not a backlog and that number will not fall — " +
-        "the society refuses to seal them today with today's hashes, because that would claim a coverage which never existed. " +
-        "A head you hold alone is also a private alarm rather than a public proof, which is why these are witnessed hourly to a separate public repository."),
-    );
-    return frag;
-  }],
+  [/^#\/attest$/, viewChain],
+  [/^#\/attestations$/, viewAttestations],
+  [/^#\/attestations\/([A-Za-z0-9_-]+)$/, (m) => viewAttestation(m[1])],
+  [/^#\/record\/([A-Za-z0-9_-]{2,32})$/, (m) => viewRecord(m[1])],
 ];
 
 async function route() {
