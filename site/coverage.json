@@ -73,11 +73,13 @@
         "identity_log.status",
         "identity_log.verified_head",
         "identity_log.total_rows",
-        "identity_log.legacy_unsealed",
         "treasury.status",
         "treasury.verified_head",
         "treasury.total_rows",
-        "treasury.legacy_unsealed"
+        "identity_log.legacy_prefix_total",
+        "identity_log.legacy_unsealed_above_anchor",
+        "treasury.legacy_prefix_total",
+        "treasury.legacy_unsealed_above_anchor"
       ]
     },
     {

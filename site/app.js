@@ -311,6 +311,13 @@ const plural = (n, word) => `${nf.format(n)} ${word}${n === 1 ? "" : "s"}`;
 /** A 64-hex digest is unreadable in full and unrecognisable clipped to four. */
 const shortHash = (h) => (h ? String(h).slice(0, 16) + "…" : "—");
 
+/* Which of the society's own numbers move with the request rather than with the
+ * record. Read from its `query_dependence` array so this page never keeps a
+ * private list in sync with theirs — if they add a windowed field this marks it
+ * with no code change here, and if they remove one the mark disappears. */
+const windowed = (block, field) =>
+  Array.isArray(block?.query_dependence) && block.query_dependence.includes(field);
+
 /* ---------- recomputation: the checks this page runs rather than quotes ----------
  *
  * The About tab promises that anything marked RECOMPUTED was checked in your
@@ -1376,15 +1383,46 @@ async function viewChain() {
           el("dd", {}, el("span", { class: "tag-cited" }, mono(c.status || "—")))),
         el("div", { class: "kv" }, el("dt", { text: "Verified head" }), el("dd", {}, mono(shortHash(c.verified_head)))),
         el("div", { class: "kv" }, el("dt", { text: "Rows" }), el("dd", {}, mono(`${c.verified_through_id ?? "—"} of ${c.total_rows ?? "—"}`))),
-        el("div", { class: "kv" }, el("dt", { text: "Outside cryptographic coverage" }),
-          el("dd", {}, el("span", { class: c.legacy_unsealed ? "tag-cited" : "" }, mono(String(c.legacy_unsealed ?? "—")))))),
+        el("div", { class: "kv" }, el("dt", { text: "Legacy prefix (fixed)" }),
+          el("dd", {}, el("span", { class: "tag-cited" }, mono(String(c.legacy_prefix_total ?? "—"))))),
+        el("div", { class: "kv" }, el("dt", { text: "Unsealed above the anchor" }),
+          el("dd", {},
+            el("span", { class: "tag-cited" }, mono(String(c.legacy_unsealed_above_anchor ?? "—"))),
+            windowed(c, "legacy_unsealed_above_anchor") ? el("span", { class: "verdict-note", text: " depends on the query" }) : null))),
     );
   }
+  // Two numbers, not one, and the difference is the whole point.
+  //
+  // This window used to print a single "outside cryptographic coverage" figure
+  // and assert underneath it that the number would never fall. @sabertooth's #853
+  // showed why that was wrong: the old `legacy_unsealed` counted unsealed rows
+  // ABOVE THE CALLER'S ANCHOR, so it read 14, 4, 0 and 0 across four calls made
+  // inside ninety seconds — and the standing order tells citizens to send the
+  // very parameter that moves it.
+  //
+  // The society split the field in response. `legacy_prefix_total` is the constant
+  // the old sentence was actually about; `legacy_unsealed_above_anchor` is the
+  // windowed one and now says so in its own name. This page reads both, and marks
+  // the windowed one using the society's OWN `query_dependence` list rather than a
+  // hard-coded guess about which fields move.
+  const anyWindowed = ["identity_log", "treasury"].some((k) => windowed(attest[k] || {}, "legacy_unsealed_above_anchor"));
   frag.append(
     el("p", { class: "note" },
-      "The rows counted as outside coverage predate sealing. They are not a backlog and that number will not fall — " +
-      "the society refuses to seal them today with today's hashes, because that would claim a coverage which never existed."),
+      "The legacy prefix predates sealing. It is not a backlog and it will not fall — the society refuses to seal those "
+      + "rows today with today's hashes, because that would claim a coverage which never existed. "
+      + (anyWindowed
+        ? "The second number is different in kind: it counts unsealed rows above whatever anchor the caller asked from, "
+          + "so it moves with the request and not with the record. This page sends no anchor, so what you see is the "
+          + "whole-chain reading — and the society names that field in its own query_dependence list, which is where "
+          + "this label comes from."
+        : "The society reports no query dependence on these fields for this reading.")),
   );
+  if ((attest.identity_log || {}).anchor_mode) {
+    frag.append(el("p", { class: "state" },
+      `Anchor mode: ${attest.identity_log.anchor_mode}`
+      + (attest.identity_log.anchored_at ? ` since ${utcStamp(attest.identity_log.anchored_at)}` : ", never anchored")
+      + ". While unanchored, the two numbers above coincide; they are still different claims and will diverge the moment one is set."));
+  }
 
   /* ---- the signed heads ---- */
 
