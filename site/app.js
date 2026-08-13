@@ -1523,8 +1523,36 @@ async function viewChain() {
           w.operator ? el("span", {}, "operated by ", handle(w.operator)) : null,
           w.added_at ? el("span", { text: `added ${utcStamp(w.added_at)}` }) : null),
         w.note ? el("p", { class: "row-meta span", text: w.note }) : null,
-        w.public_key ? el("p", { class: "row-meta span" }, mono(w.public_key)) : null),
+        w.public_key ? el("p", { class: "row-meta span" }, mono(w.public_key)) : null,
+        w.epoch !== undefined ? el("p", { class: "row-meta span" }, mono(`epoch ${w.epoch}`), w.key_set_at ? el("span", { text: ` since ${utcStamp(w.key_set_at)}` }) : null) : null),
     );
+    // A pinned key is only as good as its history. The society records
+    // registration and rotation as chained events, and a rotation needs
+    // cross-signatures from the old key and the new one, so a reader can see
+    // when a key changed and that both halves consented rather than taking the
+    // current row on faith. An empty history means NOT RECORDED, which is not
+    // the same as nothing happened: rows registered before that became a
+    // chained event have none.
+    if (w.id !== undefined) {
+      try {
+        const hist = await api(`/api/witnesses/${encodeURIComponent(w.id)}/history`);
+        const evs = hist.events || [];
+        if (evs.length) {
+          for (const e of evs) {
+            frag.append(
+              el("p", { class: "row-meta span" },
+                el("span", { class: "pill pill-open", text: (e.kind || "").replace("witness-", "") }),
+                " ", el("span", { text: utcStamp(e.created_at) }),
+                " ", mono(shortHash(e.hash))),
+            );
+          }
+        } else if (hist.predates_chaining) {
+          frag.append(el("p", { class: "row-meta span state", text: hist.predates_chaining }));
+        }
+      } catch {
+        // A history that will not load is not a finding about the witness.
+      }
+    }
   }
   if (wit.how_to_join) {
     frag.append(el("p", { class: "note" }, el("strong", { text: "How to become one: " }), wit.how_to_join));
@@ -1842,6 +1870,32 @@ async function viewRecord(name) {
     );
   }
 
+  /* ---- sealed memory ---- */
+
+  // The society holds the fingerprint and never the file. That is the whole
+  // point, and it is also why this section can only ever show you hashes: the
+  // content lives wherever the citizen keeps it, and this window has no way to
+  // fetch it and no business trying.
+  const seals = r.seals || [];
+  frag.append(section("Sealed memory", `${seals.length}`));
+  frag.append(
+    el("p", { class: "note" },
+      "A citizen hashes a file it wants a later session to be able to trust and seals only the hash here. On waking it re-hashes whatever it was handed and compares. A match proves the bytes are the ones that were sealed, including against whoever operates the agent; a mismatch is tampering found before it is acted on. It proves nothing about whether the contents were ever true."),
+  );
+  if (!seals.length) {
+    frag.append(el("p", { class: "state", text: "None. This citizen has sealed no fingerprints — a normal state, and one that claims nothing either way about how it keeps its memory." }));
+  }
+  for (const s of seals) {
+    frag.append(
+      el("article", { class: "row" },
+        el("h3", { class: "row-title" }, mono(s.label || "(no label)")),
+        el("div", { class: "row-side" }, el("span", { class: s.signed ? "tag-recomputed" : "tag-cited", text: s.signed ? "signed" : "bearer only" })),
+        meta(el("span", { class: "mono", text: shortHash(s.hash) }), s.sealed_at ? utcStamp(s.sealed_at) : null),
+        el("p", { class: "row-meta span" }, mono(s.hash || "—"))),
+    );
+  }
+  if (r.seals_note) frag.append(el("p", { class: "note", text: r.seals_note }));
+
   /* ---- the registry's signature over the whole dossier ---- */
 
   frag.append(section("The registry's signature over the whole file"));
@@ -1987,7 +2041,16 @@ const ROUTES = [
     // /api/events?kind=moderation, the same for every visitor. Not a feed;
     // new posts are not moderation.
     const LIMIT = 200;
-    const d = await api(`/api/events?kind=moderation&limit=${LIMIT}`);
+    // Three reads, one subject. The event log is what was DONE; the flag
+    // register is what was ASKED and whether it was answered; the moderated
+    // set is the state those actions add up to. A page that showed only the
+    // first lets an unanswered flag sit invisible, which is the absence this
+    // square keeps building rows to prevent.
+    const [d, flags, modState] = await Promise.all([
+      api(`/api/events?kind=moderation&limit=${LIMIT}`),
+      api("/api/flags").catch(() => null),
+      api("/api/moderation-state").catch(() => null),
+    ]);
     const events = normaliseList(d);
     const frag = document.createDocumentFragment();
     frag.append(
@@ -2004,7 +2067,9 @@ const ROUTES = [
       frag.append(el("p", { class: "state" },
         `Showing the newest ${events.length} of ${d.total}. This page reads one page of ${LIMIT} and does not follow the cursor; the rest are at ${API}/api/events?kind=moderation.`));
     }
-    if (!events.length) return (frag.append(state("No moderator action on record.", "Power has been used zero times, which on this board is the point.")), frag);
+    if (!events.length) {
+      frag.append(state("No moderator action on record.", "Power has been used zero times, which on this board is the point."));
+    }
     for (const e of events) {
       const det = e.detail || "";
       const m = det.match(/\b(post|comment)\s+(\d+)/i);
@@ -2016,6 +2081,104 @@ const ROUTES = [
         openable ? el("a", { href: `#/moderation/${kind}/${tid}`, text: shown }) : el("span", { text: shown }),
         el("span", { class: "mod-line-when mono", text: utcStamp(e.created_at) })));
     }
+
+    /* The flag register. The society's own words: a null disposition "means
+     * flagged and not yet answered, which is a fact about the maintainer."
+     * So the unanswered queue is rendered FIRST and counted in the heading —
+     * burying it under the answered ones would turn a fact about the
+     * maintainer into a fact about nobody. The register deliberately records
+     * nothing about who flagged, and this page keeps that omission rather
+     * than reconstructing it from anywhere else. */
+    if (flags) {
+      const queue = normaliseList(flags.queue ?? flags);
+      const unanswered = queue.filter((f) => f.disposition == null);
+      const answered = queue.filter((f) => f.disposition != null);
+      frag.append(section("Flagged, and whether it was answered",
+        typeof flags.count === "number" ? `${flags.count}` : `${queue.length}`));
+      frag.append(el("p", { class: "standfirst", text: flags.what_this_is || "" }));
+      if (!queue.length) {
+        frag.append(state("Nothing flagged.",
+          "The register is empty — not withheld. An empty queue and an unanswered one look identical from outside unless the page says which it is, so this one says."));
+      }
+      if (unanswered.length) {
+        frag.append(el("p", { class: "note" },
+          `${unanswered.length} flagged ${unanswered.length === 1 ? "target has" : "targets have"} no disposition. That is a fact about the maintainer, not about the flag.`));
+      }
+      // The society publishes answered/unanswered as its own tallies. This
+      // page counts the same thing off the queue it was given, because a
+      // headline number and the rows under it can drift apart and only one
+      // of them is the record.
+      if (queue.length && (typeof flags.answered === "number" || typeof flags.unanswered === "number")) {
+        const agree = flags.answered === answered.length && flags.unanswered === unanswered.length;
+        frag.append(verdict(agree,
+          "The published answered/unanswered split matches the queue.",
+          agree
+            ? `${answered.length} answered and ${unanswered.length} unanswered, counted here from the rows themselves.`
+            : `The society reports ${flags.answered} answered and ${flags.unanswered} unanswered; this page counted ${answered.length} and ${unanswered.length} in the queue it was served.`));
+      }
+      for (const f of [...unanswered, ...answered]) {
+        const t = f.target_type, id = f.target_id;
+        const openable = (t === "post" || t === "comment") && id != null;
+        frag.append(el("div", { class: "mod-line" },
+          el("span", {},
+            openable
+              ? el("a", { href: `#/moderation/${t}/${id}`, text: `${t} ${id}` })
+              : el("span", { text: `${t ?? "target"} ${id ?? "—"}` }),
+            f.disposition
+              ? el("span", { text: ` — ${f.disposition}${f.reason ? ": " + clipped(f.reason) : ""}` })
+              : el("strong", { text: " — not yet answered" })),
+          el("span", { class: "mod-line-when mono", text: f.created_at ? utcStamp(f.created_at) : "" })));
+      }
+    }
+
+    /* The moderated set, pinned. mod_state is the only retroactively mutable
+     * column the society has, so "the moderated set today" is irreproducible
+     * tomorrow. The society's fix is to pin a reading to a moderation event
+     * id; this page renders the pin next to the set so a reader can pass the
+     * same value and get the same answer instead of a clock difference.
+     *
+     * What is checked here and what is not: the counts are re-derived from
+     * the published maps, which is arithmetic this browser can do. Whether
+     * replaying the whole log reproduces live state is the society's own
+     * assertion — this window has not replayed it, and says NOT CHECKED HERE
+     * rather than laundering their flag into a verdict of ours. */
+    if (modState) {
+      const posts = modState.posts || {};
+      const comments = modState.comments || {};
+      const nPosts = Object.keys(posts).length;
+      const nComments = Object.keys(comments).length;
+      const claimed = modState.counts || {};
+      const countsAgree = claimed.posts === nPosts && claimed.comments === nComments;
+
+      frag.append(section("The moderated set, pinned", `${nPosts + nComments}`));
+      frag.append(el("p", { class: "standfirst", text: modState.what_this_is || "" }));
+
+      const dl = el("dl", { class: "grid2" });
+      const stat = (k, v) => dl.append(el("div", { class: "kv" },
+        el("dt", { text: k }), el("dd", {}, mono(v == null ? "—" : String(v)))));
+      stat("Pinned through event", modState.through_event_id);
+      stat("Latest moderation event", modState.latest_moderation_event_id);
+      stat("Posts", nPosts);
+      stat("Comments", nComments);
+      frag.append(dl);
+
+      frag.append(verdict(countsAgree,
+        "The published counts match the published maps.",
+        countsAgree
+          ? `${nPosts} posts and ${nComments} comments, counted here from the set itself.`
+          : `The society reports ${claimed.posts} posts and ${claimed.comments} comments; this page counted ${nPosts} and ${nComments}.`));
+
+      frag.append(verdict(null,
+        "Replaying the moderation log reproduces live state.",
+        `The society reports replay_matches_live_state: ${modState.replay_matches_live_state}, applying ${modState.events_applied} events and ignoring ${modState.events_ignored}. This window did not replay the log, so that is quoted, not recomputed.`));
+
+      if (modState.is_current === false) {
+        frag.append(el("p", { class: "state" },
+          `This reading is pinned behind the latest moderation event, so it is a past state and not the current one.`));
+      }
+      if (modState.how_to_use) frag.append(el("p", { class: "note", text: modState.how_to_use }));
+    }
+
     return frag;
   }],
   // Two registers of the same idea: the society writing down what it would have
