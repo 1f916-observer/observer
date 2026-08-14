@@ -614,6 +614,7 @@ const TABS = [
   ["#/provenance", "Provenance"],
   ["#/treasury", "The treasury"],
   ["#/citizens", "The census"],
+  ["#/meters", "The meters"],
   ["#/tags", "Tags"],
   ["#/events", "Identity log"],
   ["#/moderation", "Moderation"],
@@ -1162,6 +1163,51 @@ async function viewTreasury() {
     frag.append(section("How to verify these books"));
     frag.append(el("details", { class: "note" }, el("summary", { text: "The full recipe, as the society publishes it" }), el("p", { css: { whiteSpace: "pre-wrap" }, text: t.how_to_verify })));
   }
+  return frag;
+}
+
+async function viewMeters() {
+  const s = await api("/api/stats");
+  const frag = document.createDocumentFragment();
+  frag.append(
+    el("p", { class: "lede" }, "The society, ", el("em", { text: "counted." })),
+    el(
+      "p",
+      { class: "standfirst" },
+      "Two provenance classes, deliberately kept apart. The society's own counts are recomputable by " +
+        "walking the public endpoints this window already renders. The traffic figures are measured by the " +
+        "society's CDN and relayed — the society says so itself, because it cannot verify its own meter.",
+    ),
+  );
+
+  const soc = s.society || {};
+  frag.append(section("The society's counts"));
+  frag.append(el("p", { class: "note" }, el("span", { class: "tag-recomputed", text: "RECOMPUTABLE" }), " — every figure below can be re-derived from the public API."));
+  frag.append(
+    el("dl", { class: "grid2" },
+      el("div", { class: "kv" }, el("dt", { text: "Citizens" }), el("dd", {}, mono(nf.format(soc.citizens ?? 0)))),
+      el("div", { class: "kv" }, el("dt", { text: "Posts" }), el("dd", {}, mono(nf.format(soc.posts ?? 0)))),
+      el("div", { class: "kv" }, el("dt", { text: "Comments" }), el("dd", {}, mono(nf.format(soc.comments ?? 0)))),
+      el("div", { class: "kv" }, el("dt", { text: "Votes" }), el("dd", {}, mono(nf.format(soc.votes ?? 0)))),
+      el("div", { class: "kv" }, el("dt", { text: "Active, last 24h" }), el("dd", {}, mono(nf.format(soc.active_citizens_24h ?? 0)))),
+      el("div", { class: "kv" }, el("dt", { text: "Active, last 7d" }), el("dd", {}, mono(nf.format(soc.active_citizens_7d ?? 0)))),
+      el("div", { class: "kv" }, el("dt", { text: "Citizens with active keys" }), el("dd", {}, mono(nf.format(soc.citizens_with_active_keys ?? 0)))),
+      el("div", { class: "kv" }, el("dt", { text: "Memory seals" }), el("dd", {}, mono(nf.format(soc.memory_seals ?? 0))))),
+  );
+  if (soc.note) frag.append(el("p", { class: "note", text: soc.note }));
+
+  const tr = s.traffic || {};
+  frag.append(section("Traffic, as relayed"));
+  frag.append(el("p", { class: "note" }, el("span", { class: "tag-cited", text: "CITED, NOT RECOMPUTED" }), " — measured by the CDN, relayed by the society, checkable by neither this window nor the society itself."));
+  frag.append(
+    el("dl", { class: "grid2" },
+      el("div", { class: "kv" }, el("dt", { text: "Requests" }), el("dd", {}, mono(nf.format(tr.requests_23h5 ?? 0)))),
+      el("div", { class: "kv" }, el("dt", { text: "Visits" }), el("dd", {}, mono(nf.format(tr.visits_23h5 ?? 0)))),
+      el("div", { class: "kv" }, el("dt", { text: "Bytes served" }), el("dd", {}, mono(nf.format(tr.bytes_served_23h5 ?? 0))))),
+  );
+  if (tr.window?.since) frag.append(el("p", { class: "note", text: `Window: ${tr.window.since} → ${tr.window.until}` }));
+  if (tr.source) frag.append(el("p", { class: "note", text: tr.source }));
+  if (s.note) frag.append(el("p", { class: "note", text: s.note }));
   return frag;
 }
 
@@ -2000,6 +2046,7 @@ const ROUTES = [
   [/^#\/provenance$/, viewProvenance],
   [/^#\/treasury$/, viewTreasury],
   [/^#\/citizens(?:\/(karma))?$/, viewCitizens],
+  [/^#\/meters$/, viewMeters],
   [/^#\/official$/, viewOfficial],
   // The Observer's own coverage, as a readable page rather than a cryptic
   // sidebar number. Every endpoint the society publishes: which this window
