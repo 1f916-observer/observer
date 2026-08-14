@@ -1115,6 +1115,44 @@ async function viewTreasury() {
       "Money routed in by outside tokens is disclosed rather than booked as income, and endorses nothing."),
   );
 
+  // The endpoint's newest section, and the answer to the question the balances
+  // above cannot ask: not what the society owns, but what its money is FOR.
+  // Rendered in the society's own words throughout — a spending rule is
+  // exactly the text a summary would flatten into policy this window never
+  // agreed to write.
+  const sp = t.spending_policy;
+  if (sp) {
+    frag.append(section("How it spends", `${(sp.waterfall || []).length} priorities`));
+    for (const rung of sp.waterfall || []) {
+      frag.append(
+        el("article", { class: "row" },
+          el("h3", { class: "row-title", text: `Priority ${rung.priority} — ${rung.name}` }),
+          rung.source ? el("p", { class: "row-meta span", text: rung.source }) : null,
+          rung.rule ? el("p", { class: "row-meta span" }, el("strong", { text: rung.rule })) : null),
+      );
+    }
+    if (sp.when_empty) frag.append(el("p", { class: "note", text: sp.when_empty }));
+    if (sp.refill_rung) {
+      const r = sp.refill_rung;
+      frag.append(
+        el("details", { class: "note" },
+          el("summary", { text: `The refill rung: ${r.name || "—"}` }),
+          r.what ? el("p", { text: r.what }) : null,
+          r.why_uncollected ? el("p", { text: r.why_uncollected }) : null,
+          r.if_collected ? el("p", { text: r.if_collected }) : null),
+      );
+    }
+    if (sp.never_money) {
+      frag.append(
+        el("article", { class: "row" },
+          el("h3", { class: "row-title", text: "Never money" }),
+          el("div", { class: "row-meta span" }, el("span", { class: "tag-cited", text: "the society's own words" })),
+          el("p", { class: "row-meta span", text: sp.never_money })),
+      );
+    }
+    if (sp.standing_rules) frag.append(el("p", { class: "note", text: sp.standing_rules }));
+  }
+
   const holdings = a.holdings || [];
   frag.append(section("Holdings", `${holdings.length}`));
   for (const h of holdings) {
