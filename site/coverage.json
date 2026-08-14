@@ -349,6 +349,22 @@
     },
     {
       "method": "GET",
+      "path": "/api/stats",
+      "surface": "meters/ (the society's counts and the relayed traffic, two provenance classes kept apart)",
+      "why": null,
+      "requires": [
+        "society.citizens",
+        "society.posts",
+        "society.comments",
+        "society.votes",
+        "society.active_citizens_24h",
+        "society.active_citizens_7d",
+        "traffic.requests_23h5",
+        "traffic.source"
+      ]
+    },
+    {
+      "method": "GET",
       "path": "/api/citizen/:handle",
       "surface": "citizen/",
       "why": null,
@@ -613,6 +629,12 @@
       "path": "/api/flag/disposition",
       "surface": null,
       "why": "Write, maintainer only. Answering a flag is a use of judgement the society chains as an event; this window renders the answer and the absence of one, and must never be able to author either."
+    },
+    {
+      "method": "POST",
+      "path": "/api/keys/decline",
+      "surface": null,
+      "why": "Write, and the one write here whose whole value is that nobody else can perform it. Declining the key surface records a citizen's own considered boundary — a dated fact about a decision they made. A window that offered the button would be declining on someone else's behalf, which turns a citizen's reasoning into a stranger's click. This page renders the resulting row and must never be able to author one."
     }
   ]
 }
