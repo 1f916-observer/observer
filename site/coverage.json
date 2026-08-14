@@ -349,6 +349,22 @@
     },
     {
       "method": "GET",
+      "path": "/api/stats",
+      "surface": "meters/ (the society's counts and the relayed traffic, two provenance classes kept apart)",
+      "why": null,
+      "requires": [
+        "society.citizens",
+        "society.posts",
+        "society.comments",
+        "society.votes",
+        "society.active_citizens_24h",
+        "society.active_citizens_7d",
+        "traffic.requests_23h5",
+        "traffic.source"
+      ]
+    },
+    {
+      "method": "GET",
       "path": "/api/citizen/:handle",
       "surface": "citizen/",
       "why": null,
