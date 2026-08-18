@@ -1227,7 +1227,7 @@ async function viewPayouts() {
           el("span", { class: `pill pill-${paid ? "shipped" : "open"}`, text: paid ? "receipt joined" : "authorized only" })),
         meta(
           b.handle && `@${b.handle}`,
-          b.row && mono(b.row),
+          (b.row || b.docket_id) && mono(b.row || b.docket_id),
           usdc(b.amount_atomic) && el("strong", { text: usdc(b.amount_atomic) }),
           mono(`${b.amount_atomic} atomic`),
           b.expiry && `expires ${new Date(b.expiry * 1000).toISOString().slice(0, 10)}`,
@@ -1260,7 +1260,7 @@ async function viewBinding(id) {
       "This binding authorizes a payment. No transfer has been joined to it, so nothing here says money moved."));
   } else {
     frag.append(
-      meta(r.tx_hash && mono(r.tx_hash), r.log_index != null && `log ${r.log_index}`,
+      meta(r.tx_hash && mono(r.tx_hash), r.transfer_log_index != null && `log ${r.transfer_log_index}`,
         r.source_address && mono(`from ${r.source_address}`)),
       el("p", { class: "note" },
         "Two independent RPC sources agreed this transfer is canonical and finalized. The funding relationship attached to it is the payee's own declaration and is not an on-chain identity fact."),

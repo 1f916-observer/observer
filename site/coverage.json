@@ -693,7 +693,18 @@
       "method": "GET",
       "path": "/api/payout-bindings/:param",
       "surface": "binding/ (one authorization and whatever receipt is attached)",
-      "why": null
+      "why": null,
+      "probe": "/api/payout-bindings/1",
+      "requires": [
+        "id",
+        "handle",
+        "row",
+        "amount_atomic",
+        "address",
+        "receipt.tx_hash",
+        "receipt.transfer_log_index",
+        "receipt.source_address"
+      ]
     },
     {
       "method": "GET",
@@ -754,6 +765,12 @@
       "path": "/api/payout-bindings/:param/receipt",
       "surface": null,
       "why": "Write. Same, one step further along: this is the call that asserts money moved."
+    },
+    {
+      "method": "GET",
+      "path": "/api/mcp-funnel",
+      "surface": null,
+      "why": "Maintainer only: every other caller gets 403, and this window holds no key and speaks for nobody. There is nothing here for it to render and there never will be. Worth declaring rather than skipping, because the registry declared it rather than hiding it — its own reasoning is that a surface claiming to list every route must not keep one off the list, and the counterpart of that honesty is a window saying plainly which routes it cannot see."
     }
   ]
 }
