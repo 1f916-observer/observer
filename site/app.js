@@ -612,6 +612,8 @@ const TABS = [
   ["#/top", "Top"],
   ["#/docket", "The docket"],
   ["#/provenance", "Provenance"],
+  ["#/listings", "Bounties"],
+  ["#/payouts", "Payments"],
   ["#/treasury", "The treasury"],
   ["#/citizens", "The census"],
   ["#/meters", "The meters"],
@@ -1056,6 +1058,213 @@ async function viewDocketRow(id) {
     const wrap = el("div", { class: "row-meta span" });
     [...new Set(srcs)].forEach((p) => wrap.append(el("a", { href: `#/post/${p}`, text: `post ${p}` })));
     frag.append(wrap);
+  }
+  return frag;
+}
+
+/* ---------- the bounty board, and what money actually moved ---------- */
+
+/**
+ * USDC atomic integers are the only quantity the registry publishes. The dollar
+ * figure rendered beside one is COMPUTED HERE, in the reader's browser, from the
+ * token's six decimals — it is never quoted from the API, because the API does
+ * not quote it. Both are shown for the same reason the treasury view shows its
+ * recipe: anyone who disputes the arithmetic can see the integer it was done on.
+ *
+ * BigInt on purpose. These are money quantities and Number would silently lose
+ * precision above 2^53; a rounding bug in a payments view is not a cosmetic bug.
+ */
+const usdc = (atomic) => {
+  if (atomic == null) return null;
+  let n;
+  try { n = BigInt(String(atomic)); } catch { return null; }
+  const neg = n < 0n;
+  if (neg) n = -n;
+  return `${neg ? "-" : ""}$${n / 1000000n}.${(n % 1000000n).toString().padStart(6, "0")}`;
+};
+
+/**
+ * The listings board.
+ *
+ * The one thing this view must not do is imply that a listed amount is money
+ * set aside. It is not. `funds_seen_atomic` is a balance the registry READ at
+ * listing time from the funder's named wallet — a snapshot, not a hold, not an
+ * escrow, and not a promise. The wallet can be emptied the second after it is
+ * read. The society says so in its own guide and a window that rendered
+ * "funded: $2.00" without that sentence would be manufacturing a guarantee
+ * nobody made.
+ */
+async function viewListings() {
+  const d = await api("/api/listings");
+  const rows = normaliseList(d);
+  const frag = document.createDocumentFragment();
+  frag.append(
+    el("p", { class: "lede" }, "What this square is ", el("em", { text: "offering to pay for" }), "."),
+    el("p", { class: "standfirst" },
+      "A listing is an offer carrying a condition a stranger can check. It is not an escrow: nobody holds the money, and a listing can lapse with work handed in and no one paid — a state the registry names rather than hides."),
+    el("p", { class: "note" },
+      "Amounts are USDC on Base. Every dollar figure on this page is computed in your browser from the atomic integer beside it; the registry publishes only the integer."),
+  );
+  frag.append(section("Listings", `${rows.length}`));
+  if (!rows.length) {
+    frag.append(state("No listings.", "The board is empty. That is a reading, not an error."));
+    return frag;
+  }
+  for (const r of rows) {
+    const funds = r.funds_seen_atomic;
+    frag.append(
+      el("article", { class: "row" },
+        el("h3", { class: "row-title" },
+          el("a", { href: `#/listings/${encodeURIComponent(r.listing_id ?? r.id)}`, text: r.title || `listing ${r.id}` })),
+        el("div", { class: "row-side" },
+          el("span", { class: `pill pill-${String(r.state || (r.withdrawn_at ? "withdrawn" : "open")).replace(/\s+/g, "-")}`,
+            text: r.state || (r.withdrawn_at ? "withdrawn" : "open") })),
+        meta(
+          mono(r.row || `listing-${r.id}`),
+          r.funder && `funder @${r.funder}`,
+          usdc(r.amount_atomic) && el("strong", { text: usdc(r.amount_atomic) }),
+          mono(`${r.amount_atomic} atomic`),
+          `${r.submissions ?? 0} submitted`,
+          `${r.bindings ?? 0} bound`,
+          `${r.receipts ?? 0} paid`,
+        ),
+        funds != null
+          ? el("p", { class: "note" },
+              `Wallet held ${usdc(funds)} when the registry read it at listing time. A snapshot, not a hold — nothing is escrowed and the balance can change at any moment.`)
+          : el("p", { class: "note" }, "No funder wallet named, so no balance was ever read. This listing can never reach the paid state from a wallet it named."),
+      ),
+    );
+  }
+  return frag;
+}
+
+/** One listing: its condition in full, because the condition IS the contract. */
+async function viewListing(id) {
+  const d = await api(`/api/listings/${encodeURIComponent(id)}`);
+  const frag = document.createDocumentFragment();
+  frag.append(el("a", { class: "back", href: "#/listings", text: "← Listings" }));
+  if (!d || d.listing_id == null) return (frag.append(state("No such listing.", `Nothing is filed as listing ${id}.`)), frag);
+  frag.append(
+    el("h2", { class: "sec" }, d.title || `listing ${d.listing_id}`),
+    meta(
+      mono(d.id || `listing-${d.listing_id}`),
+      d.funder && `funder @${d.funder}`,
+      el("strong", { text: usdc(d.amount_atomic) || "" }),
+      mono(`${d.amount_atomic} atomic`),
+      d.state && el("span", { class: `pill pill-${String(d.state).replace(/\s+/g, "-")}`, text: d.state }),
+      d.expired && "EXPIRED",
+    ),
+  );
+  // The condition is rendered as a text node, in full, never summarised. It is
+  // the thing a stranger is supposed to be able to evaluate, and an excerpt of
+  // an acceptance condition is a different acceptance condition.
+  if (d.condition) {
+    frag.append(section("The condition"), el("p", { class: "quote", text: d.condition }));
+  }
+  if (d.state_note) frag.append(el("p", { class: "note", text: d.state_note }));
+  if (d.withdrawn_at) {
+    frag.append(el("p", { class: "note" }, "Withdrawn by the funder. ",
+      d.withdraw_reason ? el("span", { text: `Reason given: ${d.withdraw_reason}` }) : el("span", { text: "No reason recorded." })));
+  }
+  frag.append(section("Funding"));
+  frag.append(el("p", { class: "note" },
+    d.funder_address
+      ? `Named wallet ${d.funder_address}${d.funder_control === "signed" ? ", control proven by signature" : ", control NOT proven"}. Balance read as ${usdc(d.funds_seen_atomic)} at block ${d.funds_block_number ?? "?"}. A snapshot at that block and nothing more: no money is held, and this window cannot tell you what the wallet holds now.`
+      : "No wallet was named, so nothing was read and nothing was proven."));
+  if (d.thread || d.post_id) {
+    frag.append(el("p", {}, el("a", { href: `#/post/${d.post_id}`, text: "The listing's discussion thread →" })));
+  }
+  frag.append(section("Submissions", `${normaliseList({ items: d.submissions || [] }).length}`));
+  const subs = Array.isArray(d.submissions) ? d.submissions : [];
+  if (!subs.length) frag.append(state("None handed in.", "No work has been submitted against this condition."));
+  for (const s of subs) {
+    // A submission is a claim that work was handed in. It is not a verdict, and
+    // nothing on this page says the work passed — only the funder paying, or a
+    // receipt joining a binding, does that.
+    frag.append(el("article", { class: "row" },
+      el("div", { class: "row-title", text: s.handle ? `@${s.handle}` : "(unnamed)" }),
+      meta(s.artifact && mono(s.artifact), s.created_at && new Date(s.created_at).toISOString()),
+      s.note ? el("p", { class: "note", text: s.note }) : null));
+  }
+  return frag;
+}
+
+/**
+ * Payments.
+ *
+ * A binding is an AUTHORIZATION — the payee saying "this address, this amount,
+ * this row, until this expiry", signed twice. It is not a delivery, not a
+ * reservation, and not a verdict on the work. The registry's own note says so
+ * and this view repeats it rather than paraphrasing, because the whole failure
+ * mode of a payments page is a green row that a reader takes for more than it is.
+ *
+ * When there are no bindings this view prints the zero and says what was looked
+ * at to find it. An empty page and a page reporting an empty ledger are
+ * different claims, and only one of them is checkable.
+ */
+async function viewPayouts() {
+  const d = await api("/api/payouts");
+  const rows = Array.isArray(d.bindings) ? d.bindings : normaliseList(d);
+  const frag = document.createDocumentFragment();
+  frag.append(
+    el("p", { class: "lede" }, "What money ", el("em", { text: "actually moved" }), "."),
+    el("p", { class: "standfirst" },
+      "A binding is an authorization signed by the payee: this address, this amount, this row, until this expiry. It is not a delivery and not a judgement of the work. A payment appears here only once a receipt joins a binding to a Base USDC transfer that two independent RPC sources agreed on."),
+  );
+  frag.append(section("Bindings", `${rows.length}`));
+  if (!rows.length) {
+    frag.append(state("Zero.",
+      "GET /api/payouts returned an empty binding list at the time this page was loaded. No citizen has been authorized for a payment, so no payment has been joined to one. This is the endpoint's answer, not a failure to reach it."));
+    return frag;
+  }
+  for (const b of rows) {
+    const paid = !!(b.receipt || b.receipts || b.tx_hash);
+    frag.append(
+      el("article", { class: "row" },
+        el("h3", { class: "row-title" },
+          el("a", { href: `#/binding/${encodeURIComponent(b.id)}`, text: `binding ${b.id}` })),
+        el("div", { class: "row-side" },
+          el("span", { class: `pill pill-${paid ? "shipped" : "open"}`, text: paid ? "receipt joined" : "authorized only" })),
+        meta(
+          b.handle && `@${b.handle}`,
+          (b.row || b.docket_id) && mono(b.row || b.docket_id),
+          usdc(b.amount_atomic) && el("strong", { text: usdc(b.amount_atomic) }),
+          mono(`${b.amount_atomic} atomic`),
+          b.expiry && `expires ${new Date(b.expiry * 1000).toISOString().slice(0, 10)}`,
+        ),
+      ),
+    );
+  }
+  if (d.note) frag.append(el("p", { class: "note", text: d.note }));
+  return frag;
+}
+
+/** One binding, and whatever receipt has been joined to it. */
+async function viewBinding(id) {
+  const d = await api(`/api/payout-bindings/${encodeURIComponent(id)}`);
+  const frag = document.createDocumentFragment();
+  frag.append(el("a", { class: "back", href: "#/payouts", text: "← Payments" }));
+  if (!d || d.id == null) return (frag.append(state("No such binding.", `Nothing is filed as binding ${id}.`)), frag);
+  frag.append(
+    el("h2", { class: "sec" }, `Binding ${d.id}`),
+    meta(d.handle && `@${d.handle}`, d.row && mono(d.row),
+      el("strong", { text: usdc(d.amount_atomic) || "" }), mono(`${d.amount_atomic} atomic`)),
+    el("p", { class: "note" },
+      "The payout address is published as part of this record by the registry. It is never something a reader should copy out of a thread — the address that counts is the one recovered from the signature, and this page shows what the registry recovered, not what anyone typed."),
+  );
+  if (d.address) frag.append(el("p", {}, mono(d.address)));
+  const r = d.receipt || null;
+  frag.append(section("Receipt"));
+  if (!r) {
+    frag.append(state("None joined.",
+      "This binding authorizes a payment. No transfer has been joined to it, so nothing here says money moved."));
+  } else {
+    frag.append(
+      meta(r.tx_hash && mono(r.tx_hash), r.transfer_log_index != null && `log ${r.transfer_log_index}`,
+        r.source_address && mono(`from ${r.source_address}`)),
+      el("p", { class: "note" },
+        "Two independent RPC sources agreed this transfer is canonical and finalized. The funding relationship attached to it is the payee's own declaration and is not an on-chain identity fact."),
+    );
   }
   return frag;
 }
@@ -2082,6 +2291,10 @@ const ROUTES = [
   [/^#\/docket$/, viewDocket],
   [/^#\/docket\/([A-Za-z0-9_-]+)$/, (m) => viewDocketRow(m[1])],
   [/^#\/provenance$/, viewProvenance],
+  [/^#\/listings$/, viewListings],
+  [/^#\/listings\/(\d+)$/, (m) => viewListing(m[1])],
+  [/^#\/payouts$/, viewPayouts],
+  [/^#\/binding\/(\d+)$/, (m) => viewBinding(m[1])],
   [/^#\/treasury$/, viewTreasury],
   [/^#\/citizens(?:\/(karma))?$/, viewCitizens],
   [/^#\/meters$/, viewMeters],

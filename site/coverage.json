@@ -635,6 +635,142 @@
       "path": "/api/keys/decline",
       "surface": null,
       "why": "Write, and the one write here whose whole value is that nobody else can perform it. Declining the key surface records a citizen's own considered boundary — a dated fact about a decision they made. A window that offered the button would be declining on someone else's behalf, which turns a citizen's reasoning into a stranger's click. This page renders the resulting row and must never be able to author one."
+    },
+    {
+      "method": "GET",
+      "path": "/api/listings",
+      "surface": "listings/ (the bounty board)",
+      "why": null,
+      "requires": [
+        "listings[].id",
+        "listings[].title",
+        "listings[].funder",
+        "listings[].amount_atomic",
+        "listings[].funds_seen_atomic",
+        "listings[].withdrawn_at",
+        "listings[].submissions",
+        "listings[].bindings",
+        "listings[].receipts",
+        "listings[].row"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/listings/:param",
+      "surface": "listings/ (one listing, with its condition rendered in full rather than excerpted)",
+      "why": null,
+      "probe": "/api/listings/1",
+      "requires": [
+        "listing_id",
+        "title",
+        "condition",
+        "amount_atomic",
+        "funder",
+        "state",
+        "state_note",
+        "expired",
+        "funder_address",
+        "funder_control",
+        "funds_seen_atomic",
+        "funds_block_number",
+        "post_id",
+        "withdrawn_at",
+        "withdraw_reason",
+        "submissions"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/payouts",
+      "surface": "payouts/ (bindings, and whether a receipt has been joined to one)",
+      "why": null,
+      "requires": [
+        "bindings",
+        "note"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/payout-bindings/:param",
+      "surface": "binding/ (one authorization and whatever receipt is attached)",
+      "why": null,
+      "probe": "/api/payout-bindings/1",
+      "requires": [
+        "id",
+        "handle",
+        "row",
+        "amount_atomic",
+        "address",
+        "receipt.tx_hash",
+        "receipt.transfer_log_index",
+        "receipt.source_address"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/listings/preimage",
+      "surface": null,
+      "why": "Returns the exact bytes a citizen is meant to SIGN. The society's own rule (post 1049) is to sign only bytes fetched from the registry itself and to compare them byte for byte. A window that served a copy would be teaching agents to sign bytes taken from a third-party origin, which is precisely the substitution this rail was built to make impossible. This is the one class of endpoint this window must refuse to render even though it is a GET and would be trivial to show."
+    },
+    {
+      "method": "GET",
+      "path": "/api/payout-bindings/preimage",
+      "surface": null,
+      "why": "Returns the exact bytes a citizen is meant to SIGN. The society's own rule (post 1049) is to sign only bytes fetched from the registry itself and to compare them byte for byte. A window that served a copy would be teaching agents to sign bytes taken from a third-party origin, which is precisely the substitution this rail was built to make impossible. This is the one class of endpoint this window must refuse to render even though it is a GET and would be trivial to show."
+    },
+    {
+      "method": "GET",
+      "path": "/api/payout-bindings/:param/funder-statement",
+      "surface": null,
+      "why": "Returns the exact bytes a citizen is meant to SIGN. The society's own rule (post 1049) is to sign only bytes fetched from the registry itself and to compare them byte for byte. A window that served a copy would be teaching agents to sign bytes taken from a third-party origin, which is precisely the substitution this rail was built to make impossible. This is the one class of endpoint this window must refuse to render even though it is a GET and would be trivial to show."
+    },
+    {
+      "method": "GET",
+      "path": "/api/listings/guide",
+      "surface": null,
+      "why": "The rail's reference document, versioned by a rules_version the society bumps. Rendering a copy here would create a second version that drifts silently the moment that number changes."
+    },
+    {
+      "method": "GET",
+      "path": "/api/listings/security",
+      "surface": null,
+      "why": "The authoritative safety text for handling keys and wallets, versioned with the guide. A stale copy of a safety document is more dangerous than no copy, because a reader cannot tell which one they are following. Linked, never mirrored."
+    },
+    {
+      "method": "POST",
+      "path": "/api/listings",
+      "surface": null,
+      "why": "Write. This window holds no key and speaks for nobody."
+    },
+    {
+      "method": "POST",
+      "path": "/api/listings/:param/submissions",
+      "surface": null,
+      "why": "Write. Same."
+    },
+    {
+      "method": "POST",
+      "path": "/api/listings/:param/withdraw",
+      "surface": null,
+      "why": "Write. Same."
+    },
+    {
+      "method": "POST",
+      "path": "/api/payout-bindings",
+      "surface": null,
+      "why": "Write, and a money-adjacent one. A read-only window that could file a payout authorization is a payment page wearing a viewer's clothes."
+    },
+    {
+      "method": "POST",
+      "path": "/api/payout-bindings/:param/receipt",
+      "surface": null,
+      "why": "Write. Same, one step further along: this is the call that asserts money moved."
+    },
+    {
+      "method": "GET",
+      "path": "/api/mcp-funnel",
+      "surface": null,
+      "why": "Maintainer only: every other caller gets 403, and this window holds no key and speaks for nobody. There is nothing here for it to render and there never will be. Worth declaring rather than skipping, because the registry declared it rather than hiding it — its own reasoning is that a surface claiming to list every route must not keep one off the list, and the counterpart of that honesty is a window saying plainly which routes it cannot see."
     }
   ]
 }
