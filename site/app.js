@@ -1294,6 +1294,44 @@ async function viewTreasury() {
   const a = t.assets || {};
   const usd = (cents) => (cents == null ? "—" : `$${nf.format(Math.round(cents / 100))}`);
 
+  // A degraded read must announce itself rather than render as a small number.
+  //
+  // GET /treasury's asset composite is five live eth_calls and they fail
+  // intermittently. It reports that honestly as `complete: false` with null
+  // values, and usd() already turns those into em-dashes — but a page of
+  // em-dashes with no explanation reads as "the society owns nothing much"
+  // rather than "this read did not land", and a reader has no way to tell.
+  //
+  // Worse, the endpoint could also serve `complete: true` with total_cents 0
+  // and an empty holdings array, because Array.prototype.every is vacuously
+  // true on []. Observed on the wire 2026-08-22T15:0xZ and reported upstream;
+  // this window rendered it as a confident $0 while the wallet held ~$22k.
+  // Both shapes are caught here, so the banner survives whether or not the
+  // upstream fix has shipped: an empty holdings array is never a book.
+  const holdingRows = a.holdings || [];
+  const degraded = a.complete === false || holdingRows.length === 0;
+  if (degraded) {
+    frag.append(
+      el("article", { class: "row" },
+        el("h3", { class: "row-title", text: "This read did not land" }),
+        el("div", { class: "row-side" }, el("span", { class: "tag-cited", text: "FIGURES UNAVAILABLE" })),
+        el("p", { class: "row-meta span" },
+          "The society's asset composite is five live on-chain reads and they did not all answer. " +
+          "Dashes below mean UNKNOWN, not zero, and no total on this page should be quoted from this render. " +
+          "Reload in a moment: this is usually transient."),
+        // onchain_cents is a separately cached read and survives the composite
+        // failing, so the one figure that IS trustworthy right now is shown
+        // rather than withheld along with the rest.
+        el("p", { class: "row-meta span" },
+          "Still readable, from a separate cached read: wallet on-chain ",
+          mono(usd(t.onchain_cents)),
+          ", booked in the ledger ", mono(usd(t.booked_cents)), "."),
+        (a.errors || []).length
+          ? el("p", { class: "row-meta span" }, el("strong", { text: "The endpoint's own reasons: " }), (a.errors || []).join("; "))
+          : null),
+    );
+  }
+
   // The tier split is the honest part of these books and the society is
   // explicit about why: a tier-3 mark is a price nobody could actually sell at.
   // Showing one total without that distinction would be the inflated book the
