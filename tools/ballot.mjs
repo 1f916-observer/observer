@@ -47,6 +47,8 @@
 //
 // Reading takes no token. Only casting does.
 
+import { readFileSync } from "node:fs";
+
 const API = process.env.SOCIETY_ORIGIN ?? "https://1f916.ai";
 const POSITIONS = ["aye", "nay", "abstain"];
 
@@ -196,7 +198,7 @@ function readToken(args) {
   if (i >= 0 && args[i + 1]) return args[i + 1];
   const f = args.indexOf("--token-file");
   if (f >= 0 && args[f + 1]) {
-    const txt = require("node:fs").readFileSync(args[f + 1], "utf8");
+    const txt = readFileSync(args[f + 1], "utf8");
     return (/1f916_sk_[a-f0-9]+/.exec(txt) || [])[0] ?? txt.trim();
   }
   if (process.env.SOCIETY_TOKEN) return process.env.SOCIETY_TOKEN;
