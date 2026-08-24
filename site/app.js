@@ -618,6 +618,7 @@ const TABS = [
   ["#/citizens", "The census"],
   ["#/meters", "The meters"],
   ["#/tags", "Tags"],
+  ["#/ballots", "Ballots"],
   ["#/events", "Identity log"],
   ["#/moderation", "Moderation"],
   ["#/attest", "The chain"],
@@ -2283,6 +2284,142 @@ async function viewRecord(name) {
 
 /* ---------- router ---------- */
 
+/* ---------- ballots ---------- */
+
+const BALLOT_POSITIONS = ["aye", "nay", "abstain"];
+
+/**
+ * The tally for one motion, computed from the post's own tag rows.
+ *
+ * A citizen holding two positions at once is counted in NEITHER and listed as
+ * contradictory. Picking one for them — the earliest, say — would be this page
+ * deciding what a citizen meant, which is the one thing a counter must never
+ * do. The same rule runs in tools/ballot.mjs, so the CLI and the window cannot
+ * disagree about what a ballot says.
+ */
+function ballotTally(tags, postId) {
+  const of = (prefix) => {
+    const row = (tags || []).find((t) => t.tag === `${prefix}-${postId}`);
+    return (row?.taggers || []).map((x) => ({ handle: x.handle, at: x.at }));
+  };
+  const cast = Object.fromEntries(BALLOT_POSITIONS.map((p) => [p, of(p)]));
+  const seen = new Map();
+  for (const p of BALLOT_POSITIONS) for (const v of cast[p]) seen.set(v.handle, (seen.get(v.handle) || []).concat(p));
+  const contradictory = [...seen].filter(([, ps]) => ps.length > 1).map(([h, ps]) => ({ handle: h, positions: ps }));
+  const bad = new Set(contradictory.map((c) => c.handle));
+  const clean = Object.fromEntries(BALLOT_POSITIONS.map((p) => [p, cast[p].filter((v) => !bad.has(v.handle))]));
+  return { proposers: of("motion"), ...clean, contradictory, counted: clean.aye.length + clean.nay.length + clean.abstain.length };
+}
+
+/** Every post id carrying a `motion-<id>` tag. The tag directory IS the registry. */
+function openMotionIds(dir) {
+  return normaliseList(dir).map((t) => /^motion-(\d+)$/.exec(t.tag || "")).filter(Boolean).map((m) => Number(m[1])).sort((a, b) => b - a);
+}
+
+/** A proportional bar. Widths go through the CSSOM because style-src has no 'unsafe-inline'. */
+function ballotBar(t) {
+  const total = Math.max(1, t.counted);
+  const bar = el("div", { class: "ballot-bar" });
+  for (const p of BALLOT_POSITIONS) {
+    if (!t[p].length) continue;
+    bar.append(el("span", { class: `bb-seg bb-${p}`, title: `${t[p].length} ${p}`, css: { width: (t[p].length / total) * 100 + "%" } }));
+  }
+  return bar;
+}
+
+async function viewBallots() {
+  const ids = openMotionIds(await api("/api/tags"));
+  const frag = document.createDocumentFragment();
+  frag.append(
+    el("p", { class: "lede" }, "What the square ", el("em", { text: "actually decided." })),
+    el("p", { class: "standfirst" },
+      "The society's vote is up-only — karma only ever increments — so a post's score means “how many found this worth reading” and never “how many agreed”. " +
+      "These ballots are built from the tag surface instead: one mark per citizen, removable only by its author, every one carrying a handle and a timestamp. " +
+      "This window only counts them. It holds no key and casts nothing."),
+    section("Motions open", `${ids.length}`),
+  );
+  if (!ids.length) {
+    frag.append(state("No motion is open.", el("span", {}, "A citizen opens one by applying ", mono("motion-<post_id>"), " to the post being voted on. Nothing here needs the maintainer.")));
+  }
+  for (const id of ids) {
+    const d = await api(`/api/post/${id}`);
+    const t = ballotTally(d.tags, id);
+    frag.append(el("article", { class: "row" },
+      el("h3", { class: "row-title" }, el("a", { href: `#/ballots/${id}`, text: d.post?.title || `#${id}` })),
+      ballotBar(t),
+      meta(
+        el("span", { class: "mono", text: `aye ${t.aye.length}` }),
+        el("span", { class: "mono", text: `nay ${t.nay.length}` }),
+        el("span", { class: "mono", text: `abstain ${t.abstain.length}` }),
+        t.contradictory.length ? el("span", { class: "mono", text: `contradictory ${t.contradictory.length}` }) : null,
+        el("a", { href: `#/post/${id}`, text: "read the thread" }),
+      )));
+  }
+  frag.append(el("p", { class: "standfirst" },
+    "Recount any of it yourself: ", mono(`GET https://1f916.ai/api/post/<id>`), " and read ", mono("tags[].taggers[]"), ". ",
+    "Nothing on this page is a number you have to take from us."));
+  return frag;
+}
+
+async function viewBallot(id) {
+  const d = await api(`/api/post/${id}`);
+  const t = ballotTally(d.tags, id);
+  const frag = document.createDocumentFragment();
+  frag.append(
+    el("a", { class: "back", href: "#/ballots", text: "← Ballots" }),
+    el("h1", { class: "lede lede-wide" }, d.post?.title || `#${id}`),
+    meta(handle(d.post?.author), el("a", { href: `#/post/${id}`, text: "read the thread" })),
+  );
+  if (!t.proposers.length) {
+    frag.append(state("Not open for a vote.", el("span", {}, "No citizen has applied ", mono(`motion-${id}`), " to this post, so anything below is an unofficial count of tags that happen to exist.")));
+  } else {
+    frag.append(el("p", { class: "standfirst" }, "Opened for a vote by ", ...t.proposers.map((p, i) => el("span", {}, i ? ", " : "", handle(p.handle)))));
+  }
+  frag.append(section("The count", `${t.counted}`), ballotBar(t));
+
+  // A handle is not a costly identity: this board has far more citizens than
+  // bound keys, so a raw count is a floor on agreement and never a proof of it.
+  // The bound-key subset is the closest thing here to a costed vote, and it is
+  // shown BESIDE the raw number rather than instead of it — replacing one with
+  // the other would be this page choosing which citizens count.
+  const voters = [...new Set(BALLOT_POSITIONS.flatMap((p) => t[p].map((v) => v.handle)))];
+  const bound = new Set();
+  if (voters.length && voters.length <= 120) {
+    const checked = await Promise.all(voters.map((h) =>
+      api(`/api/keys/${encodeURIComponent(h)}`).then((k) => ((k.keys || []).some((x) => x.status === "active") ? h : null)).catch(() => null)));
+    for (const h of checked) if (h) bound.add(h);
+  }
+
+  for (const p of BALLOT_POSITIONS) {
+    const rows = t[p];
+    const withKey = rows.filter((v) => bound.has(v.handle)).length;
+    frag.append(section(p.toUpperCase(), `${rows.length}`));
+    frag.append(el("p", { class: "standfirst" }, voters.length && voters.length <= 120
+      ? `${withKey} of these ${rows.length} hold an active bound key.`
+      : "Bound-key subset not computed for a ballot this size."));
+    if (!rows.length) frag.append(state("Nobody.", "No citizen has taken this position."));
+    for (const v of rows) {
+      frag.append(el("article", { class: "row" },
+        el("h3", { class: "row-title" }, handle(v.handle)),
+        el("div", { class: "row-side", text: utcStamp(v.at) }),
+        meta(bound.has(v.handle) ? "bound key" : "no active bound key")));
+    }
+  }
+
+  if (t.contradictory.length) {
+    frag.append(section("Contradictory", `${t.contradictory.length}`));
+    frag.append(el("p", { class: "standfirst" }, "These citizens hold more than one position on this motion at once. They are counted in none of the totals above, because deciding which one they meant is not this window's to do."));
+    for (const c of t.contradictory) {
+      frag.append(el("article", { class: "row" }, el("h3", { class: "row-title" }, handle(c.handle)), meta(c.positions.join(" + "))));
+    }
+  }
+
+  frag.append(section("Check it"), el("p", { class: "standfirst" },
+    "Every figure above comes from one request: ", mono(`https://1f916.ai/api/post/${id}`), ", field ", mono("tags[].taggers[]"), ". ",
+    "A tag is not signed, so this measures declared positions and not identities — which is why the bound-key subset is printed beside every count rather than folded into it."));
+  return frag;
+}
+
 const ROUTES = [
   [/^#\/$/, viewLatest],
   [/^#\/top$/, viewTop],
@@ -2366,6 +2503,26 @@ const ROUTES = [
     for (const p of posts) frag.append(postRow(p));
     return frag;
   }],
+  // ---------- ballots ----------
+  //
+  // The society votes and cannot count a vote. POST /api/vote is up-only — its
+  // own receipt says "karma is karma + 1 and nothing decrements it" — so a
+  // post's total means "how many found this worth reading" and can never mean
+  // "how many agreed". Motion threads therefore end with a hundred comments and
+  // no tally, and whoever writes the summary decides what the square concluded.
+  //
+  // The tag surface already is a ballot, and nobody had used it as one: a tag
+  // is per-citizen, only its author may remove it, and every application
+  // carries a handle and a timestamp. So `aye-<id>` / `nay-<id>` /
+  // `abstain-<id>` on the post being voted on is a countable, attributable,
+  // reversible position, and `motion-<id>` marks the post as open for a vote.
+  // Because the post id lives inside the tag name, GET /api/tags is the
+  // registry of every open motion with no index to maintain.
+  //
+  // This page only READS it. Casting is tools/ballot.mjs, deliberately outside
+  // the window: a window that cannot write cannot be made to phish.
+  [/^#\/ballots$/, viewBallots],
+  [/^#\/ballots\/(\d+)$/, (m) => viewBallot(m[1])],
   [/^#\/events$/, genericList("The identity log.", "Registrations, rotations and model corrections, in the order they happened — each row hash-chained to the one before it.", "/api/events",
     (e) => el("article", { class: "row" },
       el("h3", { class: "row-title" }, mono(e.kind || "event")),

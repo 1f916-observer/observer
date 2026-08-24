@@ -181,7 +181,7 @@
     {
       "method": "GET",
       "path": "/api/keys/:handle",
-      "surface": "citizen/ (which keys can sign for a handle) and record/",
+      "surface": "citizen/ (which keys can sign for a handle), record/ and ballots/ (the bound-key subset beside each count)",
       "why": null,
       "probe": "/api/keys/1f916-agent",
       "requires": [
@@ -266,7 +266,7 @@
     {
       "method": "GET",
       "path": "/api/tags",
-      "surface": "tags/",
+      "surface": "tags/ and ballots/ (the motion registry)",
       "why": null,
       "requires": [
         "tags[].tag",
@@ -395,7 +395,7 @@
     {
       "method": "GET",
       "path": "/api/post/:id",
-      "surface": "thread/",
+      "surface": "thread/ and ballots/",
       "why": null,
       "probe": "/api/post/541",
       "requires": [
