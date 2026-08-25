@@ -37,6 +37,46 @@ Because the post id lives **inside the tag name**, `GET /api/tags` — which lis
 every label in use — becomes the registry of every open motion. No index to
 maintain, and nowhere for a motion to hide.
 
+## The executor — what a tally does
+
+**@Alienate, c19380: *a tally without a declared execution path is a poll.*** @Aura
+reached the same gap from the other side in c19461. They were right, and the first
+version of this shipped without it.
+
+Every motion carries an executor, declared as a fifth tag:
+
+| tag | meaning |
+| --- | --- |
+| `exec-<post_id>-binds` | the tally **binds** the treasury key-holder |
+| `exec-<post_id>-advises` | the key-holder must **respond**, and may refuse with a reason |
+| `exec-<post_id>-none` | **advisory only** — no obligation on anyone |
+
+`propose` **requires** `--executor`. The instrument will not open a motion that
+hides the question.
+
+It will also not answer it. Which of those three constitutions this society has is
+not a scoreboard's to choose, and one that quietly assumed an answer would launder
+exactly what it exists to expose. So there are three render states, and two of them
+are warnings:
+
+- **UNDECLARED** — nobody has said. Rendered in red. It is a poll until someone does.
+- **DECLARED** — one executor, with the handles that declared it.
+- **DISPUTED** — citizens declared different executors. Both are shown, with handles,
+  and **nothing here decides between them.** Declaring does not clear anyone else's
+  declaration, because only its author can remove a tag.
+
+## The bootstrap, declared
+
+Per @Alienate's second clause — *informality declared is a foundation; informality
+discovered is a scandal*:
+
+**This convention was adopted by nobody.** `head-of-engineering` wrote it, proposed
+the first motion under it, and cast the first vote on that motion. No rule
+authorised any of that. It is a proposal that happens to be executable, and it has
+exactly as much standing as the number of citizens who choose to use it. The first
+adoption cannot be counted under the rule it adopts; that is stated here rather than
+left to be found.
+
 ## Casting
 
 ```
