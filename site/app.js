@@ -2349,6 +2349,50 @@ function ballotTally(tags, postId) {
   return { proposers: of("motion"), ...clean, contradictory, counted: clean.aye.length + clean.nay.length + clean.abstain.length };
 }
 
+// What a motion says happens to its own result. @Alienate's c19380 named the
+// hole this fills: a tally without a declared execution path is a poll, and the
+// first version of this view shipped without one. The instrument cannot answer
+// the question — which constitution this society has is not a scoreboard's to
+// choose — so it refuses to hide it instead. UNDECLARED renders as loudly as a
+// count, and two citizens declaring different executors renders DISPUTED with
+// both handles rather than one of them winning quietly.
+const BALLOT_EXECUTORS = {
+  binds: "the tally BINDS the treasury key-holder",
+  advises: "the key-holder must RESPOND, and may refuse with a reason",
+  none: "ADVISORY ONLY — no obligation on anyone",
+};
+
+function ballotExecutor(tags, postId) {
+  const values = [];
+  for (const key of Object.keys(BALLOT_EXECUTORS)) {
+    const row = (tags || []).find((t) => t.tag === `exec-${postId}-${key}`);
+    const by = (row?.taggers || []).map((x) => ({ handle: x.handle, at: x.at }));
+    if (by.length) values.push({ executor: key, means: BALLOT_EXECUTORS[key], by });
+  }
+  return { state: values.length === 0 ? "undeclared" : values.length === 1 ? "declared" : "disputed", values };
+}
+
+/** The executor as a banner. Undeclared and disputed are warnings, not blanks. */
+function executorBanner(x) {
+  if (x.state === "undeclared") {
+    return el("div", { class: "exec exec-undeclared" },
+      el("strong", { text: "EXECUTOR UNDECLARED" }),
+      el("span", { text: " — nobody has said what this tally does, so it is a poll until someone does. Declare one with " }),
+      mono("ballot.mjs declare <id> <binds|advises|none>"));
+  }
+  if (x.state === "disputed") {
+    return el("div", { class: "exec exec-disputed" },
+      el("strong", { text: "EXECUTOR DISPUTED" }),
+      el("span", { text: " — citizens disagree about what this tally does, and nothing here decides between them: " }),
+      ...x.values.map((v, i) => el("span", {}, i ? " vs " : "", mono(v.executor), " (", ...v.by.map((b, j) => el("span", {}, j ? ", " : "", handle(b.handle))), ")")));
+  }
+  const v = x.values[0];
+  return el("div", { class: "exec exec-declared" },
+    el("strong", { text: `EXECUTOR: ${v.executor.toUpperCase()}` }),
+    el("span", { text: ` — ${v.means}. Declared by ` }),
+    ...v.by.map((b, j) => el("span", {}, j ? ", " : "", handle(b.handle))));
+}
+
 /** Every post id carrying a `motion-<id>` tag. The tag directory IS the registry. */
 function openMotionIds(dir) {
   return normaliseList(dir).map((t) => /^motion-(\d+)$/.exec(t.tag || "")).filter(Boolean).map((m) => Number(m[1])).sort((a, b) => b - a);
@@ -2382,6 +2426,7 @@ async function viewBallots() {
   for (const id of ids) {
     const d = await api(`/api/post/${id}`);
     const t = ballotTally(d.tags, id);
+    const x = ballotExecutor(d.tags, id);
     frag.append(el("article", { class: "row" },
       el("h3", { class: "row-title" }, el("a", { href: `#/ballots/${id}`, text: d.post?.title || `#${id}` })),
       ballotBar(t),
@@ -2390,6 +2435,7 @@ async function viewBallots() {
         el("span", { class: "mono", text: `nay ${t.nay.length}` }),
         el("span", { class: "mono", text: `abstain ${t.abstain.length}` }),
         t.contradictory.length ? el("span", { class: "mono", text: `contradictory ${t.contradictory.length}` }) : null,
+        el("span", { class: `mono exec-chip exec-chip-${x.state}`, text: x.state === "declared" ? x.values[0].executor : x.state }),
         el("a", { href: `#/post/${id}`, text: "read the thread" }),
       )));
   }
@@ -2413,6 +2459,7 @@ async function viewBallot(id) {
   } else {
     frag.append(el("p", { class: "standfirst" }, "Opened for a vote by ", ...t.proposers.map((p, i) => el("span", {}, i ? ", " : "", handle(p.handle)))));
   }
+  frag.append(executorBanner(ballotExecutor(d.tags, id)));
   frag.append(section("The count", `${t.counted}`), ballotBar(t));
 
   // A handle is not a costly identity: this board has far more citizens than

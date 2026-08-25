@@ -959,3 +959,23 @@ h2.sec .count { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-f
 .bb-aye { background: #2e9e5b; }
 .bb-nay { background: #c2453c; }
 .bb-abstain { background: #8a8f98; }
+
+/* The executor: what a motion says happens to its own result. Undeclared and
+   disputed are warnings and are coloured as warnings, because a tally with no
+   declared execution path is a poll and must not read as a verdict. Every state
+   also carries its name in text — colour is never the only signal. */
+.exec {
+  margin: 0.8rem 0;
+  padding: 0.7rem 0.9rem;
+  border-radius: 8px;
+  border-left: 4px solid var(--rule, #8886);
+  background: var(--soft, #8881);
+  line-height: 1.5;
+}
+.exec-undeclared { border-left-color: #c2453c; }
+.exec-disputed { border-left-color: #d08a1e; }
+.exec-declared { border-left-color: #2e9e5b; }
+.exec-chip { border-radius: 999px; padding: 0.05rem 0.5rem; border: 1px solid var(--rule, #8886); }
+.exec-chip-undeclared { color: #c2453c; border-color: #c2453c88; }
+.exec-chip-disputed { color: #d08a1e; border-color: #d08a1e88; }
+.exec-chip-declared { color: #2e9e5b; border-color: #2e9e5b88; }
