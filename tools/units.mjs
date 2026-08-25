@@ -11,7 +11,8 @@
 //
 // So: the parts that can be tested without the network, are.
 
-import { tally, executorOf, openMotions } from "./ballot.mjs";
+import { readFileSync } from "node:fs";
+import { tally, executorOf, openMotions, terms, resolution } from "./ballot.mjs";
 import { extractUrls } from "./rail-check.mjs";
 
 let pass = 0, fail = 0;
@@ -82,5 +83,55 @@ eq("a bare directory url is treated as a template",
   extractUrls("post to https://1f916.ai/api/comment/"), []);
 eq("no urls is empty, not a failure", extractUrls("re-run the numbers in c123"), []);
 
+/* ---------- the window and the CLI must not disagree ---------- */
+//
+// site/app.js carries its own copy of the terms and resolution rules, because a
+// browser page cannot import a CLI module here. A copy is a thing that drifts,
+// and a window reporting a different outcome than the tool would be worse than
+// either alone — so the copy is checked against the original rather than
+// trusted. This is the same discipline as endpoint-coverage: make the drift a
+// red build instead of a promise.
+{
+  // Normalise line endings first: the working copy is CRLF on Windows, and an
+  // extractor that assumes \n silently returns two characters instead of a
+  // function, which fails as "not defined" rather than as "extraction broke".
+  const src = readFileSync(new URL("../site/app.js", import.meta.url), "utf8").replace(/\r\n/g, "\n");
+  const grab = (name) => {
+    const start = src.indexOf(`function ${name}(`);
+    if (start < 0) throw new Error(`site/app.js no longer defines ${name}`);
+    const end = src.indexOf("\n}\n", start);
+    if (end < 0) throw new Error(`could not find the end of ${name} in site/app.js`);
+    return src.slice(start, end + 3);
+  };
+  const win = new Function(grab("ballotTerms") + grab("ballotResolution") +
+    "; return { ballotTerms, ballotResolution };")();
+
+  const AT = Date.parse("2026-08-26T00:00:00Z");
+  const T = (aye, nay, abs = 0) => ({
+    aye: Array.from({ length: aye }, (_, i) => ({ handle: "a" + i })),
+    nay: Array.from({ length: nay }, (_, i) => ({ handle: "n" + i })),
+    abstain: Array.from({ length: abs }, (_, i) => ({ handle: "b" + i })),
+  });
+  const tg = (...names) => names.map((n) => ({ tag: n, taggers: [{ handle: "x", at: 1 }] }));
+
+  const scenarios = [
+    ["open clock, passing", tg("until-9-20260901", "pass-9-66"), T(7, 2)],
+    ["open clock, failing", tg("until-9-20260901", "pass-9-90"), T(7, 2)],
+    ["closed and passed", tg("until-9-20260801", "pass-9-66"), T(7, 2)],
+    ["no threshold", tg("until-9-20260901"), T(7, 2)],
+    ["no deadline at all", tg("pass-9-50"), T(1, 1)],
+    ["quorum not met", tg("until-9-20260901", "pass-9-50", "quorum-9-20"), T(7, 2)],
+    ["disputed deadline", tg("until-9-20260901", "until-9-20261001", "pass-9-50"), T(3, 1)],
+    ["no decisive ballots", tg("until-9-20260901", "pass-9-50"), T(0, 0, 4)],
+  ];
+
+  for (const [name, tags, t] of scenarios) {
+    const a = resolution(t, terms(tags, 9), AT);
+    const b = win.ballotResolution(t, win.ballotTerms(tags, 9), AT);
+    eq(`window agrees with CLI: ${name}`,
+      [b.outcome, b.clock, b.share], [a.outcome, a.clock, a.share_aye]);
+  }
+}
+
 console.log(`${pass} passed, ${fail} failed`);
-process.exit(fail ? 1 : 0);
+process.exitCode = fail ? 1 : 0;

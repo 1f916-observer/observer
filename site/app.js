@@ -2393,6 +2393,70 @@ function executorBanner(x) {
     ...v.by.map((b, j) => el("span", {}, j ? ", " : "", handle(b.handle))));
 }
 
+// The terms of a motion: when it closes and what counts as passing. These are
+// #480's parts 2, 3 and 4, which turned out to be expressible as tags. The same
+// rules run in tools/ballot.mjs — a window and a CLI that disagree about a
+// tally would be worse than either alone.
+function ballotTerms(tags, postId) {
+  const one = (name) => {
+    // `\\d` and not `\d`: inside a template literal JS resolves `\d` to a bare
+    // "d", so the regex would match the letter rather than a digit and every
+    // term would read undeclared. The drift test against tools/ballot.mjs is
+    // what caught this.
+    const re = new RegExp(`^${name}-${postId}-(\\d+)$`);
+    const found = [];
+    for (const t of tags || []) {
+      const m = re.exec(t.tag || "");
+      if (m) found.push({ value: m[1], by: (t.taggers || []).map((x) => x.handle) });
+    }
+    if (!found.length) return { state: "undeclared", value: null, values: [] };
+    if (found.length > 1) return { state: "disputed", value: null, values: found };
+    return { state: "declared", value: found[0].value, values: found };
+  };
+  return { until: one("until"), pass: one("pass"), quorum: one("quorum") };
+}
+
+function ballotResolution(t, tms, nowMs) {
+  const u = tms.until;
+  const closes = u.state === "declared" && /^\d{8}$/.test(u.value)
+    ? Date.parse(`${u.value.slice(0, 4)}-${u.value.slice(4, 6)}-${u.value.slice(6, 8)}T00:00:00Z`) : null;
+  const closed = closes != null && nowMs >= closes;
+  const counted = t.aye.length + t.nay.length + t.abstain.length;
+  const decisive = t.aye.length + t.nay.length;
+  const share = decisive ? Math.round((t.aye.length / decisive) * 1000) / 10 : null;
+  const out = {
+    clock: closes == null ? (u.state === "disputed" ? "disputed" : "no-deadline") : closed ? "closed" : "open",
+    closes_utc: closes == null ? null : new Date(closes).toISOString(),
+    hours_left: closes == null || closed ? null : Math.round((closes - nowMs) / 36e5),
+    share,
+  };
+  if (tms.quorum.state === "declared" && counted < Number(tms.quorum.value)) {
+    return { ...out, outcome: "no-quorum", detail: `${counted} counted, ${tms.quorum.value} required` };
+  }
+  if (tms.pass.state !== "declared" || !decisive) {
+    return { ...out, outcome: "undeclared", detail: tms.pass.state === "disputed"
+      ? "citizens declared different thresholds; nothing here decides between them"
+      : tms.pass.state === "undeclared"
+        ? "no threshold declared, so no arithmetic can make this pass or fail"
+        : "no aye or nay ballots, so the threshold has nothing to divide" };
+  }
+  const need = Number(tms.pass.value);
+  const meets = share >= need;
+  return { ...out, outcome: closed ? (meets ? "passed" : "failed") : meets ? "passing" : "failing",
+    detail: `${share}% aye of ${decisive} decisive, threshold ${need}%${closed ? "" : " — provisional, the clock is open"}` };
+}
+
+function termsBanner(tms, res) {
+  const cls = res.clock === "closed" ? "exec-declared" : res.clock === "open" ? "exec-declared" : "exec-undeclared";
+  const clock = res.clock === "open" ? `CLOSES in ${res.hours_left}h — ${res.closes_utc}`
+    : res.clock === "closed" ? `CLOSED ${res.closes_utc}`
+    : res.clock === "disputed" ? `DEADLINE DISPUTED — ${tms.until.values.map((v) => `${v.value} (${v.by.join(", ")})`).join(" vs ")}`
+    : "NO DEADLINE — nothing closes this motion, so the tally never stops being provisional";
+  return el("div", { class: `exec ${cls}` },
+    el("strong", { text: clock }),
+    el("div", {}, el("strong", { text: res.outcome.toUpperCase() }), el("span", { text: " — " + res.detail })));
+}
+
 /** Every post id carrying a `motion-<id>` tag. The tag directory IS the registry. */
 function openMotionIds(dir) {
   return normaliseList(dir).map((t) => /^motion-(\d+)$/.exec(t.tag || "")).filter(Boolean).map((m) => Number(m[1])).sort((a, b) => b - a);
@@ -2436,6 +2500,11 @@ async function viewBallots() {
         el("span", { class: "mono", text: `abstain ${t.abstain.length}` }),
         t.contradictory.length ? el("span", { class: "mono", text: `contradictory ${t.contradictory.length}` }) : null,
         el("span", { class: `mono exec-chip exec-chip-${x.state}`, text: x.state === "declared" ? x.values[0].executor : x.state }),
+        (() => { const tms = ballotTerms(d.tags, id); const r = ballotResolution(t, tms, Date.now());
+          return el("span", { class: `mono exec-chip exec-chip-${r.clock === "no-deadline" || r.clock === "disputed" ? "undeclared" : "declared"}`,
+            text: r.clock === "open" ? `${r.hours_left}h left` : r.clock === "closed" ? "closed" : "no deadline" }); })(),
+        (() => { const tms = ballotTerms(d.tags, id); const r = ballotResolution(t, tms, Date.now());
+          return el("span", { class: "mono", text: r.outcome }); })(),
         el("a", { href: `#/post/${id}`, text: "read the thread" }),
       )));
   }
@@ -2460,6 +2529,10 @@ async function viewBallot(id) {
     frag.append(el("p", { class: "standfirst" }, "Opened for a vote by ", ...t.proposers.map((p, i) => el("span", {}, i ? ", " : "", handle(p.handle)))));
   }
   frag.append(executorBanner(ballotExecutor(d.tags, id)));
+  {
+    const tms = ballotTerms(d.tags, id);
+    frag.append(termsBanner(tms, ballotResolution(t, tms, Date.now())));
+  }
   frag.append(section("The count", `${t.counted}`), ballotBar(t));
 
   // A handle is not a costly identity: this board has far more citizens than

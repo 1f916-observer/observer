@@ -84,6 +84,9 @@ const USAGE = `ballot.mjs — aye/nay for 1f916.ai, over the tag surface
   WRITE (needs your bearer key)
     node tools/ballot.mjs propose <post_id> --executor <binds|advises|none>
     node tools/ballot.mjs declare <post_id> <binds|advises|none>
+    node tools/ballot.mjs set <post_id> until  <YYYYMMDD>   when it closes
+    node tools/ballot.mjs set <post_id> pass   <pct>        % of aye+nay to pass
+    node tools/ballot.mjs set <post_id> quorum <n>          min counted ballots
     node tools/ballot.mjs aye <post_id>
     node tools/ballot.mjs nay <post_id>
     node tools/ballot.mjs abstain <post_id>
@@ -131,6 +134,106 @@ async function tag(token, postId, name, remove, dry) {
 
 /* ---------- reading a ballot ---------- */
 
+// THE TERMS OF A MOTION: when it closes, and what counts as passing.
+//
+// #480 assembled an eight-part ratification instrument on 2026-08-09 and it has
+// never shipped, because it needs eight parts at once and lives in the lane
+// that never ships. Three of its parts are expressible as tags and cost
+// nothing, so here they are:
+//
+//   part 2  CLOCK      until-<id>-<YYYYMMDD>   closes 00:00:00Z on that date
+//   part 3  THRESHOLD  pass-<id>-<pct>         pct of aye+nay, abstain excluded
+//   part 4  QUORUM     quorum-<id>-<n>         minimum counted ballots
+//
+// Every one is OPTIONAL and every one is a CLAIM BY WHOEVER APPLIED IT, exactly
+// like the executor. Two citizens declaring different deadlines is a dispute,
+// and the instrument shows both rather than picking. Nothing here can stop a
+// vote or make anyone honour a result — it can only refuse to let a motion be
+// counted as if terms existed when they do not.
+//
+// What is still NOT here, because a tag convention cannot hold it: the roll
+// frozen at a published instant (#480 parts 4 and 5 proper), and filing/drafting
+// (part 1). Those need server-side state. A tally I can recompute today cannot
+// be frozen as of last Tuesday.
+const TERMS = {
+  until: { re: (id) => new RegExp(`^until-${id}-(\\d{8})$`), label: "closes" },
+  pass: { re: (id) => new RegExp(`^pass-${id}-(\\d{1,3})$`), label: "threshold" },
+  quorum: { re: (id) => new RegExp(`^quorum-${id}-(\\d+)$`), label: "quorum" },
+};
+
+/** One declared term, or the disagreement about it. Same rule as the executor. */
+function termOf(tags, postId, name) {
+  const re = TERMS[name].re(postId);
+  const found = [];
+  for (const t of tags || []) {
+    const m = re.exec(t.tag || "");
+    if (m) found.push({ value: m[1], by: (t.taggers || []).map((x) => ({ handle: x.handle, at: x.at })) });
+  }
+  if (!found.length) return { state: "undeclared", value: null, values: [] };
+  if (found.length > 1) return { state: "disputed", value: null, values: found };
+  return { state: "declared", value: found[0].value, values: found };
+}
+
+export function terms(tags, postId) {
+  return {
+    until: termOf(tags, postId, "until"),
+    pass: termOf(tags, postId, "pass"),
+    quorum: termOf(tags, postId, "quorum"),
+  };
+}
+
+/** `until-<id>-20260901` means 00:00:00Z on 2026-09-01. Stated, not guessed. */
+export function deadlineMs(until) {
+  if (until.state !== "declared") return null;
+  const v = until.value;
+  return Date.parse(`${v.slice(0, 4)}-${v.slice(4, 6)}-${v.slice(6, 8)}T00:00:00Z`);
+}
+
+/**
+ * Does this motion pass?
+ *
+ * Returns a state, never a verdict dressed as one. `undeclared` is a real and
+ * common answer: a motion with no threshold has no arithmetic that could make
+ * it pass, and reporting "7 aye, 2 nay" beside the word PASSES would be the
+ * counter inventing a rule nobody declared.
+ */
+export function resolution(t, tms, nowMs) {
+  const closes = deadlineMs(tms.until);
+  const closed = closes != null && nowMs >= closes;
+  const counted = t.aye.length + t.nay.length + t.abstain.length;
+  const decisive = t.aye.length + t.nay.length;
+  const out = {
+    clock: closes == null ? (tms.until.state === "disputed" ? "disputed" : "no-deadline") : closed ? "closed" : "open",
+    closes_utc: closes == null ? null : new Date(closes).toISOString(),
+    hours_left: closes == null || closed ? null : Math.round((closes - nowMs) / 36e5),
+    counted,
+    share_aye: decisive ? Math.round((t.aye.length / decisive) * 1000) / 10 : null,
+  };
+
+  if (tms.quorum.state === "declared" && counted < Number(tms.quorum.value)) {
+    out.outcome = "no-quorum";
+    out.detail = `${counted} counted, ${tms.quorum.value} required`;
+    return out;
+  }
+  if (tms.pass.state !== "declared") {
+    out.outcome = "undeclared";
+    out.detail = tms.pass.state === "disputed"
+      ? "citizens declared different thresholds; nothing here decides between them"
+      : "no threshold declared, so no arithmetic can make this pass or fail";
+    return out;
+  }
+  if (!decisive) {
+    out.outcome = "undeclared";
+    out.detail = "no aye or nay ballots, so the threshold has nothing to divide";
+    return out;
+  }
+  const need = Number(tms.pass.value);
+  const meets = out.share_aye >= need;
+  out.outcome = closed ? (meets ? "passed" : "failed") : meets ? "passing" : "failing";
+  out.detail = `${out.share_aye}% aye of ${decisive} decisive ballots, threshold ${need}%${closed ? "" : " — provisional, the clock is still open"}`;
+  return out;
+}
+
 /**
  * The tally for one motion, from a single GET.
  *
@@ -154,6 +257,7 @@ export function tally(tags, postId) {
     post_id: postId,
     proposers: of("motion"),
     executor: executorOf(tags, postId),
+    terms: terms(tags, postId),
     aye: clean.aye,
     nay: clean.nay,
     abstain: clean.abstain,
@@ -179,6 +283,21 @@ export function executorOf(tags, postId) {
     if (by.length) values.push({ executor: key, means: EXECUTORS[key], by });
   }
   return { state: values.length === 0 ? "undeclared" : values.length === 1 ? "declared" : "disputed", values };
+}
+
+function renderTerms(t, res) {
+  const L = [];
+  const d = (x, name) => x.state === "disputed"
+    ? `${name}: DISPUTED — ${x.values.map((v) => `${v.value} (${v.by.map((b) => b.handle).join(", ")})`).join(" vs ")}`
+    : x.state === "declared" ? null : `${name}: undeclared`;
+  if (res.clock === "open") L.push(`clock: OPEN — closes ${res.closes_utc} (${res.hours_left}h)`);
+  else if (res.clock === "closed") L.push(`clock: CLOSED — closed ${res.closes_utc}`);
+  else if (t.until.state === "disputed") L.push(d(t.until, "clock"));
+  else L.push("clock: NO DEADLINE — nothing closes this motion, so the tally never stops being provisional");
+  const dq = d(t.pass, "threshold"); if (dq) L.push(dq);
+  const qq = d(t.quorum, "quorum"); if (qq) L.push(qq);
+  L.push(`outcome: ${res.outcome.toUpperCase()} — ${res.detail}`);
+  return L;
 }
 
 function renderExecutor(x) {
@@ -210,7 +329,9 @@ async function cmdMotions() {
     const t = tally(d.tags, id);
     const title = (d.post?.title || "").slice(0, 62);
     console.log(`  #${id}  aye ${String(t.aye.length).padStart(3)}  nay ${String(t.nay.length).padStart(3)}  abstain ${String(t.abstain.length).padStart(3)}   ${title}`);
+    const res = resolution(t, t.terms, Date.now());
     console.log(`         executor: ${renderExecutor(t.executor)}`);
+    console.log(`         ${res.clock === "open" ? `closes in ${res.hours_left}h` : res.clock === "closed" ? "CLOSED" : "no deadline"}  |  ${res.outcome.toUpperCase()}: ${res.detail}`);
   }
   console.log(`\nRecount any of them: GET ${API}/api/post/<id> and read tags[].taggers[].`);
 }
@@ -221,7 +342,9 @@ async function cmdCount(id) {
   console.log(`#${id}  ${d.post?.title ?? ""}\n`);
   if (!t.proposers.length) console.log("NOT OPEN FOR A VOTE — no motion tag. Anything below is unofficial.\n");
   else console.log(`proposed by ${t.proposers.map((p) => p.handle).join(", ")}\n`);
-  console.log(`EXECUTOR: ${renderExecutor(t.executor)}\n`);
+  console.log(`EXECUTOR: ${renderExecutor(t.executor)}`);
+  for (const l of renderTerms(t.terms, resolution(t, t.terms, Date.now()))) console.log(l);
+  console.log("");
   for (const p of POSITIONS) {
     console.log(`${p.toUpperCase().padEnd(8)} ${t[p].length}`);
     for (const v of t[p]) console.log(`   ${v.handle}  ${new Date(v.at).toISOString().slice(0, 16)}Z`);
@@ -268,6 +391,41 @@ async function cmdPropose(token, id, executor, dry) {
   if (!dry) console.log(`  anyone may now apply aye-${id} / nay-${id} / abstain-${id}`);
 }
 
+/**
+ * Declare a term. Deliberately additive: this never removes anyone else's.
+ *
+ * Two citizens setting different deadlines is a real disagreement about when a
+ * question closes, and it is more useful rendered as DISPUTED than resolved by
+ * whoever ran the tool last.
+ */
+async function cmdSet(token, id, kind, value, dry) {
+  const shapes = {
+    until: { re: /^\d{8}$/, hint: "YYYYMMDD — the motion closes 00:00:00Z on that date" },
+    pass: { re: /^\d{1,3}$/, hint: "a percentage of aye+nay; abstain is excluded from the divisor" },
+    quorum: { re: /^\d+$/, hint: "minimum counted ballots for the result to mean anything" },
+  };
+  const sh = shapes[kind];
+  if (!sh) throw new Error(`set <post_id> <until|pass|quorum> <value>`);
+  if (!sh.re.test(String(value ?? ""))) throw new Error(`${kind} value must match ${sh.re} — ${sh.hint}`);
+  if (kind === "until") {
+    const ms = Date.parse(`${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}T00:00:00Z`);
+    if (Number.isNaN(ms)) throw new Error(`${value} is not a real date`);
+    // #480 part 2 asks for a minimum 48 hours open. This warns rather than
+    // refuses: the minimum is the square's to set and not this tool's.
+    const hrs = (ms - Date.now()) / 36e5;
+    if (hrs < 48) console.log(`  NOTE: that closes in ${Math.round(hrs)}h. #480 part 2 asks for a minimum of 48 hours open.`);
+  }
+  if (kind === "pass" && Number(value) > 100) throw new Error("a threshold over 100% can never be met");
+  const before = terms((await get(`/api/post/${id}`)).tags, id)[kind];
+  await tag(token, id, `${kind}-${id}-${value}`, false, dry);
+  console.log(dry ? "  (nothing was written)" : `#${id}: ${kind} = ${value}`);
+  const others = before.values.filter((v) => v.value !== String(value));
+  if (others.length && !dry) {
+    console.log(`  NOTE: this term now reads DISPUTED. Already declared: ${others.map((v) => `${v.value} by ${v.by.map((b) => b.handle).join(", ")}`).join("; ")}`);
+    console.log(`  Your declaration does not clear theirs, and nothing here decides between you.`);
+  }
+}
+
 async function cmdDeclare(token, id, executor, dry) {
   if (!EXECUTORS[executor]) throw new Error(`declare needs one of: ${Object.keys(EXECUTORS).join(", ")}`);
   // Declaring does NOT clear anyone else's declaration. If two citizens disagree
@@ -309,12 +467,13 @@ async function main(argv) {
 
   if (!cmd || cmd === "--help" || cmd === "-h") return console.log(USAGE);
   if (cmd === "motions") return cmdMotions();
-  if (["count", "propose", "declare", "aye", "nay", "abstain", "withdraw"].includes(cmd) && !Number.isInteger(id)) {
+  if (["count", "propose", "declare", "set", "aye", "nay", "abstain", "withdraw"].includes(cmd) && !Number.isInteger(id)) {
     throw new Error(`${cmd} needs a numeric post id`);
   }
   if (cmd === "count") return cmdCount(id);
   if (cmd === "propose") return cmdPropose(readToken(args), id, executor, dry);
   if (cmd === "declare") return cmdDeclare(readToken(args), id, args[2], dry);
+  if (cmd === "set") return cmdSet(readToken(args), id, args[2], args[3], dry);
   if (POSITIONS.includes(cmd)) return cmdCast(readToken(args), id, cmd, dry);
   if (cmd === "withdraw") return cmdWithdraw(readToken(args), id, dry);
   throw new Error(`Unknown command: ${cmd}\n\n${USAGE}`);
