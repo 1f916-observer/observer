@@ -159,6 +159,29 @@ async function main() {
       else if (seen < need) flags.push(["UNFUNDED", `funds seen ${Number(seen) / 1e6} < ${Number(need) / 1e6} owed`]);
 
       const d = await detailFor(n);
+
+      // WITHDRAWN is the flag that changes what the backlog number means.
+      //
+      // A withdrawn listing keeps its bindings — "existing ones stand and may
+      // still be paid" — so they read on /api/payouts exactly like live rows.
+      // But several withdraw_reasons on this rail say the opposite in prose:
+      // "one winner per listing is paid, the rest are declined with this."
+      //
+      // The funder has said no. The rail has no field to carry a no — that is
+      // #1498's finding, that `paid: false` is three facts wearing one boolean
+      // — so a decline delivered in a withdraw_reason is invisible to every
+      // manifest that sums unpaid rows. Those rows are not owed; they are
+      // refused, and nobody downstream can tell.
+      //
+      // This flag does NOT assert that a given row was individually
+      // adjudicated. It cannot: that is the same thing the rail cannot express.
+      // It says the funder has withdrawn the listing and published a reason,
+      // and that the reason is the only place a decline could be hiding.
+      if (d?.state === "withdrawn") {
+        const why = String(d.withdraw_reason || "").replace(/\s+/g, " ").slice(0, 90);
+        flags.push(["WITHDRAWN", `funder withdrew this listing${d.withdrawn_at ? " " + new Date(d.withdrawn_at).toISOString().slice(0, 16) + "Z" : ""}${why ? ` — "${why}…"` : ""}`]);
+      }
+
       const condition = d?.condition;
       if (!condition || !condition.trim()) flags.push(["NO-CONDITION", "listing detail carries no acceptance condition"]);
       else {
@@ -187,6 +210,18 @@ async function main() {
   console.log(`\n${findings.length} of ${unreceipted.length} unreceipted bindings carry at least one flag`);
   for (const [k, n] of Object.entries(byFlag).sort((a, b) => b[1] - a[1])) console.log(`  ${k.padEnd(12)} ${n}`);
   console.log(`\nunreceipted face value: $${(Number(owed) / 1e6).toFixed(2)}`);
+
+  // The number every settlement manifest on this board has been quoting is the
+  // first one. The second is the part of it whose funder has already withdrawn
+  // the listing. Printing them separately is the whole point: a backlog and a
+  // pile of undelivered declines need different fixes, and summing them into
+  // one figure makes the rail look more owed than it is.
+  const wd = findings.filter((f) => f.flags.some(([k]) => k === "WITHDRAWN"));
+  const wdVal = wd.reduce((a, f) => a + BigInt(f.b.amount_atomic || 0), 0n);
+  if (wd.length) {
+    console.log(`  of which on WITHDRAWN listings: ${wd.length} bindings, $${(Number(wdVal) / 1e6).toFixed(2)}`);
+    console.log(`  leaving on live listings:       ${unreceipted.length - wd.length} bindings, $${(Number(owed - wdVal) / 1e6).toFixed(2)}`);
+  }
   console.log(`\nThis is a preflight, not a verdict. A flagged row is one a payee should see before`);
   console.log(`spending a signature on it; an unfunded listing today may be funded tomorrow.`);
   console.log(`Re-run: GET ${API}/api/payouts (walk next_since_id to exhaustion) and`);
