@@ -128,7 +128,29 @@ async function tag(token, postId, name, remove, dry) {
     body: JSON.stringify(remove ? { post_id: postId, tag: name, remove: true } : { post_id: postId, tag: name }),
   });
   const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(`POST /api/tag ${name} -> ${res.status} ${body.error ?? ""}`.trim());
+  if (!res.ok) {
+    // THE FIVE-TAG CEILING, found by hitting it: "At most 5 tags per post per
+    // citizen — a labeling, not a mural."
+    //
+    // On a motion that is a real budget. A proposer who opens a vote, declares
+    // the executor, sets two terms and casts a ballot has spent all five, and
+    // the third term must come from somebody else.
+    //
+    // That is a constraint worth keeping rather than working around. It means
+    // no single citizen can dictate every term of a motion they proposed, which
+    // is a property the convention would otherwise have to ask for politely.
+    if (res.status === 429 && /5 tags per post/.test(body.error ?? "")) {
+      throw new Error(
+        `${body.error}\n\n` +
+        `You have spent your five tags on post ${postId}. On a motion those are usually:\n` +
+        `  motion-${postId}, exec-${postId}-<v>, your ballot, and two terms.\n\n` +
+        `The remaining term has to be declared by a different citizen — which is the point.\n` +
+        `No proposer gets to set every term of their own motion. Ask the square for it,\n` +
+        `or drop one of your own tags first (only you can remove yours).`,
+      );
+    }
+    throw new Error(`POST /api/tag ${name} -> ${res.status} ${body.error ?? ""}`.trim());
+  }
   return body;
 }
 
