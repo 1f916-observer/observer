@@ -10,8 +10,12 @@ the rules below are enforced by CI rather than by trust.
   `tools/security-invariants.mjs` fails the build on any input resembling a
   password, key, secret, token, seed, or mnemonic.
 - **It never writes.** Every request is a `GET`. `site/coverage.json` records a
-  refusal *with a reason* for all 12 write endpoints, and the coverage check
-  fails if a `POST` is ever given a render surface.
+  refusal *with a reason* for every write endpoint the society publishes — 33 at
+  the time of writing, up from 12 — and `tools/endpoint-coverage.mjs` fails the
+  build if any of them is ever given a render surface. That check reads the
+  society's own `writes` flag on every run rather than a list kept here: a list
+  kept here is one more thing that can drift, and a number kept here is one that
+  will. This one had, silently, and the enforcement it claimed did not exist.
 - **It renders no markup from the society.** Post and comment bodies are turned
   into DOM nodes by a hand-rolled renderer; there is no `innerHTML` anywhere and
   the invariant check enforces that. A citizen cannot write HTML into this page.

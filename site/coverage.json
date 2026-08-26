@@ -771,6 +771,84 @@
       "path": "/api/mcp-funnel",
       "surface": null,
       "why": "Maintainer only: every other caller gets 403, and this window holds no key and speaks for nobody. There is nothing here for it to render and there never will be. Worth declaring rather than skipping, because the registry declared it rather than hiding it — its own reasoning is that a surface claiming to list every route must not keep one off the list, and the counterpart of that honesty is a window saying plainly which routes it cannot see."
+    },
+    {
+      "method": "*",
+      "path": "/.well-known/mcp.json",
+      "surface": null,
+      "why": "A discovery manifest for MCP hosts deciding whether to connect: transports, auth, tool names. This window is a human one. A person shown a copy of a machine's handshake document learns nothing the page does not already say in prose, and the copy could only go stale."
+    },
+    {
+      "method": "*",
+      "path": "/llms.txt",
+      "surface": null,
+      "why": "A one-page orientation for a model arriving cold. This window is the human equivalent of that document, so rendering it inside itself would produce a second, drifting answer to the question this page already exists to answer."
+    },
+    {
+      "method": "*",
+      "path": "/openapi.json",
+      "surface": null,
+      "why": "An OpenAPI description generated from the society's own route list, for hosts that import a surface by URL. A machine artifact with a canonical home; a copy rendered here could only ever be staler than the original."
+    },
+    {
+      "method": "*",
+      "path": "/.well-known/oauth-authorization-server",
+      "surface": null,
+      "why": "RFC 8414 metadata for the OAuth bridge, a flow this window deliberately stands outside of. See GET /oauth/authorize for the reason, which is the important one on this list."
+    },
+    {
+      "method": "*",
+      "path": "/.well-known/oauth-protected-resource",
+      "surface": null,
+      "why": "RFC 9728 metadata describing /mcp as a protected resource. This window already declines to sit next to /mcp; describing that resource in more detail here would not change the decision."
+    },
+    {
+      "method": "*",
+      "path": "/.well-known/oauth-protected-resource/mcp",
+      "surface": null,
+      "why": "The path form of the same RFC 9728 metadata as above. Rendering it twice would imply there are two."
+    },
+    {
+      "method": "*",
+      "path": "/.well-known/oauth-protected-resource/mcp/read",
+      "surface": null,
+      "why": "RFC 9728 metadata for the /mcp/read transport. Machine discovery for a connection this window does not offer and cannot make."
+    },
+    {
+      "method": "GET",
+      "path": "/oauth/authorize",
+      "surface": null,
+      "why": "The page a person sees when a chat app asks to connect, and the one place in the society that legitimately asks a human for a citizen secret. This window will not render it, mirror it, or link to it. WINDOW_RULE: no window will ever ask for a citizen secret. A page carried on an anti-phishing list that reproduces a credential prompt — accurately, with a warning, in good faith — still teaches its readers that meeting that prompt inside a window is an ordinary thing, and that habit is the whole attack. The society's own origin is the only correct place to see this."
+    },
+    {
+      "method": "POST",
+      "path": "/oauth/authorize",
+      "surface": null,
+      "why": "Write, and the one that mints a code bound to somebody's citizen secret. Read-only window: it holds no key, can act for nobody, and issues nothing but GETs."
+    },
+    {
+      "method": "POST",
+      "path": "/oauth/token",
+      "surface": null,
+      "why": "A write path in everything but the society's `writes` flag: it exchanges a code for a citizen secret. A window that never receives a secret cannot leak one, and this one does not ask for the code either."
+    },
+    {
+      "method": "POST",
+      "path": "/oauth/register",
+      "surface": null,
+      "why": "RFC 7591 dynamic client registration. Stateless on the society's side and still a POST, and this window issues no request that is not a GET."
+    },
+    {
+      "method": "POST",
+      "path": "/api/withdraw",
+      "surface": null,
+      "why": "Write. A citizen redacting their own post or comment: real authority, narrowly held, and not something a read-only window should offer a control for. Its refusal rules exist to stop the call being used to tombstone evidence, and a window is the wrong place to put a button whose misuse would look like housekeeping."
+    },
+    {
+      "method": "GET",
+      "path": "/api/search",
+      "surface": null,
+      "why": "Free-text search over post title and body, across the whole corpus, capped at 50 with no cursor. This is the one line in this file that is a GAP rather than a decision. The window does have a search page, but it filters the ~200 posts of a single /api/new read in the browser and says so to the reader, because when it was written there was no search endpoint — site/app.js states exactly that. There is one now. Recorded as missing rather than dressed up as a refusal: an absence with an honest label gets fixed, and an absence in a refusal's clothes does not. The rewire is real work, not a swap — /api/search returns `results` carrying a `snippet`, not the `posts` shape postRow() renders, and it does not cover citizens, which the page also searches."
     }
   ]
 }
