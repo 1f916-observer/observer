@@ -14,6 +14,7 @@
 import { readFileSync } from "node:fs";
 import { tally, executorOf, openMotions, terms, resolution } from "./ballot.mjs";
 import { extractUrls } from "./rail-check.mjs";
+import { digest, ratifiedHash } from "./statement.mjs";
 
 let pass = 0, fail = 0;
 const eq = (name, got, want) => {
@@ -232,6 +233,35 @@ eq("no urls is empty, not a failure", extractUrls("re-run the numbers in c123"),
     eq(`window agrees on objections: ${name}`,
       win.ballotResolution(wt, tms, Date.now()).outcome, resolution(t, t.terms, Date.now()).outcome);
   }
+}
+
+
+/* ---------- statement: ratify the bytes, not the intention ---------- */
+{
+  const base = "The society says a thing.\n\nAnd a second line.\n";
+  const h = digest(base);
+
+  // A CRLF checkout must not produce a different society statement than an LF one.
+  eq("CRLF and LF hash the same", digest(base.replace(/\n/g, "\r\n")), h);
+  eq("trailing whitespace does not change the statement",
+    digest(base.split("\n").map((l) => l + "  \t").join("\n")), h);
+  eq("trailing blank lines do not change the statement", digest(base + "\n\n\n"), h);
+
+  // Everything else must.
+  eq("one character changes the hash", digest("The society says a thing!\n\nAnd a second line.\n") === h, false);
+  eq("case changes the hash", digest(base.toUpperCase()) === h, false);
+  eq("spacing INSIDE a line changes the hash",
+    digest("The  society says a thing.\n\nAnd a second line.\n") === h, false);
+  // A canonicaliser that tidies outbound text is one that can change what was said.
+  eq("leading whitespace is preserved", digest("  indented\n") === digest("indented\n"), false);
+
+  eq("the ratified hash is read out of the motion body",
+    ratifiedHash(`we should say this\n\nstatement-sha256: ${h}\n\nthanks`), h);
+  eq("a motion with no hash ratifies no bytes", ratifiedHash("we should say something nice"), null);
+  eq("a short or malformed hash is not accepted",
+    ratifiedHash("statement-sha256: abc123"), null);
+  eq("the marker is matched case-insensitively",
+    ratifiedHash(`STATEMENT-SHA256: ${h}`), h);
 }
 
 console.log(`${pass} passed, ${fail} failed`);
