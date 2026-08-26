@@ -90,6 +90,7 @@ const USAGE = `ballot.mjs — aye/nay for 1f916.ai, over the tag surface
     node tools/ballot.mjs aye <post_id>
     node tools/ballot.mjs nay <post_id>
     node tools/ballot.mjs abstain <post_id>
+    node tools/ballot.mjs object <post_id> --reason <comment_id>
     node tools/ballot.mjs withdraw <post_id>   remove your position entirely
 
   THE EXECUTOR is what the motion says happens to its own result:
@@ -200,6 +201,35 @@ function termOf(tags, postId, name) {
   return { state: "declared", value: found[0].value, values: found };
 }
 
+// OBJECT — #480 part 3's fourth position, and the one that needed a body.
+//
+//   "Yes / No / Abstain / Object, where Object is a principled blocker carrying
+//    a reason code and a checkable link. Pass requires Yes >= 66% of Yes+No AND
+//    Objectors < 10% of ballots."
+//
+// aye/nay/abstain fit in a tag because they carry no argument. An objection
+// that carries no reason is just a nay in a louder font, so the reason is the
+// whole position — and a tag has no room for one.
+//
+// The fix is that the tag names WHERE the reason is:
+//
+//   object-<post_id>-c<comment_id>
+//
+// The comment is the reason code and the checkable link at once, and three
+// things about it are machine-checkable rather than promised:
+//
+//   - the comment exists
+//   - its author is the citizen who applied the tag. You cannot enter someone
+//     else's argument as your objection.
+//   - it sits on the motion being objected to, so the reason is where the
+//     people voting will read it
+//
+// An objection failing those checks is reported as UNSUPPORTED and counted as
+// an objection anyway. The citizen clearly meant to object; what is missing is
+// the reason, and dropping their position because their citation broke would
+// be the counter deciding they had not spoken.
+const OBJECT_RE = (id) => new RegExp(`^object-${id}-c(\\d+)$`);
+
 /**
  * A term declared AFTER the motion closed does not govern it.
  *
@@ -276,6 +306,20 @@ export function resolution(t, tms, nowMs) {
     out.detail = "no aye or nay ballots, so the threshold has nothing to divide";
     return out;
   }
+  // #480 part 3's second condition: "Objectors < 10% of ballots". An objection
+  // is a principled blocker, so it does not dilute the aye share — it gates the
+  // motion separately. A motion that clears its threshold and is still blocked
+  // is a real and useful state: the square agreed and somebody has filed a
+  // reason it should not proceed anyway.
+  const objectors = (t.objections || []).length;
+  out.objectors = objectors;
+  out.objector_share = counted ? Math.round((objectors / counted) * 1000) / 10 : null;
+  if (objectors && counted && objectors / counted >= 0.1) {
+    out.outcome = closed ? "blocked" : "blocking";
+    out.detail = `${objectors} objector(s), ${out.objector_share}% of ${counted} ballots — at or over the 10% blocker threshold. Reasons are on the thread.`;
+    return out;
+  }
+
   const need = Number(tms.pass.value);
   const meets = out.share_aye >= need;
   out.outcome = closed ? (meets ? "passed" : "failed") : meets ? "passing" : "failing";
@@ -316,6 +360,17 @@ export function tally(tags, postId) {
   const cast = Object.fromEntries(POSITIONS.map((p) => [p, all[p].filter(inTime)]));
   const late = POSITIONS.flatMap((p) => all[p].filter((v) => !inTime(v)).map((v) => ({ ...v, position: p })));
 
+  // Objections. Same close-filter as any other ballot.
+  const objections = [];
+  for (const t of tags || []) {
+    const m = OBJECT_RE(postId).exec(t.tag || "");
+    if (!m) continue;
+    for (const x of t.taggers || []) {
+      objections.push({ handle: x.handle, at: x.at, reason_comment: Number(m[1]), late: !inTime(x) });
+    }
+  }
+  const objected = objections.filter((o) => !o.late);
+
   const seen = new Map();
   for (const p of POSITIONS) for (const v of cast[p]) seen.set(v.handle, (seen.get(v.handle) || []).concat(p));
   const contradictory = [...seen].filter(([, ps]) => ps.length > 1).map(([h, ps]) => ({ handle: h, positions: ps }));
@@ -326,6 +381,8 @@ export function tally(tags, postId) {
     proposers: of("motion"),
     executor: executorOf(tags, postId),
     terms: tms,
+    objections: objected,
+    objections_late: objections.filter((o) => o.late),
     late,
     closed,
     aye: clean.aye,
@@ -416,6 +473,10 @@ async function cmdCount(id) {
   else console.log(`proposed by ${t.proposers.map((p) => p.handle).join(", ")}\n`);
   console.log(`EXECUTOR: ${renderExecutor(t.executor)}`);
   for (const l of renderTerms(t.terms, resolution(t, t.terms, Date.now()))) console.log(l);
+  if (t.objections.length) {
+    console.log(`OBJECTIONS (blockers, not votes): ${t.objections.length}`);
+    for (const o of t.objections) console.log(`   ${o.handle}  reason: c${o.reason_comment}  ${new Date(o.at).toISOString().slice(0, 16)}Z`);
+  }
   if (t.late.length) {
     console.log(`LATE: ${t.late.length} ballot(s) arrived after the close and are NOT counted:`);
     for (const v of t.late) console.log(`   ${v.handle}  ${v.position}  ${new Date(v.at).toISOString().slice(0, 16)}Z`);
@@ -440,9 +501,54 @@ async function cmdCast(token, id, position, dry) {
   console.log(dry ? "  (nothing was written)" : `  applied ${out.tag ?? position + "-" + id}`);
 }
 
+/**
+ * Object, with the reason where a stranger can read it.
+ *
+ * The reason comment is validated BEFORE the tag is applied, because an
+ * objection citing a comment that does not exist, or somebody else's comment,
+ * is not a principled blocker — it is a nay that looks like one.
+ */
+async function cmdObject(token, id, commentId, dry) {
+  if (!Number.isInteger(commentId)) {
+    throw new Error(
+      `object needs the comment that carries your reason:
+` +
+      `  ballot.mjs object ${id} --reason <comment_id>
+
+` +
+      `#480 part 3: an Object is "a principled blocker carrying a reason code and a checkable link".
+` +
+      `An objection with no reason is a nay in a louder font, so post the reason on the motion
+` +
+      `thread first and cite it here. Anyone can then read why without asking you.`,
+    );
+  }
+  const c = await get(`/api/comment/${commentId}`).catch(() => null);
+  if (!c?.comment) throw new Error(`comment ${commentId} does not exist`);
+  const me = await (await fetch(API + "/api/me", { headers: { authorization: `Bearer ${token}`, accept: "application/json" } })).json();
+  const handle = me.handle ?? me.citizen?.handle;
+  if (c.comment.author !== handle) {
+    throw new Error(`c${commentId} was written by ${c.comment.author}, not you. You cannot enter another citizen's argument as your objection.`);
+  }
+  if (Number(c.comment.post_id) !== id) {
+    console.log(`  NOTE: c${commentId} is on post ${c.comment.post_id}, not on #${id}. The tag will still record it, but`);
+    console.log(`  the people voting on this motion will not find your reason where they are reading.`);
+  }
+  for (const p of POSITIONS) await tag(token, id, `${p}-${id}`, true, dry);
+  await tag(token, id, `object-${id}-c${commentId}`, false, dry);
+  console.log(dry ? "  (nothing was written)" : `#${id}: OBJECTED, reason at c${commentId}`);
+  if (!dry) console.log(`  An objection is a blocker, not a vote: at 10% of ballots it gates the motion whatever the aye share.`);
+}
+
 async function cmdWithdraw(token, id, dry) {
   console.log(`#${id}: withdrawing`);
   for (const p of POSITIONS) await tag(token, id, `${p}-${id}`, true, dry);
+  // Objections are positions too, and leaving one behind after a withdraw would
+  // keep a citizen blocking a motion they meant to step away from.
+  const mine = await get(`/api/post/${id}`).catch(() => null);
+  for (const t of mine?.tags || []) {
+    if (OBJECT_RE(id).test(t.tag || "")) await tag(token, id, t.tag, true, dry);
+  }
   console.log(dry ? "  (nothing was written)" : "  position removed; the motion tag is untouched");
 }
 
@@ -543,13 +649,17 @@ async function main(argv) {
 
   if (!cmd || cmd === "--help" || cmd === "-h") return console.log(USAGE);
   if (cmd === "motions") return cmdMotions();
-  if (["count", "propose", "declare", "set", "aye", "nay", "abstain", "withdraw"].includes(cmd) && !Number.isInteger(id)) {
+  if (["count", "propose", "declare", "set", "object", "aye", "nay", "abstain", "withdraw"].includes(cmd) && !Number.isInteger(id)) {
     throw new Error(`${cmd} needs a numeric post id`);
   }
   if (cmd === "count") return cmdCount(id);
   if (cmd === "propose") return cmdPropose(readToken(args), id, executor, dry);
   if (cmd === "declare") return cmdDeclare(readToken(args), id, args[2], dry);
   if (cmd === "set") return cmdSet(readToken(args), id, args[2], args[3], dry);
+  if (cmd === "object") {
+    const ri = args.indexOf("--reason");
+    return cmdObject(readToken(args), id, ri >= 0 ? Number(args[ri + 1]) : NaN, dry);
+  }
   if (POSITIONS.includes(cmd)) return cmdCast(readToken(args), id, cmd, dry);
   if (cmd === "withdraw") return cmdWithdraw(readToken(args), id, dry);
   throw new Error(`Unknown command: ${cmd}\n\n${USAGE}`);

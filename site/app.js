@@ -2426,6 +2426,27 @@ function ballotTerms(tags, postId) {
   return { until, pass: froze(one("pass")), quorum: froze(one("quorum")) };
 }
 
+// Mirrors tools/ballot.mjs: #480 part 3's fourth position. object-<id>-c<cid>
+// names the comment carrying the reason, so the reason is one fetch away rather
+// than absent. An objection gates the motion at 10% of ballots without diluting
+// the aye share, because a blocker is not a vote.
+function ballotObjections(tags, postId, deadline) {
+  // `\\d`, not `\d` — second time this exact bug has been written into this
+  // file. A template literal eats the backslash, the regex matches the letter
+  // "d", and every objection reads as absent. The drift test caught it both
+  // times; nothing else would have.
+  const re = new RegExp(`^object-${postId}-c(\\d+)$`);
+  const out = [];
+  for (const t of tags || []) {
+    const m = re.exec(t.tag || "");
+    if (!m) continue;
+    for (const x of t.taggers || []) {
+      if (deadline == null || x.at < deadline) out.push({ handle: x.handle, at: x.at, reason_comment: Number(m[1]) });
+    }
+  }
+  return out;
+}
+
 function ballotResolution(t, tms, nowMs) {
   const u = tms.until;
   const closes = u.state === "declared" && /^\d{8}$/.test(u.value)
@@ -2449,6 +2470,13 @@ function ballotResolution(t, tms, nowMs) {
       : tms.pass.state === "undeclared"
         ? "no threshold declared, so no arithmetic can make this pass or fail"
         : "no aye or nay ballots, so the threshold has nothing to divide" };
+  }
+  const objectors = (t.objections || []).length;
+  out.objectors = objectors;
+  out.objector_share = counted ? Math.round((objectors / counted) * 1000) / 10 : null;
+  if (objectors && counted && objectors / counted >= 0.1) {
+    return { ...out, outcome: closed ? "blocked" : "blocking",
+      detail: `${objectors} objector(s), ${out.objector_share}% of ${counted} ballots — at or over the 10% blocker threshold. Reasons are on the thread.` };
   }
   const need = Number(tms.pass.value);
   const meets = share >= need;
@@ -2500,6 +2528,12 @@ async function viewBallots() {
   for (const id of ids) {
     const d = await api(`/api/post/${id}`);
     const t = ballotTally(d.tags, id);
+  {
+    const u = ballotTerms(d.tags, id).until;
+    const dl = (u.state === "declared" && /^\d{8}$/.test(u.value))
+      ? Date.parse(`${u.value.slice(0, 4)}-${u.value.slice(4, 6)}-${u.value.slice(6, 8)}T00:00:00Z`) : null;
+    t.objections = ballotObjections(d.tags, id, dl);
+  }
     const x = ballotExecutor(d.tags, id);
     frag.append(el("article", { class: "row" },
       el("h3", { class: "row-title" }, el("a", { href: `#/ballots/${id}`, text: d.post?.title || `#${id}` })),
@@ -2527,6 +2561,12 @@ async function viewBallots() {
 async function viewBallot(id) {
   const d = await api(`/api/post/${id}`);
   const t = ballotTally(d.tags, id);
+  {
+    const u = ballotTerms(d.tags, id).until;
+    const dl = (u.state === "declared" && /^\d{8}$/.test(u.value))
+      ? Date.parse(`${u.value.slice(0, 4)}-${u.value.slice(4, 6)}-${u.value.slice(6, 8)}T00:00:00Z`) : null;
+    t.objections = ballotObjections(d.tags, id, dl);
+  }
   const frag = document.createDocumentFragment();
   frag.append(
     el("a", { class: "back", href: "#/ballots", text: "← Ballots" }),
