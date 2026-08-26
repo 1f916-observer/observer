@@ -186,5 +186,53 @@ eq("no urls is empty, not a failure", extractUrls("re-run the numbers in c123"),
   }
 }
 
+
+/* ---------- object: #480 part 3's fourth position ---------- */
+{
+  const T = Date.parse("2026-01-01T00:00:00Z");
+  const mk = (n, hs) => ({ tag: n, taggers: hs.map((h) => ({ handle: h, at: T })) });
+
+  const blocked = [mk("motion-9", ["p"]), mk("pass-9-66", ["p"]),
+    mk("aye-9", ["a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8"]), mk("nay-9", ["n1"]),
+    mk("object-9-c500", ["o1"])];
+  const bt = tally(blocked, 9);
+  eq("an objection is parsed with the comment carrying its reason",
+    bt.objections.map((o) => [o.handle, o.reason_comment]), [["o1", 500]]);
+  eq("an objection does not dilute the aye share",
+    resolution(bt, bt.terms, Date.now()).share_aye, 88.9);
+  eq("but it gates the motion at 10% of ballots",
+    resolution(bt, bt.terms, Date.now()).outcome, "blocking");
+
+  const under = [mk("motion-9", ["p"]), mk("pass-9-66", ["p"]),
+    mk("aye-9", ["a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8", "a9"]), mk("nay-9", ["n1", "n2"]),
+    mk("object-9-c500", ["o1"])];
+  eq("under 10% it does not block",
+    (() => { const t = tally(under, 9); return resolution(t, t.terms, Date.now()).outcome; })(), "passing");
+
+  // an objection is a ballot, so the close filter applies to it too
+  const lateObj = [mk("motion-9", ["p"]), mk("until-9-20260101", ["p"]), mk("pass-9-66", ["p"]),
+    { tag: "aye-9", taggers: [{ handle: "a", at: Date.parse("2025-12-31T00:00:00Z") }] },
+    { tag: "object-9-c500", taggers: [{ handle: "late", at: Date.parse("2026-07-01T00:00:00Z") }] }];
+  const lt = tally(lateObj, 9);
+  eq("an objection filed after the close does not block", lt.objections.length, 0);
+  eq("and is kept in objections_late", lt.objections_late.length, 1);
+
+  // window agreement on all three
+  const src = readFileSync(new URL("../site/app.js", import.meta.url), "utf8").replace(/\r\n/g, "\n");
+  const grab = (n) => { const a = src.indexOf(`function ${n}(`); const b = src.indexOf("\n}\n", a); return src.slice(a, b + 3); };
+  const win = new Function(grab("ballotTerms") + grab("ballotResolution") + grab("ballotObjections") +
+    "; return { ballotTerms, ballotResolution, ballotObjections };")();
+  for (const [name, tags] of [["blocked", blocked], ["under threshold", under], ["late objection", lateObj]]) {
+    const t = tally(tags, 9);
+    const tms = win.ballotTerms(tags, 9);
+    const u = tms.until;
+    const dl = (u.state === "declared" && /^\d{8}$/.test(u.value))
+      ? Date.parse(`${u.value.slice(0, 4)}-${u.value.slice(4, 6)}-${u.value.slice(6, 8)}T00:00:00Z`) : null;
+    const wt = { ...t, objections: win.ballotObjections(tags, 9, dl) };
+    eq(`window agrees on objections: ${name}`,
+      win.ballotResolution(wt, tms, Date.now()).outcome, resolution(t, t.terms, Date.now()).outcome);
+  }
+}
+
 console.log(`${pass} passed, ${fail} failed`);
 process.exitCode = fail ? 1 : 0;
