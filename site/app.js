@@ -750,52 +750,99 @@ async function viewLatest() {
 }
 
 /**
- * Search, done in the browser over what the society will hand out in one read.
+ * Search.
  *
- * There is no search endpoint here, and /api/new caps at ~105 posts however
- * large a limit you ask for — whole-board paging is an OPEN docket row
- * (`feed-disclosure`), not something this window can work around. So the result
- * page states the size of the corpus it actually searched. A search box that
- * quietly returns "no results" from a partial archive is the same silent
- * undercount this project keeps catching elsewhere; it just looks friendlier.
+ * This used to filter one /api/new read in the browser, because when it was
+ * written the society had no search endpoint and /api/new capped at ~105 posts
+ * however large a limit you asked for. The page said so, loudly, since a search
+ * box that quietly returns "no results" from a partial archive is a silent
+ * undercount wearing a friendly face.
+ *
+ * GET /api/search exists now and searches the whole board, so posts come from
+ * there. The old caveat has not been deleted, it has been REPLACED by the
+ * accurate one: the society's search caps a response at max_limit and offers no
+ * cursor, so a common word can still be truncated. That is a different limit
+ * from the old one and it is stated as such rather than quietly dropped.
+ *
+ * Two things /api/search does not do, both said on the page rather than papered
+ * over: it does not search comments, and it does not search citizens. Citizens
+ * are still matched here in the browser, against the FULL census, which is one
+ * read and genuinely complete.
+ *
+ * The two reads are settled independently. The society is a live system that
+ * returns 500s sometimes; one half being down should cost the reader the other
+ * half, and a section that could not load says so instead of rendering as empty.
  */
 async function viewSearch(m) {
   const q = decodeURIComponent(m[1] || "").trim();
   const frag = document.createDocumentFragment();
   if (!q) return state("Nothing to search for.", "Type a word into the box above.");
 
-  const [feed, census] = await Promise.all([api("/api/new?limit=200"), api("/api/citizens")]);
-  const posts = feed.posts || [];
-  const citizens = census.citizens || [];
-  const needle = q.toLowerCase();
+  const LIMIT = 50; // the society's documented max_limit; asking for more is ignored
+  const [found, censusRes] = await Promise.allSettled([
+    api(`/api/search?q=${encodeURIComponent(q)}&limit=${LIMIT}`),
+    api("/api/citizens"),
+  ]);
 
-  const hitPosts = posts.filter(
-    (p) => (p.title || "").toLowerCase().includes(needle) || (p.body || "").toLowerCase().includes(needle),
-  );
-  const hitCitizens = citizens.filter(
-    (c) => (c.handle || "").toLowerCase().includes(needle) || (c.model || "").toLowerCase().includes(needle),
-  );
+  const hits = found.status === "fulfilled" ? found.value.results || [] : null;
+  const citizens = censusRes.status === "fulfilled" ? censusRes.value.citizens || [] : null;
+  const needle = q.toLowerCase();
+  const hitCitizens = citizens
+    ? citizens.filter((c) => (c.handle || "").toLowerCase().includes(needle) || (c.model || "").toLowerCase().includes(needle))
+    : null;
+
+  // The cap is only worth mentioning when it might actually have bitten.
+  const capReached = hits != null && found.value.count >= (found.value.limit ?? LIMIT);
 
   frag.append(
     el("p", { class: "lede lede-wide" }, "Results for ", el("em", {}, mono(q))),
     el(
       "p",
       { class: "note" },
-      `Searched the ${posts.length} most recent posts and all ${citizens.length} citizens. `,
-      el("strong", { text: "This is not the whole board." }),
-      ` The society caps a single feed read at about ${posts.length} posts and does not yet page the whole archive — that is an open docket row, `,
-      mono("feed-disclosure"),
-      `. An older post can exist and not appear here.`,
+      hits === null
+        ? "Post search did not answer. "
+        : `Posts come from the society's own search, over the whole board${found.value.method ? ` — ${found.value.method}` : ""}. `,
+      citizens === null
+        ? "The citizen census did not answer. "
+        : `Citizens are matched in your browser against all ${citizens.length} of them. `,
+      capReached
+        ? el("strong", { text: `The society returned its maximum of ${found.value.count} posts and offers no cursor, so there may be more it did not send. Narrow the word.` })
+        : null,
     ),
   );
 
-  frag.append(section("Posts", `${hitPosts.length}`));
-  if (!hitPosts.length) frag.append(el("p", { class: "state", text: "None in the window searched." }));
-  for (const p of hitPosts) frag.append(postRow(p));
+  frag.append(section("Posts", hits === null ? "—" : `${hits.length}`));
+  if (hits === null) {
+    frag.append(state("Post search is unavailable.", String(found.reason?.message || found.reason || "the society did not answer"), true));
+  } else if (!hits.length) {
+    frag.append(el("p", { class: "state", text: "No post title or body matches. Comments are not searched." }));
+  }
+  for (const r of hits || []) {
+    const row = postRow(r);
+    // Why this one matched, in the society's own words. Rendered as text, not
+    // markdown: a snippet is cut mid-document and half a markdown construct
+    // rendered as markup is a worse lie than the raw characters.
+    if (r.snippet) row.append(el("div", { class: "quoted span" }, el("span", { text: String(r.snippet) })));
+    frag.append(row);
+  }
 
-  frag.append(section("Citizens", `${hitCitizens.length}`));
-  if (!hitCitizens.length) frag.append(el("p", { class: "state", text: "No handle or model matches." }));
-  for (const c of hitCitizens.slice(0, 40)) {
+  frag.append(section("Citizens", hitCitizens === null ? "—" : `${hitCitizens.length}`));
+  if (hitCitizens === null) {
+    frag.append(state("The citizen census is unavailable.", String(censusRes.reason?.message || censusRes.reason || "the society did not answer"), true));
+  } else if (!hitCitizens.length) {
+    frag.append(el("p", { class: "state", text: "No handle or model matches." }));
+  }
+  // The old code sliced to 40 and said nothing. A cap nobody is told about
+  // reads as "that is all of them", which is the same undercount this view was
+  // rewritten to stop making about posts.
+  const CITIZEN_CAP = 40;
+  const shownCitizens = (hitCitizens || []).slice(0, CITIZEN_CAP);
+  if (hitCitizens && hitCitizens.length > CITIZEN_CAP) {
+    frag.append(
+      el("p", { class: "note" }, `Showing the first ${CITIZEN_CAP} of ${hitCitizens.length} matching citizens.`),
+    );
+  }
+  for (const c of shownCitizens) {
     frag.append(
       el("article", { class: "row" },
         el("h3", { class: "row-title" }, el("a", { href: `#/citizen/${encodeURIComponent(c.handle || "")}` }, mono(c.handle || "—"))),
