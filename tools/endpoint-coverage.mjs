@@ -51,6 +51,28 @@ export function parseSurface(payload) {
   return out;
 }
 
+/**
+ * Every `METHOD path` the SOCIETY ITSELF marks as a write.
+ *
+ * SECURITY.md has always said this window "records a refusal with a reason for
+ * every write endpoint, and the coverage check fails if a write is ever given a
+ * render surface." The second half of that sentence was not true: no check
+ * enforced it. The count in the first half had also gone stale — it said 12
+ * while the society had grown to 33.
+ *
+ * Both halves are now facts. The authority is the society's own `writes` flag
+ * rather than a list maintained here, because a list maintained here is another
+ * thing that can drift, and a hardcoded number is a thing that WILL.
+ */
+export function parseWrites(payload) {
+  const out = new Set();
+  for (const r of payload.routes ?? []) {
+    if (!r?.method || !r?.path || r.writes !== true) continue;
+    out.add(`${r.method} ${r.path.replace(/:[A-Za-z_]\w*/g, ":param")}`);
+  }
+  return out;
+}
+
 const normalize = (p) => p.replace(/:[A-Za-z_]\w*/g, ":param");
 
 function fail(msg) {
@@ -67,7 +89,9 @@ async function main() {
     process.exitCode = 2;
     return;
   }
-  const surface = parseSurface(await res.json());
+  const payload = await res.json();
+  const surface = parseSurface(payload);
+  const writes = parseWrites(payload);
 
   const manifest = JSON.parse(await readFile(MANIFEST, "utf8"));
   const declared = new Map();
@@ -77,11 +101,19 @@ async function main() {
   const stale = [...declared.keys()].filter((k) => !surface.has(k));
   const unreasoned = manifest.endpoints.filter((e) => e.surface === null && !e.why);
 
+  // A write the society publishes that this window claims to RENDER. The rule
+  // it protects is the load-bearing one: a read-only window on an anti-phishing
+  // list must never grow a surface that acts. Enforced against the society's
+  // own flag, so it cannot be satisfied by editing a list in this repo.
+  const renderedWrites = [...writes].filter((k) => declared.get(k)?.surface != null);
+  const refusedWrites = writes.size - renderedWrites.length;
+
   const rendered = manifest.endpoints.filter((e) => e.surface !== null).length;
   const declined = manifest.endpoints.length - rendered;
 
   console.log(`society publishes: ${surface.size}   this window declares: ${declared.size}`);
-  console.log(`rendered here: ${rendered}   deliberately not rendered: ${declined}\n`);
+  console.log(`rendered here: ${rendered}   deliberately not rendered: ${declined}`);
+  console.log(`writes published: ${writes.size}   refused here: ${refusedWrites}\n`);
 
   if (uncovered.length) {
     fail(`UNCOVERED — published by the society, missing from this window (${uncovered.length}):`);
@@ -98,7 +130,13 @@ async function main() {
     for (const e of unreasoned) fail(`  ? ${e.method} ${e.path}`);
     fail("");
   }
-  if (!uncovered.length && !stale.length && !unreasoned.length) {
+  if (renderedWrites.length) {
+    fail(`RENDERED WRITE — the society marks these as writes and this window claims to render them (${renderedWrites.length}):`);
+    for (const k of renderedWrites.sort()) fail(`  ! ${k} -> ${declared.get(k).surface}`);
+    fail("A read-only window that grows a write surface is the phishing risk this repo exists to refuse.");
+    fail("");
+  }
+  if (!uncovered.length && !stale.length && !unreasoned.length && !renderedWrites.length) {
     console.log("Coverage is current against everything the society publishes.");
   }
 }
