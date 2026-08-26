@@ -1,0 +1,96 @@
+name: presence
+
+# Record what this window can already honestly say about its own readership.
+#
+# The Observer ships no analytics and SECURITY.md says so in public. Nothing
+# here changes that: no script is added to the page, nothing about a reader is
+# collected, and this job only reads the number /api/presence already publishes
+# to anybody who asks. See tools/presence-sample.mjs for the full reasoning.
+#
+# The series is written to the `presence-data` branch, NOT to main and NOT into
+# site/. Two deliberate reasons:
+#
+#   - main is protected (review required, linear history). CI cannot push to it,
+#     and it should not be able to.
+#   - site/ is the deploy output. A commit there every ten minutes would mean
+#     144 production deploys a day of a page that did not change.
+#
+# So the data lives beside the code, publicly auditable, and touches neither.
+
+# Every 15 minutes: 96 points a day is far more resolution than a 7-day trend
+# needs, and a slower cadence is less likely to be throttled and produces a
+# third fewer commits on the data branch. GitHub delays scheduled runs under
+# load and sometimes drops them entirely — that is fine and expected here. Each
+# record carries its own real timestamp, so a dropped run shows up as missing
+# coverage in the report rather than as a quiet period.
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+# Overlapping runs would race on the same append. Let a slow run finish rather
+# than cancelling it — a dropped sample is a gap, and gaps are visible in the
+# coverage column of the report.
+concurrency:
+  group: presence-series
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  sample:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout tools
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # No `npm ci`. There are no dependencies and keeping it that way is an
+      # invariant, not a preference — same rule the coverage workflow asserts.
+      - name: Sample the presence endpoint
+        run: |
+          # The sampler exits non-zero when EVERY attempt failed, but it still
+          # prints the record. We keep that record: an outage is data, and
+          # dropping it would leave a gap that reads as a quiet period.
+          node tools/presence-sample.mjs > record.json || echo "note: sampler reported a fully failed run; recording it as such"
+          cat record.json
+
+      - name: Check out the data branch
+        uses: actions/checkout@v4
+        with:
+          ref: presence-data
+          path: series
+
+      - name: Append and push
+        run: |
+          cd series
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          cat ../record.json >> presence-history.jsonl
+          git add presence-history.jsonl
+
+          # Pull the timestamp with sed rather than node. package.json sets
+          # "type": "module", which makes `node -p` inline CommonJS a coin flip
+          # not worth tossing inside a cron job nobody watches.
+          TS=$(sed -n 's/.*"at":"\([^"]*\)".*/\1/p' ../record.json | head -1)
+          git commit -m "presence: ${TS:-unparsed timestamp}"
+
+          # A concurrent run may have appended first. Rebase and retry rather
+          # than force — losing somebody else's sample to win a race would put a
+          # hole in the series that nothing downstream could detect.
+          for attempt in 1 2 3 4 5; do
+            if git push origin presence-data; then
+              echo "pushed on attempt $attempt"
+              exit 0
+            fi
+            echo "push rejected, rebasing (attempt $attempt)"
+            git pull --rebase origin presence-data
+          done
+
+          echo "could not append the sample after 5 attempts"
+          exit 1
