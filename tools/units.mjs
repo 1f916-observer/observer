@@ -133,5 +133,58 @@ eq("no urls is empty, not a failure", extractUrls("re-run the numbers in c123"),
   }
 }
 
+
+/* ---------- the clock has to actually bind ---------- */
+//
+// The first version of the terms surface counted every ballot regardless of
+// when it was applied, which made the deadline decorative: a citizen could wait
+// for an unfavourable close and then vote. Found by testing the clock against
+// itself rather than by anyone reporting it.
+{
+  const T0 = Date.parse("2025-12-30T00:00:00Z");
+  const before = Date.parse("2025-12-31T00:00:00Z");
+  const after = Date.parse("2026-07-01T00:00:00Z");
+  const base = [
+    { tag: "motion-9", taggers: [{ handle: "p", at: T0 }] },
+    { tag: "until-9-20260101", taggers: [{ handle: "p", at: T0 }] },
+  ];
+
+  const flip = [...base,
+    { tag: "pass-9-50", taggers: [{ handle: "p", at: T0 }] },
+    { tag: "aye-9", taggers: [{ handle: "a", at: before }] },
+    { tag: "nay-9", taggers: [{ handle: "l1", at: after }, { handle: "l2", at: after }] }];
+  const ft = tally(flip, 9);
+  eq("ballots after the close are not counted", [ft.aye.length, ft.nay.length], [1, 0]);
+  eq("but they are kept and shown, not silently dropped", ft.late.map((v) => v.position), ["nay", "nay"]);
+  eq("so a closed motion cannot be flipped after the fact",
+    resolution(ft, ft.terms, Date.now()).outcome, "passed");
+
+  const retro = [...base,
+    { tag: "aye-9", taggers: [{ handle: "a", at: before }] },
+    { tag: "pass-9-99", taggers: [{ handle: "sneak", at: after }] }];
+  const rt = tally(retro, 9);
+  eq("a threshold declared after the close does not govern", rt.terms.pass.state, "late");
+  eq("and the outcome reports undeclared rather than the retroactive rule",
+    resolution(rt, rt.terms, Date.now()).outcome, "undeclared");
+
+  // An open motion must not accidentally inherit the filter.
+  const open = [{ tag: "motion-9", taggers: [{ handle: "p", at: T0 }] },
+    { tag: "pass-9-50", taggers: [{ handle: "p", at: T0 }] },
+    { tag: "aye-9", taggers: [{ handle: "a", at: after }] }];
+  eq("with no deadline every ballot counts", tally(open, 9).aye.length, 1);
+  eq("and none are marked late", tally(open, 9).late.length, 0);
+
+  // and the window agrees about all of it
+  const src = readFileSync(new URL("../site/app.js", import.meta.url), "utf8").replace(/\r\n/g, "\n");
+  const grab = (n) => { const a = src.indexOf(`function ${n}(`); const b = src.indexOf("\n}\n", a); return src.slice(a, b + 3); };
+  const win = new Function(grab("ballotTerms") + grab("ballotResolution") + "; return { ballotTerms, ballotResolution };")();
+  for (const [name, tags] of [["late-ballot scenario", flip], ["retroactive-threshold scenario", retro]]) {
+    const t = tally(tags, 9);
+    eq(`window agrees after the close fix: ${name}`,
+      win.ballotResolution(t, win.ballotTerms(tags, 9), Date.now()).outcome,
+      resolution(t, t.terms, Date.now()).outcome);
+  }
+}
+
 console.log(`${pass} passed, ${fail} failed`);
 process.exitCode = fail ? 1 : 0;

@@ -189,18 +189,45 @@ function termOf(tags, postId, name) {
   const found = [];
   for (const t of tags || []) {
     const m = re.exec(t.tag || "");
-    if (m) found.push({ value: m[1], by: (t.taggers || []).map((x) => ({ handle: x.handle, at: x.at })) });
+    if (m) found.push({
+      value: m[1],
+      by: (t.taggers || []).map((x) => ({ handle: x.handle, at: x.at })),
+      at: Math.min(...(t.taggers || [{ at: Infinity }]).map((x) => x.at)),
+    });
   }
   if (!found.length) return { state: "undeclared", value: null, values: [] };
   if (found.length > 1) return { state: "disputed", value: null, values: found };
   return { state: "declared", value: found[0].value, values: found };
 }
 
+/**
+ * A term declared AFTER the motion closed does not govern it.
+ *
+ * Same defect as a late ballot, one level up: without this, a citizen can wait
+ * for a closed motion to settle and then apply `pass-<id>-<n>` to change what
+ * counted as passing, retroactively. The threshold has to be knowable while
+ * there is still time to vote against it.
+ *
+ * The deadline itself is deliberately NOT filtered this way — you cannot use a
+ * deadline to decide which deadline declarations are valid without arguing in a
+ * circle. A second `until` applied late shows up as DISPUTED, which is visible,
+ * and visible is the property that matters.
+ */
+function freezeTerm(term, deadline) {
+  if (deadline == null || term.state !== "declared") return term;
+  const late = term.values[0].at >= deadline;
+  return late
+    ? { ...term, state: "late", value: null, late_value: term.values[0].value }
+    : term;
+}
+
 export function terms(tags, postId) {
+  const until = termOf(tags, postId, "until");
+  const dl = deadlineMs(until);
   return {
-    until: termOf(tags, postId, "until"),
-    pass: termOf(tags, postId, "pass"),
-    quorum: termOf(tags, postId, "quorum"),
+    until,
+    pass: freezeTerm(termOf(tags, postId, "pass"), dl),
+    quorum: freezeTerm(termOf(tags, postId, "quorum"), dl),
   };
 }
 
@@ -269,7 +296,26 @@ export function tally(tags, postId) {
     const row = (tags || []).find((t) => t.tag === `${prefix}-${postId}`);
     return (row?.taggers || []).map((x) => ({ handle: x.handle, at: x.at }));
   };
-  const cast = Object.fromEntries(POSITIONS.map((p) => [p, of(p)]));
+  // A BALLOT CAST AFTER THE CLOSE DOES NOT COUNT.
+  //
+  // The first version of this counted every tag regardless of when it was
+  // applied, which made the clock decorative: two nays applied six months after
+  // a motion closed flipped a passed motion to failed in the test that found
+  // this. Anyone could wait for an unfavourable close and then vote.
+  //
+  // Tags carry `at`, so the fix is a partition rather than a new surface. Late
+  // ballots are kept and shown separately rather than dropped — they are a real
+  // thing citizens did, and a count that silently discarded them would be
+  // hiding evidence instead of excluding it.
+  const tms = terms(tags, postId);
+  const deadline = deadlineMs(tms.until);
+  const closed = deadline != null && Date.now() >= deadline;
+  const inTime = (v) => deadline == null || v.at < deadline;
+
+  const all = Object.fromEntries(POSITIONS.map((p) => [p, of(p)]));
+  const cast = Object.fromEntries(POSITIONS.map((p) => [p, all[p].filter(inTime)]));
+  const late = POSITIONS.flatMap((p) => all[p].filter((v) => !inTime(v)).map((v) => ({ ...v, position: p })));
+
   const seen = new Map();
   for (const p of POSITIONS) for (const v of cast[p]) seen.set(v.handle, (seen.get(v.handle) || []).concat(p));
   const contradictory = [...seen].filter(([, ps]) => ps.length > 1).map(([h, ps]) => ({ handle: h, positions: ps }));
@@ -279,7 +325,9 @@ export function tally(tags, postId) {
     post_id: postId,
     proposers: of("motion"),
     executor: executorOf(tags, postId),
-    terms: terms(tags, postId),
+    terms: tms,
+    late,
+    closed,
     aye: clean.aye,
     nay: clean.nay,
     abstain: clean.abstain,
@@ -316,8 +364,10 @@ function renderTerms(t, res) {
   else if (res.clock === "closed") L.push(`clock: CLOSED — closed ${res.closes_utc}`);
   else if (t.until.state === "disputed") L.push(d(t.until, "clock"));
   else L.push("clock: NO DEADLINE — nothing closes this motion, so the tally never stops being provisional");
-  const dq = d(t.pass, "threshold"); if (dq) L.push(dq);
-  const qq = d(t.quorum, "quorum"); if (qq) L.push(qq);
+  for (const [x, name] of [[t.pass, "threshold"], [t.quorum, "quorum"]]) {
+    if (x.state === "late") L.push(`${name}: DECLARED AFTER THE CLOSE (${x.late_value}) — it does not govern a motion that had already ended`);
+    else { const q = d(x, name); if (q) L.push(q); }
+  }
   L.push(`outcome: ${res.outcome.toUpperCase()} — ${res.detail}`);
   return L;
 }
@@ -366,6 +416,10 @@ async function cmdCount(id) {
   else console.log(`proposed by ${t.proposers.map((p) => p.handle).join(", ")}\n`);
   console.log(`EXECUTOR: ${renderExecutor(t.executor)}`);
   for (const l of renderTerms(t.terms, resolution(t, t.terms, Date.now()))) console.log(l);
+  if (t.late.length) {
+    console.log(`LATE: ${t.late.length} ballot(s) arrived after the close and are NOT counted:`);
+    for (const v of t.late) console.log(`   ${v.handle}  ${v.position}  ${new Date(v.at).toISOString().slice(0, 16)}Z`);
+  }
   console.log("");
   for (const p of POSITIONS) {
     console.log(`${p.toUpperCase().padEnd(8)} ${t[p].length}`);

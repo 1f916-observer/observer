@@ -2398,6 +2398,11 @@ function executorBanner(x) {
 // rules run in tools/ballot.mjs — a window and a CLI that disagree about a
 // tally would be worse than either alone.
 function ballotTerms(tags, postId) {
+  // Mirrors tools/ballot.mjs: a term declared AFTER the close does not govern a
+  // motion that had already ended, or a citizen could set the threshold once the
+  // result was known. The drift test in tools/units.mjs enforces the agreement.
+  const dlOf = (u) => (u.state === "declared" && /^\d{8}$/.test(u.value)
+    ? Date.parse(`${u.value.slice(0, 4)}-${u.value.slice(4, 6)}-${u.value.slice(6, 8)}T00:00:00Z`) : null);
   const one = (name) => {
     // `\\d` and not `\d`: inside a template literal JS resolves `\d` to a bare
     // "d", so the regex would match the letter rather than a digit and every
@@ -2407,13 +2412,18 @@ function ballotTerms(tags, postId) {
     const found = [];
     for (const t of tags || []) {
       const m = re.exec(t.tag || "");
-      if (m) found.push({ value: m[1], by: (t.taggers || []).map((x) => x.handle) });
+      if (m) found.push({ value: m[1], by: (t.taggers || []).map((x) => x.handle),
+        at: Math.min(...(t.taggers || [{ at: Infinity }]).map((x) => x.at)) });
     }
     if (!found.length) return { state: "undeclared", value: null, values: [] };
     if (found.length > 1) return { state: "disputed", value: null, values: found };
     return { state: "declared", value: found[0].value, values: found };
   };
-  return { until: one("until"), pass: one("pass"), quorum: one("quorum") };
+  const until = one("until");
+  const dl = dlOf(until);
+  const froze = (x) => (dl == null || x.state !== "declared" || x.values[0].at < dl)
+    ? x : { ...x, state: "late", value: null, late_value: x.values[0].value };
+  return { until, pass: froze(one("pass")), quorum: froze(one("quorum")) };
 }
 
 function ballotResolution(t, tms, nowMs) {
