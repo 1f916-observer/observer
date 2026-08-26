@@ -22,6 +22,27 @@
 // Field paths: `a.b` walks objects, `a[].b` means "every element of array a
 // must have b". An empty array passes — the society is allowed to have no
 // notices today, and that is not a schema failure.
+//
+// COULD NOT LOOK IS NOT THE SAME AS LOOKED AND FOUND IT BROKEN.
+//
+// This check used to report any non-2xx as "no longer returns what this window
+// reads". It said that about an HTTP 429. A rate limit is not a schema change;
+// the honest sentence is "we were throttled and did not get to look."
+//
+// It happened twice in a row on GitHub runners, on /api/payout-bindings/:id,
+// and each time it produced a red build with a wrong reason and needed a manual
+// re-run. A checker that reports the wrong reason is worse than one that stays
+// quiet: somebody acts on the reason. So:
+//
+//   - the loop paces itself, because 31 requests fired back-to-back from one
+//     shared runner IP is what tripped the limiter in the first place;
+//   - a 429 or a 5xx is retried with backoff, honouring Retry-After;
+//   - if it still cannot be read, it is counted as UNREADABLE and reported in
+//     its own section, in its own words, and never as a schema failure.
+//
+// Unreadable still exits non-zero. It is not a pass — nothing was verified —
+// but it exits 2 rather than 1, the same way endpoint-coverage.mjs already
+// distinguishes "the check could not run" from "the window is stale".
 
 import { readFile } from "node:fs/promises";
 
@@ -64,31 +85,83 @@ export function checkPath(root, path) {
 
 const substitute = (s) => s.replace("{{since24h}}", String(Date.now() - 86400000));
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Between endpoints. Small enough that the run stays quick, large enough that
+// 31 reads do not look like a burst to whatever is counting.
+const PACE_MS = Number(process.env.SMOKE_PACE_MS ?? 250);
+const RETRIES = Number(process.env.SMOKE_RETRIES ?? 3);
+
+/** Is this worth trying again, or is it an answer? */
+const isTransient = (status) => status === 429 || status >= 500;
+
+/**
+ * Fetch, retrying only what is worth retrying.
+ *
+ * Returns either {ok:true, body} or {ok:false, transient, reason}. A caller
+ * that cannot tell those apart is the bug this function exists to fix.
+ */
+async function readEndpoint(url) {
+  let last = { ok: false, transient: false, reason: "never attempted" };
+
+  for (let attempt = 0; attempt <= RETRIES; attempt++) {
+    if (attempt > 0) {
+      // Honour Retry-After when the server bothered to say; otherwise back off
+      // 1s, 2s, 4s. Capped, because a check that hangs is its own failure.
+      const wait = Math.min(last.retryAfterMs ?? 2 ** (attempt - 1) * 1000, 8000);
+      await sleep(wait);
+    }
+    try {
+      const res = await fetch(url, { headers: { accept: "application/json" } });
+      if (res.ok) return { ok: true, body: await res.json() };
+
+      const retryAfter = Number(res.headers.get("retry-after"));
+      last = {
+        ok: false,
+        transient: isTransient(res.status),
+        reason: `HTTP ${res.status}`,
+        retryAfterMs: Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : undefined,
+      };
+      // A 404 or a 400 is the society's answer, not a hiccup. Stop asking.
+      if (!last.transient) return last;
+    } catch (err) {
+      // A dropped connection is worth one more try; a bad URL is not, but we
+      // cannot tell them apart here, so treat it as transient and let the
+      // retry budget decide.
+      last = { ok: false, transient: true, reason: err.message };
+    }
+  }
+  return last;
+}
+
 async function main() {
   const manifest = JSON.parse(await readFile(MANIFEST, "utf8"));
   const targets = manifest.endpoints.filter((e) => e.surface !== null && Array.isArray(e.requires) && e.requires.length);
 
   let failed = 0;
   let checked = 0;
+  const unreadable = [];
 
-  for (const entry of targets) {
+  for (let i = 0; i < targets.length; i++) {
+    const entry = targets[i];
+    if (i > 0 && PACE_MS) await sleep(PACE_MS);
+
     const path = substitute(entry.probe || entry.path);
-    let body;
-    try {
-      const res = await fetch(ORIGIN + path, { headers: { accept: "application/json" } });
-      if (!res.ok) {
-        console.error(`FAIL ${entry.method} ${entry.path} — HTTP ${res.status} at ${path}`);
+    const result = await readEndpoint(ORIGIN + path);
+
+    if (!result.ok) {
+      if (result.transient) {
+        // Throttled, or the society was unwell. Either way this says nothing
+        // about whether the response still has the fields the view reads.
+        unreadable.push({ entry, path, reason: result.reason });
+      } else {
+        console.error(`FAIL ${entry.method} ${entry.path} — ${result.reason} at ${path}`);
         failed++;
-        continue;
       }
-      body = await res.json();
-    } catch (err) {
-      console.error(`FAIL ${entry.method} ${entry.path} — ${err.message}`);
-      failed++;
       continue;
     }
 
-    const problems = entry.requires.flatMap((p) => checkPath(body, p));
+    const problems = entry.requires.flatMap((p) => checkPath(result.body, p));
     checked += entry.requires.length;
     if (problems.length) {
       failed++;
@@ -97,10 +170,24 @@ async function main() {
     }
   }
 
-  console.log(`\n${targets.length} endpoint(s), ${checked} field(s) checked against the live society.`);
+  const looked = targets.length - unreadable.length;
+  console.log(`\n${looked} of ${targets.length} endpoint(s) read, ${checked} field(s) checked against the live society.`);
+
+  if (unreadable.length) {
+    console.error(`\nUNREADABLE — could not be read after ${RETRIES} retries (${unreadable.length}):`);
+    for (const u of unreadable) console.error(`  ? ${u.entry.method} ${u.entry.path} — ${u.reason} at ${u.path}`);
+    console.error("This is NOT a schema failure and NOT a pass. Nothing about these was verified.");
+  }
+
   if (failed) {
-    console.error(`${failed} endpoint(s) no longer return what this window reads. The views above are rendering blanks or nothing.`);
+    console.error(`\n${failed} endpoint(s) no longer return what this window reads. The views above are rendering blanks or nothing.`);
     process.exit(1);
+  }
+  if (unreadable.length) {
+    // Distinct from 1 on purpose: "we did not get to look" is a different fact
+    // from "we looked and the shape had moved", and a human reading a red build
+    // should be able to tell which one happened from the exit code alone.
+    process.exit(2);
   }
   console.log("Every field each view depends on is still there.");
 }

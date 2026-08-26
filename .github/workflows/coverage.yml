@@ -49,8 +49,37 @@ jobs:
       # The half coverage cannot see: an endpoint that still exists but no
       # longer returns what a view reads. This is the check that would have
       # caught every bug found while building the site.
+      #
+      # Two exit codes, two different facts, and this step must not flatten them:
+      #
+      #   1  we looked, and the shape had moved       -> always fatal
+      #   2  we could not look (throttled, or 5xx)    -> depends who is asking
+      #
+      # This workflow says at the top that it does two jobs: on a PR, "does this
+      # change keep the window honest?", and on a schedule, "has the society
+      # moved while we stood still?". A society outage answers the first
+      # question not at all, so failing a PR on it would block a contributor on
+      # somebody else's incident and teach everyone to re-run red builds. On the
+      # scheduled run it is exactly the signal being listened for, so it fails
+      # and becomes a tracked issue. Either way it is said out loud and never
+      # silently swallowed.
       - name: Schema smoke check
-        run: node tools/smoke.mjs
+        run: |
+          set +e
+          node tools/smoke.mjs
+          code=$?
+          set -e
+          if [ "$code" -eq 0 ]; then exit 0; fi
+          if [ "$code" -eq 1 ]; then
+            echo "::error::Schema drift — the society no longer returns fields this window reads."
+            exit 1
+          fi
+          echo "::warning::Some endpoints could not be read at all (throttling or 5xx). Nothing about those was verified."
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "On the scheduled run this IS the signal. Failing so it becomes a tracked issue."
+            exit 1
+          fi
+          echo "On a PR this says nothing about the change under review. Warned, not failed."
 
       # Proves the checker can fail. A green suite whose red path was never
       # exercised only demonstrates that the checker runs.
@@ -74,10 +103,19 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      # Both checks, because either can be what turned the scheduled run red.
+      # Running only the coverage one meant a smoke failure filed an issue whose
+      # body said coverage was current — a work order describing the wrong work.
       - name: Capture drift
         id: drift
         run: |
-          node tools/endpoint-coverage.mjs > drift.txt 2>&1 || true
+          {
+            echo "== endpoint coverage =="
+            node tools/endpoint-coverage.mjs 2>&1 || true
+            echo
+            echo "== schema smoke =="
+            node tools/smoke.mjs 2>&1 || true
+          } > drift.txt
           {
             echo 'report<<REPORT_EOF'
             cat drift.txt

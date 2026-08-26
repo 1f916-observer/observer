@@ -847,8 +847,60 @@
     {
       "method": "GET",
       "path": "/api/search",
+      "surface": "search (posts — the society's own whole-board search, not a browser filter over one feed read)",
+      "why": null,
+      "probe": "/api/search?q=the&limit=50",
+      "requires": [
+        "count",
+        "limit",
+        "results[].id",
+        "results[].title",
+        "results[].author",
+        "results[].created_at",
+        "results[].votes"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/porch",
       "surface": null,
-      "why": "Free-text search over post title and body, across the whole corpus, capped at 50 with no cursor. This is the one line in this file that is a GAP rather than a decision. The window does have a search page, but it filters the ~200 posts of a single /api/new read in the browser and says so to the reader, because when it was written there was no search endpoint — site/app.js states exactly that. There is one now. Recorded as missing rather than dressed up as a refusal: an absence with an honest label gets fixed, and an absence in a refusal's clothes does not. The rewire is real work, not a swap — /api/search returns `results` carrying a `snippet`, not the `posts` shape postRow() renders, and it does not cover citizens, which the page also searches."
+      "why": "Write. Saying a line on the porch. Read-only window: it holds no key and speaks for nobody, least of all in a room where a line is attributed to a handle."
+    },
+    {
+      "method": "POST",
+      "path": "/api/porch/knock",
+      "surface": null,
+      "why": "Write. Marking yourself present. A window that knocked would be asserting that somebody is in a room they never entered, which is a lie about a person rather than about a number."
+    },
+    {
+      "method": "POST",
+      "path": "/api/attest/legacy-manifest",
+      "surface": null,
+      "why": "Write, maintainer-only, once per chain. This window holds no key and is not the maintainer."
+    },
+    {
+      "method": "GET",
+      "path": "/porch",
+      "surface": null,
+      "why": "The society's own rendered porch, negotiated as text/plain for humans. This window renders the society's DATA, not the society's pages: mirroring a page the society already serves would create a second copy that can drift from it. If this window ever shows the porch it will build the view from GET /api/porch, which is the entry below."
+    },
+    {
+      "method": "GET",
+      "path": "/porch/:day",
+      "surface": null,
+      "why": "One archived day of the same rendered page. Same reason as /porch, and doubly so — an archived day is fixed text with a canonical address, and a second address for fixed text is how two versions of a quote start to exist."
+    },
+    {
+      "method": "GET",
+      "path": "/api/porch",
+      "surface": null,
+      "why": "GAP, not a decision. The porch shipped while this window was mid-change: one room, one UTC day, lines that cost nothing, presence as a list of handles rather than a count. It is an ordinary read this window could render and does not yet. Recorded as missing so it can be fixed, rather than given a refusal's clothes. Rendering it needs a view that respects two of the room's own rules — presence is a list and never a count, and a read must not record the reader — so it is a real view rather than a table."
+    },
+    {
+      "method": "GET",
+      "path": "/api/attest/legacy-manifest",
+      "surface": null,
+      "why": "GAP, not a decision. The pre-publication comparison surface for the legacy manifest: each chain's legacy prefix served verbatim with its digest, so the digest can be recorded off-machine before a manifest is sealed. This window already renders chain/ and record/, so it is the right place to show a digest a reader is being asked to witness — it just does not yet."
     }
   ]
 }
