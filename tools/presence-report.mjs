@@ -40,8 +40,16 @@ const flag = (name, fallback) => {
 };
 const path = args.find((a) => !a.startsWith("--") && !Number.isFinite(Number(a))) ?? "presence-history.jsonl";
 const DAYS = flag("days", 7);
-// Expected records per day. Default matches the */15 cron in the workflow.
-const EXPECT = flag("expect", 96);
+// Expected records per day.
+//
+// NOT the arithmetic of the cron. A */15 schedule implies 96 runs a day and
+// GitHub delivered 21 in the first 26 hours — about 20%, gaps up to 5.4 hours,
+// because scheduled workflows are dropped under load rather than queued. The
+// workflow now takes five samples per fired run to compensate, so the number
+// below is (observed fires) x (samples per run) and NOT (minutes in a day) /
+// (cron interval). If the delivery rate moves, this is the figure that is
+// wrong, and the coverage column is what will say so.
+const EXPECT = flag("expect", 100);
 // Below this fraction of expected records, a day is reported but not trended.
 const THIN = 0.5;
 

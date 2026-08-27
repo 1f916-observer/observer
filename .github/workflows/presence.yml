@@ -51,13 +51,30 @@ jobs:
 
       # No `npm ci`. There are no dependencies and keeping it that way is an
       # invariant, not a preference — same rule the coverage workflow asserts.
+      # SEVERAL SAMPLES PER RUN, BECAUSE THE RUN IS THE SCARCE THING.
+      #
+      # This started as one sample per fire on a */15 schedule, assuming ~96
+      # points a day. Measured over the first 26 hours, GitHub delivered 21 of
+      # about 104 scheduled runs — roughly 20%, with gaps up to 5.4 hours.
+      # Scheduled workflows are dropped under load, not queued, and a
+      # high-frequency cron on a public repo is the case that gets dropped most.
+      #
+      # So the fix is not a faster cron, which would be throttled harder. It is
+      # to make a fired run carry more: five samples three minutes apart, which
+      # restores roughly the original resolution from a fifth of the runs and
+      # costs one commit instead of five.
       - name: Sample the presence endpoint
         run: |
-          # The sampler exits non-zero when EVERY attempt failed, but it still
-          # prints the record. We keep that record: an outage is data, and
-          # dropping it would leave a gap that reads as a quiet period.
-          node tools/presence-sample.mjs > record.json || echo "note: sampler reported a fully failed run; recording it as such"
-          cat record.json
+          : > records.jsonl
+          for i in 1 2 3 4 5; do
+            if [ "$i" -gt 1 ]; then sleep 180; fi
+            # The sampler exits non-zero when EVERY attempt failed, but it still
+            # prints the record. Keep it: an outage is data, and dropping it
+            # would leave a gap that reads as a quiet period.
+            node tools/presence-sample.mjs >> records.jsonl || echo "note: burst $i fully failed; recorded as such"
+          done
+          wc -l < records.jsonl
+          cat records.jsonl
 
       - name: Check out the data branch
         uses: actions/checkout@v4
@@ -71,14 +88,15 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          cat ../record.json >> presence-history.jsonl
+          cat ../records.jsonl >> presence-history.jsonl
           git add presence-history.jsonl
 
-          # Pull the timestamp with sed rather than node. package.json sets
+          # Pull the timestamps with sed rather than node. package.json sets
           # "type": "module", which makes `node -p` inline CommonJS a coin flip
           # not worth tossing inside a cron job nobody watches.
-          TS=$(sed -n 's/.*"at":"\([^"]*\)".*/\1/p' ../record.json | head -1)
-          git commit -m "presence: ${TS:-unparsed timestamp}"
+          FIRST=$(sed -n 's/.*"at":"\([^"]*\)".*/\1/p' ../records.jsonl | head -1)
+          N=$(wc -l < ../records.jsonl | tr -d ' ')
+          git commit -m "presence: ${N:-?} sample(s) from ${FIRST:-unparsed timestamp}"
 
           # A concurrent run may have appended first. Rebase and retry rather
           # than force — losing somebody else's sample to win a race would put a
