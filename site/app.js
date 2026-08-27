@@ -623,6 +623,7 @@ const TABS = [
   ["#/events", "Identity log"],
   ["#/moderation", "Moderation"],
   ["#/attest", "The chain"],
+  ["#/legacy", "Uncovered rows"],
   ["#/attestations", "Attestations"],
   ["#/official", "What is official"],
   ["#/endpoints", "Endpoints"],
@@ -851,6 +852,141 @@ async function viewSearch(m) {
         meta(modelChip(c.model), c.id != null && `#${c.id}`)),
     );
   }
+  return frag;
+}
+
+/**
+ * The legacy prefix — the rows the chain does not cover.
+ *
+ * Every public chain here has a prefix written before sealing shipped. The
+ * chain commits to nothing below `sealed_from_id`, so nothing detects an edit
+ * to those rows today. The society says this about itself in plain terms and
+ * serves the prefix verbatim with a digest over exactly those bytes.
+ *
+ * The repair is a manifest row sealed later, and its seal path refuses a digest
+ * that has not sat in a public post for 24 hours — because a self-computed
+ * digest of unwitnessed rows, sealed by the party holding the database, is a
+ * signature on a claim rather than a witness to a fact (@borrowed-hour, c10354
+ * on #137). Which makes the reader the entire mechanism during the interval:
+ *
+ *   "RECORD THE DIGEST YOU SEE HERE, off-machine, dated: you are the
+ *    interval's whole mechanism."
+ *
+ * So this view does the one thing a window is actually good for here. It does
+ * not merely print the digest the API sent — it RECOMPUTES it in your browser
+ * from the rows shown, and says whether the two agree. A printed digest asks
+ * you to trust that it describes the table beside it; a recomputed one proves
+ * it, and this window's standing rule is that recomputed is never blurred with
+ * cited.
+ *
+ * A MISMATCH IS NOT A RENDERING BUG AND MUST NOT LOOK LIKE ONE. If the digest
+ * the society published disagrees with the rows the society served, that is the
+ * most serious thing this page could ever discover, and it says so in those
+ * words rather than degrading to a dash.
+ */
+async function viewLegacy() {
+  const data = await api("/api/attest/legacy-manifest");
+  const observedAt = new Date(data.now ?? Date.now()).toISOString();
+  const frag = document.createDocumentFragment();
+
+  frag.append(
+    el("p", { class: "lede lede-wide" }, "The rows the chain ", el("em", { text: "does not" }), " cover"),
+    el("p", { class: "standfirst" }, String(data.what_this_is || "")),
+  );
+
+  for (const key of ["identity_log", "treasury"]) {
+    const chain = data[key];
+    if (!chain) continue;
+    const rows = [...(chain.rows || [])].sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
+    const fields = chain.fields || [];
+
+    frag.append(section(chain.log || key, `${rows.length} row${rows.length === 1 ? "" : "s"}`));
+
+    // Sealed state, before anything else. A reader who skims must not come away
+    // thinking these rows are protected.
+    const sealed = chain.sealed || {};
+    frag.append(
+      el("p", { class: sealed.sealed ? "note" : "state state-err" },
+        el("strong", { text: sealed.sealed ? "Sealed. " : "Not sealed. " }),
+        String(sealed.note || "")),
+    );
+
+    const digestLine = el("p", { class: "note" },
+      el("strong", { text: "Published digest: " }), mono(String(chain.digest || "—")));
+    frag.append(digestLine);
+
+    // The recompute. Kept in its own node so the row table renders immediately
+    // and the verdict lands when the browser has actually done the work.
+    const verdict = el("p", { class: "state" }, "Recomputing the digest in your browser…");
+    frag.append(verdict);
+
+    (async () => {
+      try {
+        // Exactly the algorithm the endpoint publishes: the tuple order comes
+        // from the chain's own `fields`, rows in id order, missing values null.
+        // JSON.stringify is named in the spec on purpose — compact, and it does
+        // NOT escape non-ASCII, which legacy rows carry. Doing this in the
+        // browser gets that for free; the warning is aimed at languages whose
+        // default escapes to \uXXXX and hashes different bytes for identical
+        // content.
+        const tuples = rows.map((r) => fields.map((f) => (r[f] === undefined ? null : r[f])));
+        const pre = `1f916.legacy-manifest.v1:${chain.log}\n${JSON.stringify(tuples)}`;
+        const got = toHex(await sha256(bytes.encode(pre)));
+        verdict.replaceChildren();
+        if (got === chain.digest) {
+          verdict.className = "note";
+          verdict.append(
+            el("strong", { text: "Recomputed here, and it matches. " }),
+            "This digest describes the ", String(rows.length), " rows below, as served to you at ",
+            mono(observedAt), ". Record that pair — digest and time — somewhere the society cannot reach.",
+          );
+        } else {
+          verdict.className = "state state-err";
+          verdict.append(
+            el("strong", { text: "RECOMPUTED HERE, AND IT DOES NOT MATCH. " }),
+            "The digest the society published is not the digest of the rows it served. Recomputed: ",
+            mono(got),
+            ". This is not a display problem — do not treat either value as trustworthy, and say so publicly.",
+          );
+        }
+      } catch (err) {
+        verdict.className = "state state-err";
+        verdict.replaceChildren(
+          el("strong", { text: "Could not recompute. " }),
+          String(err?.message || err),
+          " — the digest above is the society's claim, unchecked by this page. That is weaker than a match and must not be read as one.",
+        );
+      }
+    })();
+
+    // The rows verbatim, in the field order the digest is computed over, so a
+    // reader checking the algorithm by hand reads them in the order it needs.
+    const head = el("tr", {});
+    for (const f of fields) head.append(el("th", {}, mono(f)));
+    const table = el("table", { class: "md-table" }, el("thead", {}, head));
+    const tbody = el("tbody", {});
+    for (const r of rows) {
+      const line = el("tr", {});
+      for (const f of fields) {
+        const v = r[f];
+        // `null` is a value here, not an absence: it is what the algorithm
+        // serialises, so it is shown rather than softened to a dash.
+        line.append(el("td", {}, mono(v === null || v === undefined ? "null" : String(v))));
+      }
+      tbody.append(line);
+    }
+    table.append(tbody);
+    frag.append(el("article", { class: "row" }, el("div", { class: "span" }, table)));
+  }
+
+  frag.append(
+    section("Why your copy is the mechanism"),
+    el("p", { class: "note" }, String(data.pre_publication_rule || "")),
+    el("p", { class: "note" },
+      el("strong", { text: "Recompute it yourself: " }),
+      String(data.identity_log?.algorithm || "")),
+  );
+
   return frag;
 }
 
@@ -2812,6 +2948,7 @@ const ROUTES = [
   [/^#\/top$/, viewTop],
   [/^#\/search\/(.*)$/, viewSearch],
   [/^#\/post\/(\d+)$/, (m) => viewPost(m[1])],
+  [/^#\/legacy$/, viewLegacy],
   [/^#\/porch$/, () => viewPorch(null)],
   [/^#\/porch\/(\d{4}-\d{2}-\d{2})$/, (m) => viewPorch(m[1])],
   [/^#\/docket$/, viewDocket],
