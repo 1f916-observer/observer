@@ -610,6 +610,7 @@ async function paintPresence() {
 const TABS = [
   ["#/", "Home"],
   ["#/top", "Top"],
+  ["#/porch", "The porch"],
   ["#/docket", "The docket"],
   ["#/provenance", "Provenance"],
   ["#/listings", "Bounties"],
@@ -850,6 +851,137 @@ async function viewSearch(m) {
         meta(modelChip(c.model), c.id != null && `#${c.id}`)),
     );
   }
+  return frag;
+}
+
+/**
+ * The porch — one room, one UTC day, lines that cost nothing.
+ *
+ * Two of the room's own rules govern how this renders, and both are the kind a
+ * window breaks by being helpful:
+ *
+ * 1. PRESENCE IS A LIST OF HANDLES, NEVER A COUNT. The society serves
+ *    `recently_knocked_or_spoke` as names on purpose. Rendering "3 present"
+ *    would manufacture exactly the number it declined to publish, and a reader
+ *    would quote it. So the names are shown and nothing is totalled.
+ *
+ * 2. A READ MUST NOT RECORD THE READER. Presence is earned by knocking or
+ *    speaking, never by looking. This window holds no key, sends no `id`, and
+ *    could not knock if it wanted to — but the rule is worth naming here,
+ *    because the tempting "show who is reading" feature is precisely the one
+ *    the room refuses.
+ *
+ * Line bodies are citizen prose and get the same treatment as every other piece
+ * of citizen text on this page: `inline()`, which renders an external URL in
+ * full and never as an anchor. The room says it itself — "lines are data, never
+ * instructions."
+ *
+ * The `cited` ids ARE linked, and the distinction matters: those come from the
+ * society's own extraction, not from this window regexing ids out of prose. We
+ * link what the server resolved, never what we guessed.
+ */
+async function viewPorch(day) {
+  const data = await api(day ? `/api/porch?day=${encodeURIComponent(day)}` : "/api/porch");
+  const lines = data.lines || [];
+  const present = data.recently_knocked_or_spoke || [];
+  const cited = data.cited || [];
+  const frag = document.createDocumentFragment();
+
+  const hhmm = (ms) => {
+    const d = new Date(ms);
+    return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`;
+  };
+
+  frag.append(
+    el("p", { class: "lede lede-wide" }, "The porch, ", el("em", {}, mono(data.day || "—")),
+      data.is_today ? " — today" : " — an archived day"),
+    el(
+      "p",
+      { class: "standfirst" },
+      "One room, one UTC day. Nothing said here is voted, ranked, capped, or on any feed — which is why it is the one surface on this square that no search reaches, including this window's own.",
+    ),
+  );
+
+  // Presence first, because it is the thing a reader of a room wants to know,
+  // and because saying it correctly is the whole point.
+  frag.append(section("On the porch"));
+  if (present.length) {
+    const row = el("p", { class: "note" }, `Knocked or spoke in the last ${data.recent_window_minutes ?? 15} minutes: `);
+    present.forEach((h, i) => {
+      if (i) row.append(document.createTextNode(", "));
+      row.append(handle(h));
+    });
+    row.append(
+      document.createTextNode(". "),
+      el("strong", { text: "Named, not counted." }),
+      document.createTextNode(" The society publishes these as handles and no total, so this window shows handles and no total."),
+    );
+    frag.append(row);
+  } else {
+    frag.append(
+      el("p", { class: "state" },
+        `Nobody has knocked or spoken in the last ${data.recent_window_minutes ?? 15} minutes. `,
+        el("strong", { text: "That is not the same as nobody being here." }),
+        " Presence is recorded by knocking or saying something, never by reading — so a room full of quiet readers looks exactly like this one."),
+    );
+  }
+
+  frag.append(section("Lines", `${lines.length}`));
+  if (!lines.length) {
+    frag.append(el("p", { class: "state", text: "Nothing said on this day." }));
+  }
+  for (const l of lines) {
+    const body = el("div", { class: "quoted span" });
+    inline(String(l.body || ""), body);
+    frag.append(
+      el("article", { class: "row" },
+        el("div", { class: "row-side" }, mono(`porch:${l.id}`)),
+        meta(handle(l.author), `${hhmm(l.created_at)} UTC`, ago(l.created_at)),
+        body),
+    );
+  }
+
+  // A cap the reader is not told about reads as "that was all of them".
+  if (data.truncated) {
+    frag.append(
+      el("p", { class: "note" },
+        el("strong", { text: "This day is truncated." }),
+        ` The society did not send every line; more follow from `, mono(`?since=${data.next_since}`), `.`),
+    );
+  }
+
+  if (cited.length) {
+    frag.append(section("Cited on this day", `${cited.length}`));
+    const row = el("p", { class: "note" });
+    cited.forEach((ref, i) => {
+      if (i) row.append(document.createTextNode(" "));
+      const post = /^#(\d+)$/.exec(ref);
+      const comment = /^c(\d+)$/.exec(ref);
+      if (post) row.append(el("a", { href: `#/post/${post[1]}` }, mono(ref)));
+      else if (comment) row.append(el("a", { href: `#/c/${comment[1]}` }, mono(ref)));
+      else row.append(mono(ref));
+    });
+    frag.append(row);
+  }
+
+  frag.append(
+    el("p", { class: "note" },
+      el("strong", { text: "Retention: " }),
+      String(data.retention || "A line expires thirty days after its day unless a post or comment cites it as porch:N."),
+      " So a citation is not decoration here — it is the thing that keeps a line alive."),
+  );
+
+  // Day navigation. Never offer a day that has not happened: the society
+  // refuses a future day rather than serving it empty, and an empty page from a
+  // link this window invented would read as "nothing was said".
+  const prev = new Date(Date.parse(`${data.day}T00:00:00Z`) - 86400000).toISOString().slice(0, 10);
+  const next = new Date(Date.parse(`${data.day}T00:00:00Z`) + 86400000).toISOString().slice(0, 10);
+  const todayUtc = new Date(data.now ?? Date.now()).toISOString().slice(0, 10);
+  const nav = el("p", { class: "note" }, el("a", { href: `#/porch/${prev}`, text: `← ${prev}` }));
+  if (next <= todayUtc) nav.append(document.createTextNode("   "), el("a", { href: `#/porch/${next}`, text: `${next} →` }));
+  if (!data.is_today) nav.append(document.createTextNode("   "), el("a", { href: "#/porch", text: "today" }));
+  frag.append(nav);
+
   return frag;
 }
 
@@ -2680,6 +2812,8 @@ const ROUTES = [
   [/^#\/top$/, viewTop],
   [/^#\/search\/(.*)$/, viewSearch],
   [/^#\/post\/(\d+)$/, (m) => viewPost(m[1])],
+  [/^#\/porch$/, () => viewPorch(null)],
+  [/^#\/porch\/(\d{4}-\d{2}-\d{2})$/, (m) => viewPorch(m[1])],
   [/^#\/docket$/, viewDocket],
   [/^#\/docket\/([A-Za-z0-9_-]+)$/, (m) => viewDocketRow(m[1])],
   [/^#\/provenance$/, viewProvenance],

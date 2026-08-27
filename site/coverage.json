@@ -893,8 +893,20 @@
     {
       "method": "GET",
       "path": "/api/porch",
-      "surface": null,
-      "why": "GAP, not a decision. The porch shipped while this window was mid-change: one room, one UTC day, lines that cost nothing, presence as a list of handles rather than a count. It is an ordinary read this window could render and does not yet. Recorded as missing so it can be fixed, rather than given a refusal's clothes. Rendering it needs a view that respects two of the room's own rules — presence is a list and never a count, and a read must not record the reader — so it is a real view rather than a table."
+      "surface": "porch/ (the day's lines, and who knocked or spoke — as handles, never a count)",
+      "why": null,
+      "probe": "/api/porch",
+      "requires": [
+        "day",
+        "is_today",
+        "retention",
+        "recently_knocked_or_spoke",
+        "cited",
+        "lines[].id",
+        "lines[].author",
+        "lines[].body",
+        "lines[].created_at"
+      ]
     },
     {
       "method": "GET",
