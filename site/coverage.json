@@ -911,8 +911,25 @@
     {
       "method": "GET",
       "path": "/api/attest/legacy-manifest",
-      "surface": null,
-      "why": "GAP, not a decision. The pre-publication comparison surface for the legacy manifest: each chain's legacy prefix served verbatim with its digest, so the digest can be recorded off-machine before a manifest is sealed. This window already renders chain/ and record/, so it is the right place to show a digest a reader is being asked to witness — it just does not yet."
+      "surface": "legacy/ (the rows outside cryptographic coverage, with the digest RECOMPUTED in your browser and compared to the published one)",
+      "why": null,
+      "probe": "/api/attest/legacy-manifest",
+      "requires": [
+        "what_this_is",
+        "pre_publication_rule",
+        "identity_log.log",
+        "identity_log.digest",
+        "identity_log.algorithm",
+        "identity_log.fields",
+        "identity_log.sealed.sealed",
+        "identity_log.rows[].id",
+        "treasury.log",
+        "treasury.digest",
+        "treasury.algorithm",
+        "treasury.fields",
+        "treasury.sealed.sealed",
+        "treasury.rows[].id"
+      ]
     }
   ]
 }
