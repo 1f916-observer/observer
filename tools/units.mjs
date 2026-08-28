@@ -15,6 +15,7 @@ import { readFileSync } from "node:fs";
 import { tally, executorOf, openMotions, terms, resolution } from "./ballot.mjs";
 import { extractUrls } from "./rail-check.mjs";
 import { digest, ratifiedHash } from "./statement.mjs";
+import { burstsOf, summariseDay } from "./presence-report.mjs";
 
 let pass = 0, fail = 0;
 const eq = (name, got, want) => {
@@ -262,6 +263,71 @@ eq("no urls is empty, not a failure", extractUrls("re-run the numbers in c123"),
     ratifiedHash("statement-sha256: abc123"), null);
   eq("the marker is matched case-insensitively",
     ratifiedHash(`STATEMENT-SHA256: ${h}`), h);
+}
+
+/* ---------- the presence report ---------- */
+
+// These exist because the report shipped a coverage metric that could not
+// answer the question it was for. It measured `records / 100` and called a day
+// thin below half, so a day of 10 records taken inside two hours scored the
+// same as 10 records spread across ten hours, and the 100 was never once
+// reached in the series' whole life. Coverage is spread; these tests pin that.
+{
+  const rec = (at, floor) => ({ at, observed: true, floor });
+  const opts = { hoursRequired: 12, gapMs: 15 * 60_000 };
+
+  // The specimen is real: on 2026-08-28 one fired run wrote five records
+  // 206 seconds apart. That is one visit, not five.
+  const oneVisit = [
+    rec("2026-08-28T01:01:59.110Z", 27), rec("2026-08-28T01:05:24.959Z", 30),
+    rec("2026-08-28T01:08:50.817Z", 14), rec("2026-08-28T01:12:16.585Z", 23),
+    rec("2026-08-28T01:15:42.407Z", 30),
+  ];
+  eq("five records inside a quarter hour are one burst", burstsOf(oneVisit, opts.gapMs).length, 1);
+  eq("records 42 minutes apart are separate bursts",
+    burstsOf([rec("2026-08-26T02:52:27Z", 41), rec("2026-08-26T03:44:40Z", 23)], opts.gapMs).length, 2);
+
+  // The defect in one assertion: same record count, opposite coverage.
+  const dense = summariseDay([...oneVisit, ...oneVisit.map((r) => rec(r.at.replace("T01:", "T12:"), r.floor))], opts);
+  const spread = summariseDay(
+    Array.from({ length: 10 }, (_, i) => rec(`2026-08-26T${String(i + 2).padStart(2, "0")}:10:00Z`, 30 + i)),
+    opts,
+  );
+  eq("ten dense records and ten spread records are not the same coverage",
+    [dense.n, dense.hours, dense.thin, spread.n, spread.hours, spread.thin],
+    [10, 2, true, 10, 10, true]);
+  eq("a burst is one visit however many rows it leaves", [dense.bursts, spread.bursts], [2, 10]);
+
+  // Twelve spread hours clears the bar; the same count crammed into two does not.
+  const twelve = summariseDay(
+    Array.from({ length: 12 }, (_, i) => rec(`2026-08-26T${String(i + 2).padStart(2, "0")}:10:00Z`, 30)),
+    opts,
+  );
+  eq("twelve distinct hours is trendable", [twelve.hours, twelve.thin], [12, false]);
+
+  // Note 4's argument, applied to bursts: a dense visit must not outvote a day.
+  // Nine spread readings of 10 and one burst of five readings of 100 has a
+  // median of 10 by burst and 100 by record. The burst reading is the true one.
+  const skewed = summariseDay(
+    [
+      ...Array.from({ length: 9 }, (_, i) => rec(`2026-08-26T${String(i + 2).padStart(2, "0")}:10:00Z`, 10)),
+      ...Array.from({ length: 5 }, (_, i) => rec(`2026-08-26T20:${String(i * 3).padStart(2, "0")}:00Z`, 100)),
+    ],
+    opts,
+  );
+  eq("a dense burst cannot outvote a spread day's median", skewed.median, 10);
+  // The peak is still a max over every record, and is still labelled a
+  // high-water mark rather than trended.
+  eq("bursting does not touch the peak", skewed.peak, 100);
+
+  // A failed sample is data. It must count toward neither the median nor a
+  // silent zero, and must still put its hour on the record as attempted.
+  const withOutage = summariseDay(
+    [rec("2026-08-26T02:10:00Z", 30), { at: "2026-08-26T09:10:00Z", observed: false, floor: null }],
+    opts,
+  );
+  eq("an outage is an attempted hour and never a zero",
+    [withOutage.n, withOutage.outages, withOutage.hours, withOutage.median], [1, 1, 2, 30]);
 }
 
 console.log(`${pass} passed, ${fail} failed`);

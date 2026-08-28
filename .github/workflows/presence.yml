@@ -17,15 +17,55 @@ name: presence
 #
 # So the data lives beside the code, publicly auditable, and touches neither.
 
-# Every 15 minutes: 96 points a day is far more resolution than a 7-day trend
-# needs, and a slower cadence is less likely to be throttled and produces a
-# third fewer commits on the data branch. GitHub delays scheduled runs under
-# load and sometimes drops them entirely — that is fine and expected here. Each
-# record carries its own real timestamp, so a dropped run shows up as missing
-# coverage in the report rather than as a quiet period.
+# TWELVE DAILY ENTRIES INSTEAD OF `*/15`, AND THE SERIES IS WHY.
+#
+# This ran on `*/15` — 96 fires a day on paper. What was delivered, measured
+# from the series itself:
+#
+#   2026-08-26   22 fires   18 distinct UTC hours covered
+#   2026-08-27    3 fires    4 distinct UTC hours
+#   2026-08-28    2 fires    2 distinct UTC hours   (to 14:41Z)
+#
+# The first day is the best this schedule has ever done, and it is 23% of the
+# nominal rate. The two days after it are 2-3%. High-frequency crons on public
+# repos are dropped under load rather than queued, and the drop rate is not
+# stable enough to plan around.
+#
+# THE PREVIOUS FIX WAS THE WRONG SHAPE AND THIS COMMENT USED TO ARGUE FOR IT.
+# It said: since the run is scarce, make a fired run carry five samples three
+# minutes apart, and that "restores roughly the original resolution from a fifth
+# of the runs". It does not. Five samples inside a 13.7-minute window are five
+# readings of one moment; they multiply the row count while telling you nothing
+# about the other 23 hours. On 2026-08-28 that produced 10 records — close to
+# 08-26's 22 — from 2 hours of the day instead of 18. Resolution is spread, and
+# density is not a substitute for it. tools/presence-report.mjs now measures
+# coverage as distinct hours rather than record count, which is what makes the
+# table above readable at all.
+#
+# So: buy spread with cron ENTRIES, which are the reliable kind on this account
+# (a daily entry on the sibling `coverage` workflow has fired ten days running,
+# consistently 45-70 minutes late but never missing), and use in-run samples
+# only to bridge between entries rather than to stand in for them.
+#
+# THIS IS A HYPOTHESIS AND THE SERIES WILL SETTLE IT. Nothing has been measured
+# at twelve entries a day; the measured points are 1/day (reliable) and 96/day
+# (2-23%). If the next seven days do not clear roughly 12 of 24 hours, then
+# "frequency is what gets dropped" is the wrong explanation, and the honest
+# response is to say so rather than to add more entries.
 on:
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "7 0 * * *"
+    - cron: "7 2 * * *"
+    - cron: "7 4 * * *"
+    - cron: "7 6 * * *"
+    - cron: "7 8 * * *"
+    - cron: "7 10 * * *"
+    - cron: "7 12 * * *"
+    - cron: "7 14 * * *"
+    - cron: "7 16 * * *"
+    - cron: "7 18 * * *"
+    - cron: "7 20 * * *"
+    - cron: "7 22 * * *"
   workflow_dispatch:
 
 # Overlapping runs would race on the same append. Let a slow run finish rather
@@ -51,27 +91,27 @@ jobs:
 
       # No `npm ci`. There are no dependencies and keeping it that way is an
       # invariant, not a preference — same rule the coverage workflow asserts.
-      # SEVERAL SAMPLES PER RUN, BECAUSE THE RUN IS THE SCARCE THING.
       #
-      # This started as one sample per fire on a */15 schedule, assuming ~96
-      # points a day. Measured over the first 26 hours, GitHub delivered 21 of
-      # about 104 scheduled runs — roughly 20%, with gaps up to 5.4 hours.
-      # Scheduled workflows are dropped under load, not queued, and a
-      # high-frequency cron on a public repo is the case that gets dropped most.
+      # TWO SAMPLES, THIRTY MINUTES APART, AND THE GAP IS THE POINT.
       #
-      # So the fix is not a faster cron, which would be throttled harder. It is
-      # to make a fired run carry more: five samples three minutes apart, which
-      # restores roughly the original resolution from a fifth of the runs and
-      # costs one commit instead of five.
+      # Thirty minutes is chosen so that a run beginning anywhere in an hour
+      # touches two hour-buckets more often than one, which is the only thing
+      # that moves the coverage column. It is not chosen to raise the row count;
+      # rows were never the scarce thing.
+      #
+      # The cost is honest and worth writing down: this leaves a runner idle for
+      # half an hour, twelve times a day. Public-repo minutes are free, but they
+      # are somebody's machines. If the coverage bar turns out to be reachable
+      # with one sample per entry, drop the second and reclaim them.
       - name: Sample the presence endpoint
         run: |
           : > records.jsonl
-          for i in 1 2 3 4 5; do
-            if [ "$i" -gt 1 ]; then sleep 180; fi
+          for i in 1 2; do
+            if [ "$i" -gt 1 ]; then sleep 1800; fi
             # The sampler exits non-zero when EVERY attempt failed, but it still
             # prints the record. Keep it: an outage is data, and dropping it
             # would leave a gap that reads as a quiet period.
-            node tools/presence-sample.mjs >> records.jsonl || echo "note: burst $i fully failed; recorded as such"
+            node tools/presence-sample.mjs >> records.jsonl || echo "note: sample $i fully failed; recorded as such"
           done
           wc -l < records.jsonl
           cat records.jsonl
