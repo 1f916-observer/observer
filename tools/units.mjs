@@ -15,7 +15,7 @@ import { readFileSync } from "node:fs";
 import { tally, executorOf, openMotions, terms, resolution } from "./ballot.mjs";
 import { extractUrls } from "./rail-check.mjs";
 import { digest, ratifiedHash } from "./statement.mjs";
-import { burstsOf, summariseDay } from "./presence-report.mjs";
+import { burstsOf, summariseDay, groupByDay, thresholdReachability } from "./presence-report.mjs";
 
 let pass = 0, fail = 0;
 const eq = (name, got, want) => {
@@ -319,6 +319,53 @@ eq("no urls is empty, not a failure", extractUrls("re-run the numbers in c123"),
   // The peak is still a max over every record, and is still labelled a
   // high-water mark rather than trended.
   eq("bursting does not touch the peak", skewed.peak, 100);
+
+  // @jerry's acceptance test from #2869, both axes, stated as invariances so
+  // the metric is tested at the boundary where the original fix changed the
+  // data-generating process rather than merely being green on a happy path.
+  //
+  // AXIS 1 — density must not move coverage; spread must.
+  {
+    const wakes = ["02", "06", "10", "14"];
+    const oneRowPerWake = wakes.map(h => rec(`2026-08-26T${h}:00:00Z`, 30));
+    // Same wake timestamps, five rows each, deliberately out of order.
+    const fiveRowsPerWake = wakes.flatMap(h =>
+      [0, 3, 6, 9, 12].map(m => rec(`2026-08-26T${h}:${String(m).padStart(2, "0")}:00Z`, 30)),
+    ).reverse();
+    const a = summariseDay(oneRowPerWake, opts), b = summariseDay(fiveRowsPerWake, opts);
+    eq("coverage is invariant to rows-per-wake and to row order",
+      [a.hours, a.bursts, a.median, b.hours, b.bursts, b.median],
+      [4, 4, 30, 4, 4, 30]);
+    eq("…while n does move, which is exactly why n must not be the metric", [a.n, b.n], [4, 20]);
+    // Same ROW COUNT as `a`, but the wakes are crammed into one hour.
+    const crammed = summariseDay([0, 3, 6, 9].map(m => rec(`2026-08-26T02:0${m}:00Z`, 30)), opts);
+    eq("changing the spread of wake timestamps DOES change coverage",
+      [crammed.n, crammed.hours, crammed.bursts], [4, 1, 1]);
+  }
+
+  // AXIS 2 — the guard's own reachability is a reported quantity, and the
+  // fixture carries both a case that crosses the threshold and a
+  // production-shaped case whose observed maximum never does.
+  {
+    const day = (d, hours) => hours.map(h => rec(`2026-08-${d}T${String(h).padStart(2, "0")}:10:00Z`, 30));
+    const crosses = groupByDay([...day("26", [...Array(14).keys()].map(i => i + 2)), ...day("27", [1, 2, 3])]);
+    const neverCrosses = groupByDay([...day("26", [1, 12]), ...day("27", [1, 2, 3])]);
+    const r1 = thresholdReachability(crosses, opts), r2 = thresholdReachability(neverCrosses, opts);
+    eq("a series containing a day over the bar reports reachable",
+      [r1.reachable, r1.best.hours, r1.best.key], [true, 14, "2026-08-26"]);
+    eq("a production-shaped series whose maximum stays under it reports NOT reachable",
+      [r2.reachable, r2.best.hours], [false, 3]);
+    // The defect this replaced in one line: both series suppress the trend, and
+    // before this the reader could not tell those two suppressions apart.
+    // groupByDay returns a Map, so Object.keys() on it is [] and comparing
+    // those lengths would pass for any two inputs. Compare .size.
+    const solidDays = (days) => [...days.values()].filter(rs => !summariseDay(rs, opts).thin).length;
+    eq("both series suppress the trend, so the verdict alone cannot tell them apart",
+      [crosses.size, neverCrosses.size, solidDays(crosses) < 2, solidDays(neverCrosses) < 2],
+      [2, 2, true, true]);
+    eq("…and reachability is the quantity that does tell them apart",
+      [r1.reachable, r2.reachable], [true, false]);
+  }
 
   // A failed sample is data. It must count toward neither the median nor a
   // silent zero, and must still put its hour on the record as attempted.

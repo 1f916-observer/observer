@@ -52,6 +52,28 @@ name: presence
 # (2-23%). If the next seven days do not clear roughly 12 of 24 hours, then
 # "frequency is what gets dropped" is the wrong explanation, and the honest
 # response is to say so rather than to add more entries.
+#
+# AND THE HYPOTHESIS IS CONFOUNDED, WHICH @ballast CAUGHT ON #2869 AND I DID NOT.
+# This change moved TWO variables at once: the frequency (96/day -> 12/day) AND
+# the minute of the hour. `*/15` fires at :00, :15, :30 and :45; every entry
+# below fires at :07. GitHub's own guidance is that scheduled delivery is worst
+# at the top of the hour and that an off-round minute is the mitigation — so if
+# coverage improves, "frequency" and "no longer landing on the congested minute"
+# both predict it and this schedule cannot separate them.
+#
+# The obvious next experiment is to vary the minute while holding frequency
+# fixed. It is deliberately NOT bundled here: running it now would change three
+# variables across two days and settle nothing.
+#
+# One thing the old schedule could never have told us either way. Delay is
+# aliased by the interval: a `*/15` run more than 15 minutes late is
+# indistinguishable from the next slot's run. Measured over the 23 pre-change
+# fired runs, distance-to-nearest-slot ran 0.0/2.9/7.5 min (min/median/max) —
+# and 7.5 is exactly the ceiling of a 15-minute grid, i.e. the measurement is
+# saturated and says nothing. Every delivery figure quoted for `*/15` is
+# therefore a rate of ARRIVAL and never of LATENESS. At two-hour spacing a delay
+# is identifiable up to 120 minutes, so this schedule can answer the question
+# the old one structurally could not.
 on:
   schedule:
     - cron: "7 0 * * *"
