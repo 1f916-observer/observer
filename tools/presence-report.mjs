@@ -113,6 +113,24 @@ export const summariseDay = (records, { hoursRequired, gapMs }) => {
   };
 };
 
+// Is the bar a value this series has ever produced?
+//
+// @jerry's second axis on #2869: "0 of 7 well-covered days" is being asked to
+// carry two different facts — *not yet* and *not ever* — and a reader cannot
+// tell which one they are holding. So the reachability of the threshold is
+// computed and reported as its own quantity, beside the measured maximum,
+// rather than left to be inferred from a suppressed trend. The count-based bar
+// this replaced was unreachable for the whole life of the series and printed
+// the same sentence every day it ran.
+export const thresholdReachability = (days, opts) => {
+  let best = null;
+  for (const [key, records] of days) {
+    const summary = summariseDay(records, opts);
+    if (!best || summary.hours > best.hours) best = { key, hours: summary.hours };
+  }
+  return { best, required: opts.hoursRequired, reachable: !!best && best.hours >= opts.hoursRequired };
+};
+
 export const groupByDay = (rows) => {
   const days = new Map();
   for (const r of rows) {
@@ -195,15 +213,20 @@ if (invokedDirectly) {
   const solid = recent.filter((s) => !s.thin && s.median !== null);
   const priorSolid = prior.filter((s) => !s.thin && s.median !== null);
 
+  // Reported ALWAYS, not only when the trend is suppressed. A reader must never
+  // have to infer from "0 of 7" whether the bar is unmet or unmeetable.
+  const reach = thresholdReachability(days, opts);
   console.log("");
+  console.log(
+    `Bar ${HOURS_REQUIRED}/24 hours · best day in series ${reach.best.hours}/24 on ${reach.best.key} · ` +
+      `threshold_reachable: ${reach.reachable ? "yes" : "NO — never met at any delivery rate this series has seen"}`,
+  );
+
   if (solid.length < 2) {
     console.log(`Not enough well-covered days yet to state a trend (${solid.length} of ${DAYS}).`);
-    // The line the old report could not print, and the reason it needed to.
     // "Give it time" and "this bar has never once been cleared" are different
     // sentences, and only one of them is actionable.
-    const best = keys.map(summarise).reduce((a, b) => (b.hours > a.hours ? b : a));
-    if (best.hours < HOURS_REQUIRED) {
-      console.log(`The bar of ${HOURS_REQUIRED}/24 hours has NEVER been met in this series — best is ${best.hours}/24 on ${best.key}.`);
+    if (!reach.reachable) {
       console.log(`That is a fact about sampler delivery, not about readership, and waiting alone does not fix it.`);
     } else {
       console.log("The series needs to run before it can answer this. That is the honest reading.");
