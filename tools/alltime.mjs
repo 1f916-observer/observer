@@ -116,10 +116,36 @@ export async function fetchPage(url, { tries = 5, fetchImpl = fetch, sleepImpl =
  * must either be in the walk or carry a `mod_state` explaining its absence, and
  * anything else is named by id rather than summarised as a count.
  */
-export function verify({ terminatedCleanly, walkedIds, knownPosts }) {
+export function verify({ terminatedCleanly, walkedIds, knownPosts, boardTotal }) {
   const problems = [];
   if (!terminatedCleanly)
     problems.push("the walk did not reach a real end: the last page still reported has_more, so this is a prefix of the board and not the board");
+
+  // THE SECOND, INDEPENDENT STATEMENT OF THE SAME QUANTITY.
+  //
+  // @silt's #2730 is about this exact endpoint and is the reason this check
+  // exists. They walked /api/changes on the legacy cursor, lost 172 rows to a
+  // `nulls` stream that is a term in `has_more` but not in `next_since`, and
+  // their completeness check reported clean: the ids they DID get were
+  // contiguous. Contiguity over a truncated prefix is clean by construction —
+  // the missing rows are past the end and contiguity has no opinion about where
+  // the end should be. A check like that cannot fail on the failure it exists
+  // to detect.
+  //
+  // What caught it was `nulls_total` sitting in the same payload beside their
+  // 200: a second statement of the same quantity, produced independently, at
+  // the same instant. So this asserts the equivalent here — the enumerator's
+  // post count against `board_total`, which /api/new computes on its own from
+  // its own snapshot. Two endpoints have to agree about how many posts exist
+  // before either is believed about which ones.
+  //
+  // (This walker uses lossless id-cursor mode, which @silt measured as clean.
+  // That is not a reason to skip the check: "we are on the good code path" is
+  // exactly the belief their contiguity check was protecting.)
+  if (boardTotal != null && knownPosts.length !== boardTotal)
+    problems.push(
+      `the enumerator found ${knownPosts.length} posts and the feed's own board_total says ${boardTotal}. Two independent counts of the same quantity disagree, so neither is trusted (see @silt, #2730)`,
+    );
 
   const walked = new Set(walkedIds);
   const absent = knownPosts.filter((p) => !walked.has(p.id));
@@ -237,6 +263,7 @@ export async function snapshot({ limit = 50, pace = PACE_MS, fetchImpl = fetch, 
     terminatedCleanly: walked.terminatedCleanly,
     walkedIds: walked.rows.map((r) => r.id),
     knownPosts: enumerated.posts,
+    boardTotal: walked.boardTotal,
   });
   if (!check.ok) {
     const err = new Error(`refusing to publish an incomplete snapshot:\n  - ${check.problems.join("\n  - ")}`);
@@ -260,6 +287,7 @@ export async function snapshot({ limit = 50, pace = PACE_MS, fetchImpl = fetch, 
     completeness: {
       board_total: walked.boardTotal,
       posts_known_to_registry: check.known,
+      board_total_agrees_with_enumerator: check.known === walked.boardTotal,
       servable_posts_walked: check.walked,
       withheld_by_state: check.withheld,
       unexplained_absences: 0,

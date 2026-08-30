@@ -172,7 +172,9 @@ test("snapshot() throws instead of returning a partial ranking", async () => {
 
 test("snapshot() publishes when every absence is explained, and says how", async () => {
   const known = [...Array.from({ length: 250 }, (_, i) => ({ id: i + 1 })), { id: 900, mod_state: "withdrawn" }];
-  const feed = fakeFeed({ total: 250, known });
+  // board_total counts the withheld row too — 251, not 250 — which is why the
+  // cross-check compares it against the ENUMERATOR's count and not the walk's.
+  const feed = fakeFeed({ total: 250, boardTotal: 251, known });
   const snap = await snapshot({ limit: 5, pace: 0, fetchImpl: feed.fetchImpl, sleepImpl: nosleep });
   assert.equal(snap.completeness.unexplained_absences, 0);
   assert.deepEqual(snap.completeness.withheld_by_state, { withdrawn: 1 });
@@ -208,5 +210,41 @@ test("a page that stops carrying `posts` is a schema change, and says so", async
   await assert.rejects(
     () => fetchPage("https://x/api/new", { tries: 2, fetchImpl: async () => gone, sleepImpl: nosleep }),
     /HTTP 200 and the body is not the JSON this expects/,
+  );
+});
+
+// TWO INDEPENDENT COUNTS, BECAUSE ONE CANNOT CHECK ITSELF.
+//
+// @silt's #2730 walked /api/changes on the legacy cursor, lost 172 rows to a
+// `nulls` stream that is a term in has_more but not in next_since, and their
+// completeness check reported clean because the ids they got were contiguous.
+// Contiguity over a truncated prefix is clean BY CONSTRUCTION. What caught it
+// was nulls_total in the same payload — a second statement of the same
+// quantity, produced independently. This is that check for this walker.
+test("the enumerator's count is checked against the feed's own board_total", () => {
+  const known = [{ id: 1 }, { id: 2 }, { id: 3 }];
+  const agree = verify({ terminatedCleanly: true, walkedIds: [1, 2, 3], knownPosts: known, boardTotal: 3 });
+  assert.equal(agree.ok, true);
+
+  // The enumerator silently truncating is the failure this catches, and it is
+  // the one a contiguity check cannot see: 1,2,3 is contiguous either way.
+  const truncated = verify({ terminatedCleanly: true, walkedIds: [1, 2, 3], knownPosts: known, boardTotal: 3203 });
+  assert.equal(truncated.ok, false);
+  assert.match(truncated.problems.join(" "), /enumerator found 3 posts and the feed's own board_total says 3203/);
+  assert.match(truncated.problems.join(" "), /so neither is trusted/);
+
+  // And the check must not be skippable by simply not passing the number.
+  assert.equal(verify({ terminatedCleanly: true, walkedIds: [1, 2, 3], knownPosts: known }).ok, true,
+    "boardTotal is optional in the pure function, which is why snapshot() always supplies it — asserted below");
+});
+
+test("snapshot() always supplies board_total to the check, so it cannot be skipped in practice", async () => {
+  // The feed claims 400; the enumerator knows 250. Nothing is missing from the
+  // WALK, so only the cross-check can catch this.
+  const known = Array.from({ length: 250 }, (_, i) => ({ id: i + 1 }));
+  const feed = fakeFeed({ total: 250, boardTotal: 400, known });
+  await assert.rejects(
+    () => snapshot({ pace: 0, fetchImpl: feed.fetchImpl, sleepImpl: nosleep }),
+    /enumerator found 250 posts and the feed's own board_total says 400/,
   );
 });
