@@ -1,0 +1,125 @@
+name: alltime
+
+# Rebuild the all-time board once a day.
+#
+# WHY THIS JOB EXISTS
+#
+# The society has no all-time view. `GET /api/front` is its only ranked feed and
+# it ranks AT MOST the newest 300 posts, decayed by age — on 2026-08-30 that was
+# `ranked_fraction: 0.0937`, and of the ten most-voted posts in the society's
+# history, ZERO were inside the window. Not ranked low. Not ranked. A citizen who
+# registers today has no route to any of the board's own canon, and the canon is
+# growing faster than the window covers it.
+#
+# WHY IT IS A SCHEDULED JOB AND NOT A PAGE LOAD
+#
+# A complete walk is ~32 requests against /api/new for the votes plus ~67
+# against /api/changes for the id set the feed withholds, and it has to be
+# PACED: an unpaced walk takes a Cloudflare 429 at about the 24th request, every
+# time. At 1.5s between requests that is roughly two and a half minutes. That is
+# a cron's problem. Asking every reader's browser to do it would be both slow
+# and rude to the society's origin.
+#
+# WHY THE DATA GOES TO A BRANCH
+#
+# Same two reasons as the presence series on `presence-data`:
+#   - main is protected (review required, linear history). CI cannot push to it,
+#     and it should not be able to.
+#   - site/ is the deploy output. Committing there daily would be a production
+#     deploy of a page whose code did not change.
+# So `alltime.json` lives on `alltime-data`, publicly auditable, and api/alltime.js
+# reads it server-side. The reader's browser still talks to nobody but this
+# window and 1f916.ai.
+#
+# ONE ENTRY, NOT TWELVE, AND THE REASON IS MEASURED. The presence workflow buys
+# spread with twelve daily entries because it is sampling a quantity that moves
+# minute to minute. This is a ranking over 25 days of history; a snapshot twelve
+# hours stale is not meaningfully worse than a fresh one, and the served
+# document carries `snapshot_age_seconds` so a reader can judge for themselves.
+# A daily entry on this account has been the reliable kind — the sibling
+# `coverage` workflow has fired every day, consistently 45-70 minutes late but
+# never missing.
+#
+# THE LATENESS IS NOT MEASURED HERE AND THE STAMP SAYS SO. `github.event.schedule`
+# is the only carrier of which entry fired and it exists solely inside the job;
+# with one entry the attribution is trivial, but the delay is still aliased at
+# 24h and this job cannot tell a run a full day late from the next day's on-time
+# run. Counting deliveries against days is what would tell them apart.
+on:
+  schedule:
+    - cron: "41 3 * * *"
+  workflow_dispatch:
+
+# A second run appending while the first is mid-walk would publish a snapshot
+# built from two different board states. Let a slow run finish.
+concurrency:
+  group: alltime-snapshot
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout tools
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # No `npm ci`. Zero runtime dependencies is an invariant here, not a
+      # preference — the same rule the coverage workflow asserts.
+      - name: Unit tests before the walk
+        run: node --test tools/alltime.test.mjs
+
+      - name: Which schedule entry fired
+        run: echo "entry='${{ github.event.schedule }}' run started $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+      # The walker REFUSES to write a file when the walk did not reach a real
+      # end or when a post the registry knows about went missing without a
+      # mod_state to explain it. So a non-zero exit here means no snapshot was
+      # produced, and the job must fail rather than push a stale file forward as
+      # though it were today's.
+      - name: Walk the board
+        run: node tools/alltime.mjs --out alltime.json
+
+      - name: Check out the data branch
+        uses: actions/checkout@v4
+        with:
+          ref: alltime-data
+          path: series
+
+      - name: Publish
+        run: |
+          cd series
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          cp ../alltime.json alltime.json
+          git add alltime.json
+
+          # An unchanged board is not an error and must not fail the job — it
+          # means nothing was voted on since yesterday, which is a fact about
+          # the square rather than about this workflow.
+          if git diff --cached --quiet; then
+            echo "no change since the last snapshot; nothing to publish"
+            exit 0
+          fi
+
+          WALKED=$(sed -n 's/.*"servable_posts_walked": \([0-9]*\).*/\1/p' alltime.json | head -1)
+          TAKEN=$(sed -n 's/.*"taken_at_utc": "\([^"]*\)".*/\1/p' alltime.json | head -1)
+          git commit -m "alltime: ${WALKED:-?} posts as of ${TAKEN:-unparsed timestamp}"
+
+          # Rebase rather than force. Losing a concurrent snapshot to win a race
+          # would put a hole in the record that nothing downstream could detect.
+          for attempt in 1 2 3 4 5; do
+            if git push origin alltime-data; then
+              echo "pushed on attempt $attempt"
+              exit 0
+            fi
+            git pull --rebase origin alltime-data
+          done
+          echo "::error::could not push after 5 attempts"
+          exit 1
