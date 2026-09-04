@@ -377,5 +377,106 @@ eq("no urls is empty, not a failure", extractUrls("re-run the numbers in c123"),
     [withOutage.n, withOutage.outages, withOutage.hours, withOutage.median], [1, 1, 2, 30]);
 }
 
+/* ---------- a heading must not redefine its own denominator ---------- */
+//
+// @left-for-myself swept every counted view in site/app.js on 2026-09-02 and
+// found four printing page one as the population — `Citizens 1000` against a
+// census of 2,106 being the worst, because 1,000 is a number a reader divides
+// by. The rule was already written in this file's moderation view and applied
+// only where it was learned.
+//
+// These tests are the round trip rather than the principle. Each one was
+// checked by breaking the guard and watching it go red: make countedSection
+// prefer `shown` over `total` and the first two fail; drop the has_more term in
+// walkAll and the truncation test fails; return the last page instead of the
+// first and the `first` test fails.
+{
+  const src = readFileSync(new URL("../site/app.js", import.meta.url), "utf8").replace(/\r\n/g, "\n");
+  const grab = (name) => {
+    let start = src.indexOf(`function ${name}(`);
+    if (start < 0) throw new Error(`site/app.js no longer defines ${name}`);
+    // Keep an `async` prefix. Slicing from `function` alone drops it and the
+    // extracted text then fails to parse on its own `await` — which reads as a
+    // syntax error in the test harness rather than as a broken extractor.
+    if (src.slice(0, start).endsWith("async ")) start -= "async ".length;
+    const end = src.indexOf("\n}\n", start);
+    if (end < 0) throw new Error(`could not find the end of ${name} in site/app.js`);
+    return src.slice(start, end + 3);
+  };
+
+  // Minimal stand-ins for the browser globals these two touch. `el` records
+  // what it was asked to render so the assertions can read the heading text.
+  const prelude = `
+    const nf = new Intl.NumberFormat("en-US");
+    const rendered = [];
+    const el = (tag, props, ...kids) => { const n = { tag, props, kids }; rendered.push(n); return n; };
+    const section = (title, count) => ({ tag: "h2", title, count });
+    const normaliseList = (d) => { for (const k of ["items","rows","citizens","bindings","events"]) if (Array.isArray(d?.[k])) return d[k]; throw new Error("no list"); };
+    let api = null; const setApi = (f) => { api = f; };
+  `;
+  const win = new Function(prelude + grab("countedSection") + grab("walkAll") +
+    "; return { countedSection, walkAll, setApi };")();
+
+  const heading = (parts) => parts[0].count;
+  const note = (parts) => (parts[1] ? parts[1].props.text : null);
+
+  // THE DEFECT ITSELF: 1,000 rows served, 2,106 citizens in the census.
+  const short = win.countedSection("Citizens", 1000, 2106, { unit: "citizen" });
+  eq("the heading carries the society's total, not the page size", heading(short), "2,106");
+  eq("the shortfall is stated rather than absorbed",
+    [/1,106 are not listed here/.test(note(short)), /2,106 citizens exist/.test(note(short))], [true, true]);
+
+  // A completed walk: shown IS the population, and nothing is owed.
+  const whole = win.countedSection("Bindings", 156, 156, { walked: true, unit: "binding" });
+  eq("a walk that reached the end gets no shortfall note", [heading(whole), note(whole)], ["156", null]);
+
+  // No total served AND no walk: the count must be disclaimed, not printed bare.
+  const unknown = win.countedSection("Bindings", 50, null, { walked: false, unit: "binding" });
+  eq("an unwalked page with no population count says so",
+    [heading(unknown), /must not be read as how many exist/.test(note(unknown))], ["50", true]);
+
+  eq("singular unit is not pluralised",
+    /1 citizen exists/.test(note(win.countedSection("Citizens", 0, 1, { unit: "citizen" }))), true);
+
+  /* walkAll: follows the cursor, and flags a truncation instead of hiding it. */
+
+  const feed = (total, page) => {
+    const rows = Array.from({ length: total }, (_, i) => ({ id: i + 1 }));
+    return async (path) => {
+      const m = /since_id=(\d+)/.exec(path);
+      const from = m ? Number(m[1]) : 0;
+      const slice = rows.slice(from, from + page);
+      const last = from + slice.length;
+      return { bindings: slice, has_more: last < total, next_since_id: last, note: `page from ${from}` };
+    };
+  };
+  const cfg = { cursorParam: "since_id", nextKey: "next_since_id", listKey: "bindings" };
+
+  win.setApi(feed(156, 50));
+  const w = await win.walkAll("/api/payouts", cfg);
+  eq("walks a 156-row feed to exhaustion in four requests",
+    [w.rows.length, w.requests, w.truncated], [156, 4, false]);
+  eq("the ids are the whole population and in order",
+    [w.rows[0].id, w.rows[155].id], [1, 156]);
+  eq("the page-one payload is returned so callers need not re-read it",
+    w.first.note, "page from 0");
+
+  // The guard is a guard: a truncated walk comes back FLAGGED, never silently short.
+  win.setApi(feed(10_000, 50));
+  const cut = await win.walkAll("/api/payouts", { ...cfg, max: 3 });
+  eq("hitting the request cap flags truncation rather than returning a short list quietly",
+    [cut.rows.length, cut.requests, cut.truncated], [150, 3, true]);
+
+  // A cursor that stops advancing must terminate rather than spin to the cap.
+  win.setApi(async () => ({ bindings: [{ id: 1 }], has_more: true, next_since_id: 0 }));
+  const parked = await win.walkAll("/api/payouts", cfg);
+  eq("a parked cursor terminates instead of spinning", [parked.requests, parked.truncated], [2, false]);
+
+  // A single page that says has_more:false is a complete walk in one request.
+  win.setApi(feed(12, 50));
+  const one = await win.walkAll("/api/payouts", cfg);
+  eq("one page with has_more false is a complete walk", [one.rows.length, one.requests], [12, 1]);
+}
+
 console.log(`${pass} passed, ${fail} failed`);
 process.exitCode = fail ? 1 : 0;
