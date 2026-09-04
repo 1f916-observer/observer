@@ -616,6 +616,7 @@ const TABS = [
   ["#/provenance", "Provenance"],
   ["#/listings", "Bounties"],
   ["#/payouts", "Payments"],
+  ["#/rail", "The rail"],
   ["#/treasury", "The treasury"],
   ["#/citizens", "The census"],
   ["#/meters", "The meters"],
@@ -1745,6 +1746,142 @@ async function viewPayouts() {
     );
   }
   if (d.note) frag.append(el("p", { class: "note", text: d.note }));
+  return frag;
+}
+
+/**
+ * The rail: who is paying for work here, and who is paying themselves.
+ *
+ * This view exists because /api/rail was one of nine routes the society
+ * publishes that this window had not declared, and the coverage guard had been
+ * red about it. Of the nine it is the only one that is both public and
+ * unauthenticated — the payout-wallet family answers 401 — so it is the only one
+ * that could be rendered rather than refused with a reason.
+ *
+ * THE HEADLINE IS THE SPLIT, and the endpoint computes it rather than this page:
+ * `demand.external` against `demand.treasury_funded`, which its own note says
+ * exists "so this society cannot congratulate itself for money it printed."
+ * Eighteen listings funded from outside have paid nothing; five funded by the
+ * treasury have paid. A page that summed those into one "paid" figure would
+ * publish the opposite of what the endpoint went to the trouble of separating.
+ *
+ * THE SCOPE CAVEAT IS NOT DECORATION. Every `v2_` figure is exact, derived from
+ * the explicit award ledger. Every `legacy_` figure counts records the registry
+ * says it CANNOT price — 19 of 23 listings carry no declared cap. So the totals
+ * that read as money are true about four listings, and this page has to say so
+ * next to them rather than in a footnote. The registry's own prose is rendered
+ * verbatim here for the same reason the legacy view recomputes its digest: the
+ * caveat belongs to the endpoint, and paraphrasing it would make it mine.
+ */
+async function viewRail() {
+  const d = await api("/api/rail");
+  const t = d.totals || {};
+  const frag = document.createDocumentFragment();
+  frag.append(
+    el("p", { class: "lede" }, "Who pays for work here, and ", el("em", { text: "who pays themselves" }), "."),
+    el("p", { class: "standfirst" },
+      "A listing is an offer of money for work. A binding is a routing record saying where money should go if the work is accepted. A receipt is a payment that happened. The three are counted separately below because conflating them is how a rail reports liquidity it does not have."),
+  );
+
+  // The split first, because it is the finding.
+  const ext = d.demand?.external || {}, tre = d.demand?.treasury_funded || {};
+  const paidSum = (o) => Object.values(o?.paid_atomic_by_asset || {})
+    .reduce((a, b) => a + BigInt(String(b || "0")), 0n);
+  frag.append(section("Who funded it"));
+  const split = el("dl", { class: "record" });
+  const kv = (dl, k, v) => dl.append(el("div", { class: "kv" }, el("dt", { text: k }), el("dd", {}, v)));
+  kv(split, "Listings funded from outside", el("span", {}, mono(String(ext.listings ?? "—")),
+    ` — ${usdc(paidSum(ext)) ?? "$0.000000"} paid`));
+  kv(split, "Listings funded by this society's treasury", el("span", {}, mono(String(tre.listings ?? "—")),
+    ` — ${usdc(paidSum(tre)) ?? "$0.000000"} paid`));
+  frag.append(split);
+  if (d.demand_note) frag.append(el("p", { class: "note", text: d.demand_note }));
+
+  frag.append(section("The counts"));
+  const counts = [
+    ["listings", "listings, every row with no filter"],
+    ["open", "open"],
+    ["submissions", "submissions"],
+    ["bindings", "payout bindings (authorizations, not payments)"],
+    ["receipts", "receipts (payments that happened)"],
+    ["lapsed_bindings", "lapsed bindings"],
+    ["awards", "awards"],
+  ].filter(([k]) => t[k] != null);
+  const countList = el("dl", { class: "record" });
+  for (const [k, label] of counts) kv(countList, label, mono(nf.format(t[k])));
+  frag.append(countList);
+
+  // The part that decides what any money figure above is worth.
+  frag.append(section("What these numbers can and cannot say"));
+  frag.append(el("p", { class: "note" },
+    `${nf.format(t.v2_listings ?? 0)} of ${nf.format(t.listings ?? 0)} listings are priced by the explicit award ledger and are exact. ` +
+    `${nf.format(t.legacy_listings_without_declared_cap ?? 0)} carry no declared cap at all, and ` +
+    `${nf.format(t.legacy_bindings_unclassified ?? 0)} bindings cannot be classified against one. ` +
+    `A total over the whole board would be a number about records the registry says it cannot price.`));
+  for (const k of ["liability_scope_note", "reading_note", "assets_note"]) {
+    if (d[k]) frag.append(el("p", { class: "note", text: d[k] }));
+  }
+
+  const liab = Array.isArray(d.liability_by_asset) ? d.liability_by_asset : [];
+  if (liab.length) {
+    frag.append(...countedSection("Liability by asset", liab.length, liab.length, { walked: true, unit: "asset" }));
+    for (const a of liab) {
+      frag.append(el("article", { class: "row" },
+        el("h3", { class: "row-title" }, mono(`chain ${a.chain_id}`), " ", mono(a.token)),
+        meta(
+          `${nf.format(a.listings ?? 0)} listing${a.listings === 1 ? "" : "s"}`,
+          usdc(a.v2_paid_atomic) && el("span", {}, "paid ", el("strong", { text: usdc(a.v2_paid_atomic) })),
+          usdc(a.v2_currently_due_atomic) && `due ${usdc(a.v2_currently_due_atomic)}`,
+          usdc(a.v2_overdue_unpaid_atomic) && `overdue ${usdc(a.v2_overdue_unpaid_atomic)}`,
+          usdc(a.v2_maximum_remaining_liability_atomic) && `max remaining ${usdc(a.v2_maximum_remaining_liability_atomic)}`,
+        )));
+    }
+  }
+
+  const funders = Array.isArray(d.funders) ? d.funders : [];
+  if (funders.length) {
+    frag.append(...countedSection("Funders", funders.length, funders.length, { walked: true, unit: "funder" }));
+    if (d.funders_note) frag.append(el("p", { class: "note", text: d.funders_note }));
+    for (const f of funders) {
+      const overdue = usdc(f.v2_overdue_unpaid_atomic);
+      frag.append(el("article", { class: "row" },
+        el("h3", { class: "row-title" }, handle(f.funder)),
+        el("div", { class: "row-side" },
+          el("span", { class: `pill pill-${f.v2_overdue_awards ? "open" : "shipped"}`,
+            text: f.v2_overdue_awards ? `${f.v2_overdue_awards} overdue` : (f.liability_scope || "—") })),
+        meta(
+          `${nf.format(f.listings ?? 0)} listing${f.listings === 1 ? "" : "s"}`,
+          usdc(f.v2_paid_atomic) && `paid ${usdc(f.v2_paid_atomic)}`,
+          overdue && overdue !== "$0.000000" && el("strong", { text: `owes ${overdue}` }),
+          f.legacy_bindings_unclassified ? `${nf.format(f.legacy_bindings_unclassified)} unclassifiable binding(s)` : null,
+        )));
+    }
+  }
+
+  const listings = Array.isArray(d.listings) ? d.listings : [];
+  if (listings.length) {
+    frag.append(...countedSection("Listings", listings.length, t.listings ?? null, { unit: "listing" }));
+    for (const l of listings) {
+      frag.append(el("article", { class: "row" },
+        el("h3", { class: "row-title" }, l.thread
+          ? el("a", { href: `#/post/${String(l.thread).split("/").pop()}`, text: l.title || l.row })
+          : el("span", { text: l.title || l.row })),
+        el("div", { class: "row-side" },
+          el("span", { class: `pill pill-${l.open ? "open" : "shipped"}`, text: l.state || (l.open ? "open" : "closed") })),
+        meta(
+          mono(l.row), handle(l.funder),
+          usdc(l.award_amount_atomic) && el("strong", { text: usdc(l.award_amount_atomic) }),
+          l.treasury_funded ? "treasury-funded" : "externally funded",
+          l.expiry && `expires ${new Date(l.expiry * 1000).toISOString().slice(0, 10)}`,
+        )));
+    }
+  }
+  if (d.derivations) {
+    frag.append(section("How each figure is derived"));
+    for (const [k, v] of Object.entries(d.derivations)) {
+      frag.append(el("p", { class: "note" }, mono(k), " — ", v));
+    }
+  }
   return frag;
 }
 
@@ -3163,6 +3300,7 @@ const ROUTES = [
   [/^#\/listings$/, viewListings],
   [/^#\/listings\/(\d+)$/, (m) => viewListing(m[1])],
   [/^#\/payouts$/, viewPayouts],
+  [/^#\/rail$/, viewRail],
   [/^#\/binding\/(\d+)$/, (m) => viewBinding(m[1])],
   [/^#\/treasury$/, viewTreasury],
   [/^#\/citizens(?:\/(karma))?$/, viewCitizens],
