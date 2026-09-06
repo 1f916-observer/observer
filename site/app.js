@@ -1915,6 +1915,59 @@ async function viewBinding(id) {
   return frag;
 }
 
+/**
+ * What actually landed in an asset read, split three ways rather than two.
+ *
+ * MEASURED 2026-09-06: twelve reads of GET /treasury, **five degraded**. This is
+ * not a rare transient — a reader has roughly a two-in-five chance of meeting
+ * it, which is why the page said FIGURES UNAVAILABLE when the user looked.
+ *
+ * The old guard was `complete === false || holdings.length === 0`, one boolean
+ * over two different facts, and it threw away a good read:
+ *
+ *   complete=False holdings=6  errors=['Chainlink ETH/USD did not answer;
+ *                                      WETH and the token mark are unpriced']
+ *
+ * Six holdings present, one oracle missing. Rendering that as "unavailable"
+ * discards the lines that DID answer. So:
+ *
+ *   none      no line priced. Nothing is knowable from this read.
+ *   partial   some lines priced, some not. A FLOOR exists and is not a total.
+ *   complete  every line priced.
+ *
+ * The floor is deliberately not called a total anywhere it is rendered. On the
+ * captured partial read the only line that answered was NVDAB at $1,123 against
+ * a true book of $71,594 — a floor that reads as a total is worse than a dash,
+ * so it is always shown as "K of N lines" with the unpriced ones named.
+ *
+ * A per-row null is not the same as a zero and this must never sum over nulls:
+ * in a partial read `quantity`, `price_usd` and `value_cents` all go null
+ * independently, and even USDC — whose price is a constant 1 — loses its value
+ * when `balanceOf` does not answer.
+ */
+function assetReadState(a) {
+  const holdings = (a && a.holdings) || [];
+  const priced = holdings.filter((h) => h && h.value_cents != null);
+  const unpriced = holdings.filter((h) => !h || h.value_cents == null);
+  if (priced.length === 0) return { state: "none", holdings, priced, unpriced, floorCents: null };
+  if (a?.complete === false || unpriced.length > 0) {
+    return { state: "partial", holdings, priced, unpriced,
+             floorCents: priced.reduce((s, h) => s + h.value_cents, 0) };
+  }
+  return { state: "complete", holdings, priced, unpriced, floorCents: null };
+}
+
+/**
+ * The last COMPLETE asset read this page session saw.
+ *
+ * Deliberately in-memory and never localStorage: a stale book that outlives the
+ * tab is a liability, and this exists only so a reader who meets one of the
+ * five-in-twelve bad reads is shown the good one they had a minute ago rather
+ * than a screen of dashes. It is rendered with its own timestamp and age, under
+ * its own heading, and is NEVER merged into the current read's figures.
+ */
+let lastCompleteAssets = null;
+
 async function viewTreasury() {
   const t = await api("/treasury");
   const frag = document.createDocumentFragment();
@@ -1954,28 +2007,65 @@ async function viewTreasury() {
   // this window rendered it as a confident $0 while the wallet held ~$22k.
   // Both shapes are caught here, so the banner survives whether or not the
   // upstream fix has shipped: an empty holdings array is never a book.
-  const holdingRows = a.holdings || [];
-  const degraded = a.complete === false || holdingRows.length === 0;
-  if (degraded) {
+  const read = assetReadState(a);
+  if (read.state === "complete") {
+    lastCompleteAssets = { assets: a, at: t.now, at_utc: t.now_utc };
+  } else {
+    const none = read.state === "none";
     frag.append(
       el("article", { class: "row" },
-        el("h3", { class: "row-title", text: "This read did not land" }),
-        el("div", { class: "row-side" }, el("span", { class: "tag-cited", text: "FIGURES UNAVAILABLE" })),
+        el("h3", { class: "row-title", text: none ? "This read did not land" : "This read landed in part" }),
+        el("div", { class: "row-side" },
+          el("span", { class: "tag-cited", text: none ? "FIGURES UNAVAILABLE" : "PARTIAL READ" })),
         el("p", { class: "row-meta span" },
-          "The society's asset composite is five live on-chain reads and they did not all answer. " +
-          "Dashes below mean UNKNOWN, not zero, and no total on this page should be quoted from this render. " +
-          "Reload in a moment: this is usually transient."),
+          none
+            ? "The society's asset composite is a set of live on-chain reads and none of them answered. " +
+              "Dashes below mean UNKNOWN, not zero, and no total on this page should be quoted from this render."
+            : `${read.priced.length} of ${read.holdings.length} holdings priced on this read. ` +
+              "The rest are UNKNOWN, not zero. Every total below is withheld rather than computed over the " +
+              "missing lines, because a sum that skips a null is a smaller number wearing a complete one's clothes."),
+        // The floor, named as a floor every time it appears. On the read this
+        // was built against it was $1,123 against a true book of $71,594.
+        !none
+          ? el("p", { class: "row-meta span" },
+              el("strong", { text: `At least ${usd(read.floorCents)} ` }),
+              `— a floor over the ${read.priced.length} line(s) that answered, NOT a total. ` +
+              `Unpriced this read: ${read.unpriced.map((h) => `${h.asset} (${h.location})`).join(", ")}.`)
+          : null,
         // onchain_cents is a separately cached read and survives the composite
-        // failing, so the one figure that IS trustworthy right now is shown
-        // rather than withheld along with the rest.
+        // failing, so the figures that ARE trustworthy are shown rather than
+        // withheld along with the rest.
         el("p", { class: "row-meta span" },
           "Still readable, from a separate cached read: wallet on-chain ",
           mono(usd(t.onchain_cents)),
           ", booked in the ledger ", mono(usd(t.booked_cents)), "."),
         (a.errors || []).length
           ? el("p", { class: "row-meta span" }, el("strong", { text: "The endpoint's own reasons: " }), (a.errors || []).join("; "))
-          : null),
+          : null,
+        el("p", { class: "row-meta span" },
+          "Measured 2026-09-06: five of twelve reads of this endpoint were degraded. Reloading usually clears it."),
+      ),
     );
+
+    // A previous COMPLETE read from this same page session, if there was one.
+    // Stamped with its own time and never merged into the figures above.
+    if (lastCompleteAssets) {
+      const prev = lastCompleteAssets;
+      const ageMin = Math.max(0, Math.round((t.now - prev.at) / 60000));
+      frag.append(
+        el("article", { class: "row" },
+          el("h3", { class: "row-title", text: "The last complete read this session" }),
+          el("div", { class: "row-side" }, el("span", { class: "tag-cited", text: "EARLIER READ" })),
+          el("p", { class: "row-meta span" },
+            `Taken ${prev.at_utc}, about ${ageMin} minute(s) before the one above. `,
+            "This is a DIFFERENT read, shown because the current one is short — it is not merged into anything above, " +
+            "and it is as stale as its timestamp says."),
+          el("p", { class: "row-meta span" },
+            "Disclosed total ", mono(usd(prev.assets.total_cents)),
+            " · conservative ", mono(usd(prev.assets.conservative_total_cents))),
+        ),
+      );
+    }
   }
 
   // The tier split is the honest part of these books and the society is
