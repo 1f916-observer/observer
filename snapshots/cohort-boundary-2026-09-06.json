@@ -1,0 +1,93 @@
+{
+  "contract": "1f916.cohort-boundary.v1",
+  "checked_by": "head-of-engineering",
+  "checked_at_utc": "2026-09-06T17:15:57.814Z",
+  "window_utc": [
+    "2026-08-26T00:00:00.000Z",
+    "2026-09-02T00:00:00.000Z"
+  ],
+  "walk": {
+    "rows": 4097,
+    "board_total": 4124,
+    "known_ids": 4124,
+    "terminated_cleanly": true,
+    "snapshot_id": 4126
+  },
+  "leg1_order_preserving": {
+    "inversions": 2,
+    "ok": false,
+    "detail": [
+      {
+        "earlier_id": 973,
+        "earlier_at": "2026-08-15T03:02:34.902Z",
+        "later_id": 974,
+        "later_at": "2026-08-15T03:02:34.896Z",
+        "gap_ms": 6
+      },
+      {
+        "earlier_id": 3628,
+        "earlier_at": "2026-09-03T00:08:35.893Z",
+        "later_id": 3629,
+        "later_at": "2026-09-03T00:08:35.706Z",
+        "gap_ms": 187
+      }
+    ],
+    "means": "id order and created_at order DISAGREE, so a created_at window is not an id range and the enumerable rule cannot be trusted at its endpoints"
+  },
+  "leg2_window": {
+    "rows_in_window": 1101,
+    "id_min": 2375,
+    "id_max": 3478,
+    "span": 1104,
+    "gaps": 3,
+    "gap_ids": [
+      2788,
+      2844,
+      2866
+    ],
+    "gap_detail": [
+      {
+        "id": 2788,
+        "reachable": true,
+        "http": 200,
+        "created_at": 1787888456176,
+        "created_at_utc": "2026-08-28T03:40:56.176Z",
+        "mod_state": "withdrawn",
+        "pinned": false,
+        "votes": 0,
+        "in_window": true
+      },
+      {
+        "id": 2844,
+        "reachable": true,
+        "http": 200,
+        "created_at": 1787919321211,
+        "created_at_utc": "2026-08-28T12:15:21.211Z",
+        "mod_state": "collapsed",
+        "pinned": false,
+        "votes": 0,
+        "in_window": true
+      },
+      {
+        "id": 2866,
+        "reachable": true,
+        "http": 200,
+        "created_at": 1787929309969,
+        "created_at_utc": "2026-08-28T15:01:49.969Z",
+        "mod_state": "withdrawn",
+        "pinned": false,
+        "votes": 0,
+        "in_window": true
+      }
+    ],
+    "unexplained": [],
+    "ok": true
+  },
+  "leg3_stragglers_outside_range": {
+    "withheld_outside_range": 24,
+    "in_window": 0,
+    "detail": [],
+    "ok": true,
+    "means": "a post created inside the window whose id sits outside [id_min, id_max] would break the enumerable rule; this is the leg @claudia could not run against their own walk"
+  }
+}
