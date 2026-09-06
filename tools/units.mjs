@@ -478,5 +478,69 @@ eq("no urls is empty, not a failure", extractUrls("re-run the numbers in c123"),
   eq("one page with has_more false is a complete walk", [one.rows.length, one.requests], [12, 1]);
 }
 
+/* ---------- a partial asset read is not an unavailable one ---------- */
+//
+// GET /treasury's asset composite is live on-chain reads and they fail often:
+// measured 2026-09-06, FIVE of twelve reads degraded. The window rendered every
+// one of those as FIGURES UNAVAILABLE because the guard was a single boolean
+// over two different facts, and one of the shapes it threw away was good:
+//
+//   complete=False holdings=6 errors=['Chainlink ETH/USD did not answer']
+//
+// Six holdings, one missing oracle. These tests use the shapes captured off the
+// wire that day, including the partial read where even USDC lost its value
+// because `balanceOf` did not answer while `price_usd` stayed 1 — which is why
+// the state is decided on `value_cents` and never on the price.
+{
+  const src = readFileSync(new URL("../site/app.js", import.meta.url), "utf8").replace(/\r\n/g, "\n");
+  const start = src.indexOf("function assetReadState(");
+  if (start < 0) throw new Error("site/app.js no longer defines assetReadState");
+  const end = src.indexOf("\n}\n", start);
+  const { assetReadState } = new Function(src.slice(start, end + 3) + "; return { assetReadState };")();
+
+  const h = (asset, location, value_cents, quantity = null, price_usd = null) =>
+    ({ asset, location, value_cents, quantity, price_usd });
+
+  // Captured complete read: 6 holdings, all priced, $71,594.
+  const complete = { complete: true, total_cents: 7159417, holdings: [
+    h("USDC", "wallet", 2480215), h("WETH", "wallet", 208608), h("WETH", "claimable", 183234),
+    h("1F916", "wallet", 3968800), h("1F916", "claimable", 206300), h("NVDAB", "wallet", 112309)] };
+  eq("a complete read is complete", (() => { const r = assetReadState(complete);
+    return [r.state, r.priced.length, r.unpriced.length, r.floorCents]; })(), ["complete", 6, 0, null]);
+
+  // Captured partial read: only NVDAB answered. USDC kept price_usd 1 and lost
+  // its value_cents, which is the case that makes price the wrong field to test.
+  const partial = { complete: false, total_cents: null, holdings: [
+    h("USDC", "wallet", null, null, 1), h("WETH", "wallet", null), h("WETH", "claimable", null),
+    h("1F916", "wallet", null), h("1F916", "claimable", null), h("NVDAB", "wallet", 112311, "4.86", 231.09)] };
+  const p = assetReadState(partial);
+  eq("a partial read is partial, not unavailable", [p.state, p.priced.length, p.unpriced.length], ["partial", 1, 5]);
+  eq("the floor sums ONLY the lines that answered", p.floorCents, 112311);
+  eq("USDC with a live price and no value counts as UNPRICED",
+    p.unpriced.some((x) => x.asset === "USDC"), true);
+
+  // The shape the old guard threw away: holdings present, one oracle missing.
+  const oracleDown = { complete: false, holdings: [
+    h("USDC", "wallet", 2480215), h("WETH", "wallet", null), h("NVDAB", "wallet", 112309)] };
+  const o = assetReadState(oracleDown);
+  eq("an oracle failure is partial and keeps the lines that priced",
+    [o.state, o.priced.length, o.floorCents], ["partial", 2, 2592524]);
+
+  // Nothing answered at all.
+  eq("no priced line is 'none' and offers no floor",
+    (() => { const r = assetReadState({ complete: false, holdings: [h("USDC", "wallet", null)] });
+      return [r.state, r.floorCents]; })(), ["none", null]);
+  eq("an empty holdings array is 'none' and never a confident zero",
+    (() => { const r = assetReadState({ complete: true, holdings: [] }); return [r.state, r.floorCents]; })(),
+    ["none", null]);
+  eq("a missing assets object does not throw",
+    (() => { const r = assetReadState(undefined); return [r.state, r.holdings.length]; })(), ["none", 0]);
+
+  // complete:true with every line priced is the only path that sets the cache,
+  // so a vacuously-true empty book must not qualify — the 2026-08-22 defect.
+  eq("complete:true over an empty book is still 'none'",
+    assetReadState({ complete: true, holdings: [] }).state, "none");
+}
+
 console.log(`${pass} passed, ${fail} failed`);
 process.exitCode = fail ? 1 : 0;
