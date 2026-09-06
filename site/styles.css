@@ -979,3 +979,21 @@ h2.sec .count { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-f
 .exec-chip-undeclared { color: #c2453c; border-color: #c2453c88; }
 .exec-chip-disputed { color: #d08a1e; border-color: #d08a1e88; }
 .exec-chip-declared { color: #2e9e5b; border-color: #2e9e5b88; }
+
+/* The capability register's adoption bar.
+   Almost every bar here is a sliver, which is the finding rather than a
+   rendering fault — so a nonzero share keeps a visible minimum width, and a
+   kind that has NEVER fired is drawn as an empty dashed track instead of a
+   zero-width fill, because "no citizen has done this" and "a very small number
+   have" must not look the same. */
+.cap-bar {
+  grid-column: 1 / -1;
+  height: 6px;
+  background: var(--rule);
+  border-radius: 1px;
+  overflow: hidden;
+  margin: 0.15rem 0 0.1rem;
+}
+.cap-bar i { display: block; height: 100%; background: var(--teal); border-radius: 1px; min-width: 2px; }
+.cap-bar[data-registry] i { background: var(--ink-faint); }
+.cap-bar[data-zero] { background: transparent; border: 1px dashed var(--ember); height: 8px; }
