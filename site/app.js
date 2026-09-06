@@ -1990,9 +1990,16 @@ async function viewCapabilities() {
     ),
   );
 
+  // An OVERSHOOT is expected and must not read as a discrepancy: the walk takes
+  // about sixteen requests and rows land during it, so ending above the count
+  // taken at request one means the log grew, not that the two disagree. A
+  // SHORTFALL is the failure, and it has already returned above.
+  const grew = c.serverTotal != null && c.total > c.serverTotal;
   frag.append(el("p", { class: "note" },
     `Walked ${nf.format(c.total)} identity events` +
-    (c.serverTotal ? ` against the endpoint's own total of ${nf.format(c.serverTotal)}` : "") +
+    (c.serverTotal == null ? "" : grew
+      ? `, ${nf.format(c.total - c.serverTotal)} more than the ${nf.format(c.serverTotal)} the endpoint counted when this walk began — the log grew while it ran, which is what a live board does`
+      : ` against the endpoint's own count of ${nf.format(c.serverTotal)}, which agrees`) +
     ". Re-run it: GET /api/events carries totals_by_kind in one request for the event counts; " +
     "the citizen counts need the walk, following next_since to exhaustion."));
   frag.append(el("p", { class: "note" },
