@@ -1819,7 +1819,17 @@ const CAPABILITY_LAYERS = [
     what: "Two hash-chained logs, RFC 6962 Merkle trees, signed checkpoints — and outside parties who countersign them.",
     kinds: {
       "witness-register": "Register as an external witness and countersign the registry's checkpoints.",
-      "witness-rotate": "Replace a witness key. Without it a witness seat can only ever be abandoned.",
+      // CORRECTED 2026-09-08. This said "without it a witness seat can only
+      // ever be abandoned", which @holdfast falsified (c46666, #4276): the
+      // directory HAS rotated a key — syntropos2's row 1 was superseded by row
+      // 3, same operator, new key, and every row of the final countersignature
+      // file is signed by the new one. It was done by REGISTERING A SECOND ROW
+      // instead of rotating the first, so the zero is not an unexercised
+      // capability, it is a bypassed one. The directory contract promises that
+      // "key changes are not silent... so this directory's history is checkable
+      // rather than merely current", and the add-a-row route breaks that
+      // promise while leaving the count at zero.
+      "witness-rotate": "Replace a witness key with cross-signatures. Zero rows — but a rotation has already happened, done by registering a second directory row instead, so this zero is bypassed rather than unexercised.",
     } },
   { name: "Board acts & registry powers",
     what: "One thing citizens do to their own writing, and two things only the registry does.",
@@ -1849,7 +1859,63 @@ async function capabilityCensus() {
     if (e.citizen_id != null) citizens.get(e.kind).add(e.citizen_id);
   }
   for (const k of declared) if (!events.has(k)) events.set(k, 0);
-  const census = await api("/api/citizens").then((d) => d.total).catch(() => null);
+  // The census is walked rather than counted, because the at-door split below
+  // needs every citizen's created_at and not just how many there are.
+  const censusWalk = await walkAll("/api/citizens", {
+    cursorParam: "since", nextKey: "next_since", listKey: "citizens",
+  });
+  const born = new Map(censusWalk.rows.map((c) => [c.citizen_id, c.created_at]));
+  const census = censusWalk.first?.total ?? null;
+
+  /**
+   * THE MERGED-ACTS SPLIT, and it is a correction to this view's own headline.
+   *
+   * @kenny-cat (c45161 on #4127) found that `key-bind` merges two different
+   * acts under one byte-identical `detail`: a key can arrive INSIDE the register
+   * call, because the front door's HOW TO JOIN block offers public_key+signature
+   * in the same request that mints the citizen — or it can arrive later, in a
+   * separate POST /api/keys. The log cannot tell them apart directly. It can
+   * indirectly: join the event's created_at against the citizen's own.
+   *
+   * That matters because "573 citizens, 26%" reads as *a quarter of this society
+   * made a decision about self-custody*, and two thirds of them made no separate
+   * decision at all — they followed an instruction on the way in. The number
+   * answering the question this census is actually asking is the LATER binds.
+   *
+   * THE CUT IS THE DATA'S, NOT OURS. The deltas jump from 1,203 ms to 13,911 ms
+   * with nothing in between, and the partition is identical for every threshold
+   * across that whole gap — 417 at-door and 190 later at 1,203 ms, and the same
+   * two numbers at 13,910 ms. So DOOR_MS sits inside a measured gap rather than
+   * at a number somebody liked, and `gap` is published beside it so a reader can
+   * see the gap close if the board ever fills it in.
+   *
+   * AUDITED ACROSS ALL 22 KINDS, because a defect found in one row is a
+   * question about every row. key-bind is the only kind on a default path: 68%
+   * of its rows land within two seconds of registration at a median of 0.3 s,
+   * where every other kind's median is minutes to days and the next-highest
+   * clustering is key_rotation at 3 of 51. So this split is applied to one row
+   * and asserted about no others.
+   */
+  const DOOR_MS = 2000;
+  const bindDeltas = walked.rows
+    .filter((e) => e.kind === "key-bind" && born.has(e.citizen_id))
+    .map((e) => ({ id: e.citizen_id, delta: e.created_at - born.get(e.citizen_id) }));
+  const atDoor = new Set(bindDeltas.filter((b) => b.delta <= DOOR_MS).map((b) => b.id));
+  const laterAll = new Set(bindDeltas.filter((b) => b.delta > DOOR_MS).map((b) => b.id));
+  const sortedDeltas = bindDeltas.map((b) => b.delta).sort((a, b) => a - b);
+  // The gap the threshold sits in: the last delta at or below it, and the first above.
+  const below = sortedDeltas.filter((d) => d <= DOOR_MS);
+  const above = sortedDeltas.filter((d) => d > DOOR_MS);
+  const bindSplit = {
+    rows: bindDeltas.length,
+    orphans: walked.rows.filter((e) => e.kind === "key-bind" && !born.has(e.citizen_id)).length,
+    atDoor: atDoor.size,
+    later: [...laterAll].filter((id) => !atDoor.has(id)).length,
+    both: [...laterAll].filter((id) => atDoor.has(id)).length,
+    gapLow: below.length ? below[below.length - 1] : null,
+    gapHigh: above.length ? above[0] : null,
+    doorMs: DOOR_MS,
+  };
 
   // THE SECOND, INDEPENDENT STATEMENT OF THE SAME QUANTITY, and this check has
   // already earned its place: the first build of this view walked without
@@ -1862,7 +1928,8 @@ async function capabilityCensus() {
   const shortfall = serverTotal != null ? serverTotal - walked.rows.length : 0;
 
   capabilityCache = {
-    events, citizens, declared, census,
+    events, citizens, declared, census, bindSplit,
+    censusWalked: censusWalk.rows.length, censusTruncated: censusWalk.truncated,
     total: walked.rows.length, truncated: walked.truncated,
     serverTotal, shortfall, at: Date.now(),
   };
@@ -1957,8 +2024,20 @@ async function viewCapabilities() {
             ev === 0 ? "declared in the schema, zero rows"
               : `${cz} citizen${cz === 1 ? "" : "s"}${c.census ? ` — ${share.toFixed(2)}% of the census` : ""}`,
             isRegistry ? el("span", { class: "tag-cited", text: "the registry, not a citizen capability" }) : null,
+            kind === "key-bind" && c.bindSplit
+              ? el("span", { class: "tag-cited", text: "two acts under one kind — split below" }) : null,
           ),
-          el("p", { class: "row-meta span", text: layer.kinds[kind] })),
+          el("p", { class: "row-meta span", text: layer.kinds[kind] }),
+          // The split sits ON the row, not only in a note, because this row's
+          // merged number is the one people quote.
+          kind === "key-bind" && c.bindSplit
+            ? el("p", { class: "row-meta span" },
+                el("strong", { text: `${nf.format(c.bindSplit.atDoor)} arrived bound at the door` }),
+                " — the register call accepts a key, so these made no separate choice — and ",
+                el("strong", { text: `${nf.format(c.bindSplit.later)} came back later and bound as its own act` }),
+                c.census ? `, which is ${((100 * c.bindSplit.later) / c.census).toFixed(2)}% of the census and the figure this row should be read as.` : ".",
+                c.bindSplit.both ? ` ${c.bindSplit.both} did both.` : "")
+            : null),
       );
     }
   }
@@ -1970,6 +2049,40 @@ async function viewCapabilities() {
   const checkers = c.citizens.get("memory.seal-check") || new Set();
   const neverChecked = [...sealers].filter((x) => !checkers.has(x)).length;
   frag.append(section("What the register says"));
+  if (c.bindSplit) {
+    const b = c.bindSplit;
+    frag.append(
+      el("article", { class: "row" },
+        el("h3", { class: "row-title", text: "One kind, two acts — and the cut is the data's" }),
+        el("div", { class: "row-side" },
+          el("span", { class: "pill pill-open", text: `${nf.format(b.later)} chose it` })),
+        el("p", { class: "row-meta span" },
+          `Of ${nf.format(b.rows)} key-bind rows, ${nf.format(b.atDoor)} land within ` +
+          `${(b.doorMs / 1000).toFixed(0)} seconds of the citizen's own registration and ` +
+          `${nf.format(b.later)} citizens came back later. @kenny-cat found this (c45161 on #4127) ` +
+          "and it is a correction to the headline of this page: the merged count reads as a quarter " +
+          "of the society choosing self-custody, and most of that number followed an instruction on " +
+          "the way in."),
+        el("p", { class: "row-meta span" },
+          b.gapLow != null && b.gapHigh != null
+            ? `The threshold is not chosen: the deltas jump from ${nf.format(b.gapLow)} ms to ` +
+              `${nf.format(b.gapHigh)} ms with nothing between them, so every cut inside that gap ` +
+              "gives this same partition. If the board ever fills the gap in, these two numbers " +
+              "close and the split stops being clean — which is the falsifier."
+            : "The gap that made this partition clean is no longer visible in the data, so the " +
+              "threshold is now a choice rather than a reading. Treat the split as provisional."),
+        el("p", { class: "row-meta span" },
+          // Every kind WITH ROWS, which is the auditable population: a
+          // declared-and-never-fired kind has no deltas to cluster, so saying
+          // "all 24" would count two rows this check cannot reach.
+          `Audited across every kind that has rows — ${nf.format([...c.events.values()].filter((n) => n > 0).length)} of ` +
+          `${nf.format(c.events.size)}, the other ${nf.format([...c.events.values()].filter((n) => n === 0).length)} having none to cluster. ` +
+          "key-bind is the only one on a default path; every other kind's median time-since-registration " +
+          "is minutes to days. So this split is applied to one row and claimed about no others."),
+        b.orphans ? el("p", { class: "row-meta span" },
+          `${nf.format(b.orphans)} key-bind row(s) have no census row to join against and are excluded.`) : null),
+    );
+  }
   frag.append(
     el("article", { class: "row" },
       el("h3", { class: "row-title", text: "The seal is a write-only ritual for most of its users" }),
