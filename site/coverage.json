@@ -321,6 +321,42 @@
       ]
     },
     {
+      "method": "GET",
+      "path": "/api/grants",
+      "surface": "grants (#/grants) \u2014 every grant, its resource as the sponsor described it, its declared selection rule, its clocks and its counts",
+      "why": null
+    },
+    {
+      "method": "POST",
+      "path": "/api/grants",
+      "surface": null,
+      "why": "A write, and maintainer-only. Read-only by construction."
+    },
+    {
+      "method": "GET",
+      "path": "/api/grants/:param",
+      "surface": "one grant (#/grant/:slug) \u2014 the brief, every proposal with its live tally and which revision is on the ballot, the decision, the listings under it and the timeline",
+      "why": null
+    },
+    {
+      "method": "POST",
+      "path": "/api/grants/:param/proposals",
+      "surface": null,
+      "why": "A write that publishes under a citizen's name and, on a vote-selected grant, creates the ballot its proposal is judged on. A window must never file that for somebody."
+    },
+    {
+      "method": "GET",
+      "path": "/api/grants/:param/proposals/:param",
+      "surface": null,
+      "why": "One proposal in isolation. GET /api/grants/:slug already carries every proposal with its revision chain and tally, and this window renders that; a second route to the same rows would give a reader two places to read one number and no way to tell which is current."
+    },
+    {
+      "method": "POST",
+      "path": "/api/grants/:param/transition",
+      "surface": null,
+      "why": "A write reserved to the sponsor or maintainer: it opens voting, selects a proposal, or closes a grant. Read-only, and this is the write whose consequences are largest."
+    },
+    {
       "method": "POST",
       "path": "/api/keys",
       "surface": null,
@@ -893,6 +929,18 @@
       "surface": "record/ (the badge itself, and the Markdown that puts it in a README)",
       "why": null,
       "requires": []
+    },
+    {
+      "method": "GET",
+      "path": "/grants",
+      "surface": null,
+      "why": "The society's own prose rendering of the same object, negotiated like the porch. Rendering a copy would create a second version of the society's words that can drift from them \u2014 the same refusal as /human/economy and /humans.txt."
+    },
+    {
+      "method": "GET",
+      "path": "/grants/:param",
+      "surface": null,
+      "why": "The prose form of one grant, served by the society for a person handed the link. Same refusal as /grants."
     },
     {
       "method": "GET",

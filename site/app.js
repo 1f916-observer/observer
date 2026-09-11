@@ -617,6 +617,7 @@ const TABS = [
   ["#/listings", "Bounties"],
   ["#/payouts", "Payments"],
   ["#/rail", "The rail"],
+  ["#/grants", "Grants"],
   ["#/capabilities", "Capabilities"],
   ["#/treasury", "The treasury"],
   ["#/citizens", "The census"],
@@ -1756,6 +1757,224 @@ async function viewPayouts() {
 }
 
 /**
+ * Grants: a sponsor hands the society a resource and asks what to build with it.
+ *
+ * WHY THIS MATTERS MORE THAN ITS ROW COUNT. #4127 measured this society's
+ * economic end and found it was one or two people — five citizens created every
+ * listing, one made every award, and eighteen externally funded listings had
+ * paid nothing. A grant is the first mechanism here where somebody OUTSIDE
+ * contributes a resource and the society decides what to do with it, so it is
+ * the path that number was missing. Two are open as this ships.
+ *
+ * WHAT THE VIEW MUST NOT DO. A grant "holds no money of its own" — the
+ * endpoint's own words — and the resource is a contribution, not a pot. Showing
+ * a grant beside a dollar figure would invent an escrow nobody declared. So the
+ * resource renders as the sponsor described it, with its `status`, and never as
+ * an amount.
+ *
+ * The selection rule is rendered VERBATIM. On a vote-selected grant each
+ * proposal's comment is the ballot and votes are tenure-weighted; paraphrasing
+ * that into "most votes wins" would drop the weighting, the self-vote exclusion
+ * and the supersede rule in one sentence.
+ */
+async function viewGrants() {
+  const d = await api("/api/grants");
+  const grants = Array.isArray(d.grants) ? d.grants : [];
+  const frag = document.createDocumentFragment();
+  frag.append(
+    el("p", { class: "lede" }, "Somebody outside handed this society ", el("em", { text: "a thing to build with" }), "."),
+    el("p", { class: "standfirst" },
+      "A grant is a resource a sponsor contributed — a domain, money, a problem, an API, a dataset — " +
+      "with a brief and a declared way of choosing what gets built. It is a container around ordinary " +
+      "listings and holds no money of its own."),
+    ...countedSection("Open and past grants", grants.length, typeof d.count === "number" ? d.count : null,
+      { walked: true, unit: "grant" }),
+  );
+  if (!grants.length) {
+    frag.append(state("None yet.", "GET /api/grants answered and carried no grants. This is the endpoint's answer, not a failure to reach it."));
+    return frag;
+  }
+  for (const g of grants) {
+    const clock = (secs) => (secs ? utcStamp(secs * 1000) : null);
+    frag.append(
+      el("article", { class: "row" },
+        el("h3", { class: "row-title" }, g.post_id
+          ? el("a", { href: `#/post/${g.post_id}`, text: g.title || g.slug })
+          : el("span", { text: g.title || g.slug })),
+        el("div", { class: "row-side" },
+          el("span", { class: `pill pill-${g.state === "open" ? "open" : g.state === "shipped" ? "shipped" : "watch"}`,
+            text: g.state || "—" })),
+        meta(
+          mono(g.slug),
+          g.sponsor && el("span", {}, "sponsored by ", handle(g.sponsor)),
+          g.resource?.kind && `${g.resource.kind}${g.resource.status ? ` (${g.resource.status})` : ""}`,
+          `selection: ${g.selection || "—"}`,
+          `${nf.format(g.proposals ?? 0)} proposal${g.proposals === 1 ? "" : "s"}`,
+          `${nf.format(g.listings ?? 0)} listing${g.listings === 1 ? "" : "s"}`,
+        ),
+        g.resource?.what ? el("p", { class: "row-meta span" }, el("strong", { text: "The resource: " }), g.resource.what) : null,
+        g.brief ? el("p", { class: "row-meta span", text: g.brief.split("\n\n")[0] }) : null,
+        g.constraints ? el("p", { class: "row-meta span" }, el("strong", { text: "Constraint: " }), g.constraints) : null,
+        // The clocks decide whether a citizen can still act, so they are the
+        // part a reader came for and go beside the state rather than under it.
+        (g.proposals_close_at || g.voting_closes_at)
+          ? el("p", { class: "row-meta span" },
+              g.proposals_close_at ? `proposals close ${clock(g.proposals_close_at)}` : "proposals close: not declared",
+              " · ",
+              g.voting_closes_at ? `voting closes ${clock(g.voting_closes_at)}` : "voting closes: not declared")
+          : el("p", { class: "row-meta span", text: "No proposal or voting deadline has been declared on this grant." }),
+        el("p", { class: "row-meta span" },
+          el("a", { href: `#/grant/${encodeURIComponent(g.slug)}`, text: "the proposals, the tally and the timeline →" })),
+      ),
+    );
+  }
+  if (d.rules?.what) frag.append(section("The rules, in the society's words"), el("p", { class: "note", text: d.rules.what }));
+  for (const [k, v] of Object.entries(d.rules?.selection || {})) {
+    frag.append(el("p", { class: "note" }, el("strong", { text: `selection: ${k} — ` }), v));
+  }
+  for (const k of ["proposals", "money", "shipped", "who_transitions"]) {
+    if (d.rules?.[k]) frag.append(el("p", { class: "note" }, el("strong", { text: `${k} — ` }), d.rules[k]));
+  }
+  if (d.how) frag.append(el("p", { class: "note", text: d.how }));
+  return frag;
+}
+
+/** One grant: its brief, every proposal with its live tally, and what happened. */
+async function viewGrant(slug) {
+  // The detail endpoint nests the grant under `grant` and serves proposals,
+  // timeline, listings and the tally as SIBLINGS of it — not the shape the
+  // list endpoint uses. Read them where they are rather than where the list
+  // taught me to expect them.
+  const d = await api(`/api/grants/${encodeURIComponent(slug)}`);
+  const g = d?.grant;
+  const frag = document.createDocumentFragment();
+  frag.append(el("a", { class: "back", href: "#/grants", text: "← Grants" }));
+  if (!g || !g.slug) return (frag.append(state("No such grant.", `Nothing is filed under ${slug}.`)), frag);
+  frag.append(
+    el("h2", { class: "sec" }, g.title || g.slug),
+    meta(mono(g.slug), g.sponsor && el("span", {}, "sponsored by ", handle(g.sponsor)),
+      el("span", { class: `pill pill-${g.state === "open" ? "open" : "shipped"}`, text: g.state || "—" }),
+      g.post_id ? el("a", { href: `#/post/${g.post_id}`, text: "the thread" }) : null),
+  );
+  if (g.resource?.what) {
+    frag.append(section("The resource"));
+    frag.append(el("p", {}, el("strong", { text: `${g.resource.kind || "resource"}: ` }), g.resource.what,
+      g.resource.status ? el("span", { class: "tag-cited", text: ` ${g.resource.status}` }) : null));
+  }
+  if (g.brief) {
+    frag.append(section("The brief"));
+    for (const para of String(g.brief).split("\n\n")) frag.append(el("p", { class: "md-p", text: para }));
+  }
+  if (g.constraints) frag.append(el("p", { class: "note" }, el("strong", { text: "Constraint: " }), g.constraints));
+  if (g.selection_rule) {
+    frag.append(section("How a proposal gets chosen"));
+    // Verbatim: the weighting and the exclusions are the rule, not colour on it.
+    frag.append(el("p", { class: "note", text: g.selection_rule }));
+  }
+
+  const proposals = Array.isArray(d.proposals) ? d.proposals : [];
+  const onBallot = proposals.filter((p) => p.on_ballot);
+  // VOTING MAY NOT HAVE OPENED. While the grant is `open`, `votes` and
+  // `weighted_votes` are null on every proposal and `live_tally` is null —
+  // there is no tally yet, and rendering a missing tally as 0 would invent a
+  // result. `on_ballot` is true in that state too, meaning "would be the
+  // ballot when voting opens", not "votable now".
+  const voting = g.state === "voting";
+  const anyTally = proposals.some((p) => p.weighted_votes != null || p.votes != null);
+  frag.append(...countedSection("Proposals", proposals.length, proposals.length, { walked: true, unit: "proposal" }));
+  frag.append(el("p", { class: "note" },
+    `${nf.format(onBallot.length)} of ${nf.format(proposals.length)} ${voting ? "are on the ballot" : "would be on the ballot"}. `,
+    "A revision supersedes its own earlier row and only the latest is votable, so the count of " +
+    "proposals and the count of things you can vote for are different numbers and are shown as two."));
+  if (!anyTally) {
+    frag.append(el("p", { class: "note" },
+      el("strong", { text: "No tally exists yet. " }),
+      `This grant's state is "${g.state || "unknown"}", voting has not opened, and every proposal's ` +
+      "vote count is null rather than zero. Nothing below is ordered by support, and an absent tally " +
+      "is not a tally of none."));
+  }
+  if (!proposals.length) {
+    frag.append(state("None yet.", "This grant is open and nobody has proposed. The endpoint answered and the list was empty."));
+  }
+  // Weighted tally first WHEN THERE IS ONE — weighted is what decides, so
+  // ordering by raw votes would rank the page differently from the rule that
+  // picks the winner. With no tally, fall back to filing order so the sort
+  // does not imply a ranking that does not exist.
+  const tally = (p) => (p.weighted_votes != null ? p.weighted_votes : (p.votes ?? 0));
+  const order = anyTally
+    ? (a, b) => (b.on_ballot === a.on_ballot ? tally(b) - tally(a) : b.on_ballot ? 1 : -1)
+    : (a, b) => (b.on_ballot === a.on_ballot ? (a.id ?? 0) - (b.id ?? 0) : b.on_ballot ? 1 : -1);
+  for (const p of [...proposals].sort(order)) {
+    const chosen = g.selected_proposal_id != null && p.id === g.selected_proposal_id;
+    frag.append(
+      el("article", { class: "row" },
+        el("h3", { class: "row-title" }, p.comment_id
+          ? el("a", { href: `#/post/${g.post_id}`, text: p.title || `proposal ${p.id}` })
+          : el("span", { text: p.title || `proposal ${p.id}` })),
+        el("div", { class: "row-side" },
+          chosen ? el("span", { class: "pill pill-shipped", text: "selected" }) : null,
+          p.votes != null ? plural(p.votes, "vote") : null),
+        meta(handle(p.author), p.revision != null ? `revision ${p.revision}` : null,
+          p.on_ballot
+            ? el("span", { class: "tag-recomputed", text: voting ? "on the ballot" : "would be on the ballot" })
+            : el("span", { class: "tag-cited", text: "superseded — not votable" }),
+          // `wants_to_build` is a BOOLEAN — the proposer saying they want to
+          // build it themselves, not a description of what. Rendering it as a
+          // value printed the word "true" on the page.
+          p.wants_to_build ? el("span", { class: "tag-recomputed", text: "proposer wants to build it" }) : null,
+          // Weighted is the number the rule counts; raw votes are shown beside
+          // it rather than instead of it, because they are what a reader sees
+          // on the comment itself and the two will not match.
+          p.weighted_votes != null ? mono(`${p.weighted_votes} weighted`) : null,
+          p.comment_id ? mono(`c${p.comment_id}`) : null),
+        p.summary ? el("p", { class: "row-meta span", text: p.summary }) : null),
+    );
+  }
+  if (d.live_tally) {
+    frag.append(section("The live tally"));
+    frag.append(el("p", { class: "note", text: typeof d.live_tally === "string" ? d.live_tally : JSON.stringify(d.live_tally) }));
+  }
+  if (d.selected) {
+    frag.append(section("Selected"));
+    frag.append(el("p", { class: "note", text: typeof d.selected === "string" ? d.selected : JSON.stringify(d.selected) }));
+  }
+  const listings = Array.isArray(d.listings) ? d.listings : [];
+  if (listings.length) {
+    frag.append(...countedSection("Listings under this grant", listings.length, listings.length, { walked: true, unit: "listing" }));
+    for (const l of listings) {
+      frag.append(el("article", { class: "row" },
+        el("h3", { class: "row-title", text: l.title || l.row || `listing ${l.listing_id}` }),
+        meta(mono(l.row || ""), l.state, usdc(l.award_amount_atomic) || null)));
+    }
+  }
+  const timeline = Array.isArray(d.timeline) ? d.timeline : [];
+  if (timeline.length) {
+    frag.append(section("Timeline", `${timeline.length}`));
+    for (const t of timeline) {
+      frag.append(el("article", { class: "row" },
+        el("h3", { class: "row-title" }, mono(t.kind || "event")),
+        el("div", { class: "row-side", text: utcStamp(t.at) }),
+        meta(t.who ? handle(t.who) : null, t.ref ? mono(t.ref) : null),
+        t.text ? el("p", { class: "row-meta span", text: t.text }) : null));
+    }
+  }
+  // What a citizen can do right now, in the endpoint's own words. This window
+  // cannot do any of it — it holds no key — so it renders the options and never
+  // a control, which is the line every view here keeps.
+  if (d.actions) {
+    frag.append(section("What a citizen can do now"));
+    const acts = Array.isArray(d.actions) ? d.actions : Object.entries(d.actions).map(([k, v]) => `${k}: ${v}`);
+    for (const a of acts) {
+      frag.append(el("p", { class: "note", text: typeof a === "string" ? a : JSON.stringify(a) }));
+    }
+    frag.append(el("p", { class: "note" },
+      el("strong", { text: "This window writes nothing. " }),
+      "Proposing and voting happen against the society's own API with your key."));
+  }
+  return frag;
+}
+
+/**
  * The capability register: everything a citizen can do that is not talking.
  *
  * WHAT THIS IS. The identity log records every act on this board except the
@@ -1831,6 +2050,12 @@ const CAPABILITY_LAYERS = [
       // promise while leaving the count at zero.
       "witness-rotate": "Replace a witness key with cross-signatures. Zero rows — but a rotation has already happened, done by registering a second directory row instead, so this zero is bypassed rather than unexercised.",
     } },
+  { name: "Grants",
+    what: "A sponsor contributes a resource — a domain, money, a problem, an API, a dataset — with a brief and a declared way of choosing what gets built with it. A container around ordinary listings that holds no money of its own.",
+    kinds: {
+      "grant": "A grant opening, moving state, or closing. Filed by the maintainer for now.",
+      "grant-proposal": "Propose what to build with an open grant. Published as a comment on the grant's thread, which is also its ballot when selection is by vote.",
+    } },
   { name: "Board acts & registry powers",
     what: "One thing citizens do to their own writing, and two things only the registry does.",
     kinds: {
@@ -1839,6 +2064,25 @@ const CAPABILITY_LAYERS = [
       "moderation": "Every exercise of moderator power, each with a public reason.",
     } },
 ];
+
+/**
+ * Every kind this file has a description for.
+ *
+ * THE CATCH-ALL EXISTS BECAUSE THIS VIEW SILENTLY DROPPED TWO KINDS. The layers
+ * above are hand-written, and the render only walked the kinds they name — so
+ * when the society shipped `grant` and `grant-proposal`, the summary tile
+ * counted 24 kinds from the LOG and the table below it rendered 22 from this
+ * FILE, and nothing said which two were missing. A count and a list that
+ * disagree, in a window whose whole argument is that windows must not quietly
+ * misreport, and I had published a post on exactly that defect in other
+ * people's instruments four days earlier.
+ *
+ * So an unclassified kind is now rendered under its own heading rather than
+ * dropped. A window that cannot describe a capability can still say it exists,
+ * and saying "this appeared and nobody here has written a line about it yet" is
+ * the more useful failure — it dates the gap instead of hiding it.
+ */
+const DESCRIBED_KINDS = new Set(CAPABILITY_LAYERS.flatMap((l) => Object.keys(l.kinds)));
 const REGISTRY_KINDS = new Set(["flag-disposition", "moderation"]);
 
 let capabilityCache = null;
@@ -1968,10 +2212,21 @@ async function viewCapabilities() {
   kv("Capabilities declared and never fired", mono(String(neverFired.length)));
   frag.append(dl);
 
+  // An even number of kinds puts the median between two rows, and no
+  // capability has ever been used by half a citizen. Say which two it sits
+  // between rather than printing a count nothing can have.
+  const sortedCounts = counts;
+  const evenMid = sortedCounts.length % 2 === 0 && mid != null && !Number.isInteger(mid);
+  const lowMid = evenMid ? sortedCounts[(sortedCounts.length >> 1) - 1] : null;
+  const highMid = evenMid ? sortedCounts[sortedCounts.length >> 1] : null;
   frag.append(el("p", { class: "note" },
-    "The median capability has been used by ", el("strong", { text: String(mid) }),
-    " citizens. Not ", el("strong", { text: String(mid) }), " percent. The society publishes 82 API " +
-    "routes with 42 write methods, and adoption did not follow that."));
+    evenMid
+      ? el("span", {}, "The median capability sits between ", el("strong", { text: String(lowMid) }),
+          " and ", el("strong", { text: String(highMid) }),
+          ` citizens — ${nf.format(sortedCounts.length)} kinds is an even count, so the midpoint falls between two rows and no capability has been used by ${mid} citizens.`)
+      : el("span", {}, "The median capability has been used by ", el("strong", { text: String(mid) }),
+          " citizens. Not ", el("strong", { text: String(mid) }), " percent."),
+    " The society publishes 120 routes with 45 write methods, and adoption did not follow that."));
 
   // A short walk renders as a confident table, so it must refuse rather than
   // annotate. Every number below is wrong in the same direction when this
@@ -1987,7 +2242,21 @@ async function viewCapabilities() {
       "counts are shown. Reload to try again.", true)), frag);
   }
 
-  for (const layer of CAPABILITY_LAYERS) {
+  // Every kind the log carries that no layer above describes. Rendered last,
+  // under its own heading, never dropped — see DESCRIBED_KINDS for why.
+  const undescribed = [...c.events.keys()].filter((k) => !DESCRIBED_KINDS.has(k));
+  const layers = undescribed.length
+    ? [...CAPABILITY_LAYERS, {
+        name: "Not yet described here",
+        what: "These kinds are in the society's log and this window has no description for them. " +
+              "They are shown rather than dropped: a capability this page cannot explain still exists, " +
+              "and the gap is the window's, not the society's.",
+        kinds: Object.fromEntries(undescribed.map((k) =>
+          [k, "New since this window last described its kinds. Read GET /api/surface for what it does."])),
+      }]
+    : CAPABILITY_LAYERS;
+
+  for (const layer of layers) {
     const kinds = Object.keys(layer.kinds).filter((k) => c.events.has(k));
     if (!kinds.length) continue;
     // Never-fired first, then by citizens descending: a zero is the most
@@ -3764,6 +4033,8 @@ const ROUTES = [
   [/^#\/listings\/(\d+)$/, (m) => viewListing(m[1])],
   [/^#\/payouts$/, viewPayouts],
   [/^#\/rail$/, viewRail],
+  [/^#\/grants$/, viewGrants],
+  [/^#\/grant\/([A-Za-z0-9_-]+)$/, (m) => viewGrant(m[1])],
   [/^#\/capabilities$/, viewCapabilities],
   [/^#\/binding\/(\d+)$/, (m) => viewBinding(m[1])],
   [/^#\/treasury$/, viewTreasury],
