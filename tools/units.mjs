@@ -542,5 +542,64 @@ eq("no urls is empty, not a failure", extractUrls("re-run the numbers in c123"),
     assetReadState({ complete: true, holdings: [] }).state, "none");
 }
 
+/* ---------- a partial verification must not read as a verified chain ---------- */
+//
+// /api/attest verifies at most `page_size` rows per call. The identity log has
+// never been longer than one page, so status has always come back "verified"
+// and no live response has ever carried the incomplete branch. @tally-stick
+// (#5095) dated the crossing: ~2026-09-19 to 09-22 at the past week's rates.
+//
+// That is precisely the shape of defect this repo keeps shipping — a guard
+// written against a state the instrument has never produced. So these cases are
+// built from the endpoint's own documented incomplete response rather than from
+// anything observed, and the window's behaviour on them is pinned now, while it
+// is cheap, instead of on the morning it starts mattering.
+{
+  const src = readFileSync(new URL("../site/app.js", import.meta.url), "utf8").replace(/\r\n/g, "\n");
+  const start = src.indexOf("function chainCoverage(");
+  if (start < 0) throw new Error("site/app.js no longer defines chainCoverage");
+  const end = src.indexOf("\n}\n", start);
+  const { chainCoverage } = new Function(src.slice(start, end + 3) + "; return { chainCoverage };")();
+
+  // Today's real response, read 2026-09-13T04:14Z.
+  const healthy = { status: "verified", total_rows: 13039, verified_through_id: 13039 };
+  eq("a verified chain is not partial", chainCoverage(healthy, 20000).partial, false);
+  eq("a verified chain reports zero uncovered", chainCoverage(healthy, 20000).uncovered, 0);
+  eq("headroom is the page minus the chain", chainCoverage(healthy, 20000).headroom, 6961);
+
+  // The day the log crosses VERIFY_PAGE: every number still looks healthy and
+  // only `status` moves. This is the case the window was blind to.
+  const crossed = { status: "incomplete", total_rows: 20431, verified_through_id: 20000, next_from: 20000 };
+  eq("an incomplete chain is partial", chainCoverage(crossed, 20000).partial, true);
+  eq("the uncovered tail is counted", chainCoverage(crossed, 20000).uncovered, 431);
+  eq("next_from is surfaced when offered", chainCoverage(crossed, 20000).nextFrom, 20000);
+  eq("headroom goes negative once the chain outgrows the page",
+    chainCoverage(crossed, 20000).headroom, -431);
+
+  // An incomplete read that offers no next_from must still be called partial —
+  // the window must not make following it a precondition for reporting the gap.
+  eq("partial without next_from is still partial",
+    chainCoverage({ status: "incomplete", total_rows: 20431, verified_through_id: 20000 }, 20000).partial, true);
+  eq("an absent next_from reads as null, never as 0",
+    chainCoverage({ status: "incomplete", total_rows: 20431, verified_through_id: 20000 }, 20000).nextFrom, null);
+
+  // The other statuses this endpoint documents. None of them is "verified", and
+  // none of them may be reported as a covered read.
+  for (const status of ["broken", "mismatch", "empty", "unsealed_anchor"]) {
+    eq(`${status} is not complete`, chainCoverage({ status, total_rows: 100, verified_through_id: 40 }, 20000).complete, false);
+  }
+
+  // Missing and malformed fields must degrade to "I do not know", never to zero.
+  // A null that gets counted as 0 is how a window reports a gap it cannot see as
+  // no gap at all.
+  eq("a missing chain yields nulls, not zeroes",
+    (() => { const c = chainCoverage(undefined, undefined); return [c.total, c.through, c.uncovered, c.headroom, c.partial]; })(),
+    [null, null, null, null, false]);
+  eq("a string row count is not a row count",
+    chainCoverage({ status: "incomplete", total_rows: "20431", verified_through_id: 20000 }, 20000).uncovered, null);
+  eq("a partial read cannot report a negative tail",
+    chainCoverage({ status: "incomplete", total_rows: 100, verified_through_id: 140 }, 20000).uncovered, 0);
+}
+
 console.log(`${pass} passed, ${fail} failed`);
 process.exitCode = fail ? 1 : 0;

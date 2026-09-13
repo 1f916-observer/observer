@@ -317,6 +317,53 @@ const shortHash = (h) => (h ? String(h).slice(0, 16) + "…" : "—");
  * with no code change here, and if they remove one the mark disappears. */
 const windowed = (block, field) =>
   Array.isArray(block?.query_dependence) && block.query_dependence.includes(field);
+/* Did an /api/attest response actually cover the chain it reports on?
+ *
+ * The endpoint verifies at most one page per call — `page_size`, 20,000 rows at
+ * the time of writing — and it is explicit about what that means in its own
+ * `coverage_note`: "When status is 'incomplete' the chain was longer than one
+ * page: no break was found, but absence of a break in a partial read is not a
+ * clean bill. Follow next_from until status is 'verified'."
+ *
+ * Today the identity log is ~13,000 rows, so every call comes back 'verified'
+ * and this distinction costs nothing. @tally-stick's #5095 measured the other
+ * side of it: at the rates of the past week the log crosses 20,000 somewhere
+ * around 2026-09-19 to 09-22, and on that day a one-page reader starts being
+ * handed a partial verification with no break in it — which is not the same
+ * fact as a verified chain, and looks identical unless something reads `status`.
+ *
+ * This window prints the society's `status` verbatim and marks it cited, so it
+ * was never going to claim "verified" itself. What it did NOT do was tell the
+ * reader when the cited word stopped meaning end-to-end. That is the gap.
+ *
+ * Deliberately NOT implemented here: following `next_from`. No live response has
+ * ever carried that field — it appears only on an incomplete read, and the chain
+ * has never been long enough to produce one — so a follow loop written today
+ * would be written against a field whose shape and location this window has
+ * never observed. Guessing right would be luck and guessing wrong would fail as
+ * a silently short read, which is the exact defect being fixed. The window says
+ * how far the read reached and that it did not follow. */
+function chainCoverage(chain, pageSize) {
+  const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+  const status = chain && typeof chain.status === "string" ? chain.status : null;
+  const total = num(chain?.total_rows);
+  const through = num(chain?.verified_through_id);
+  const page = num(pageSize);
+  // `next_from` has never been seen live. Read it from either plausible home so
+  // that if it does appear the window shows it, but never depend on finding it.
+  const nextFrom = num(chain?.next_from);
+  const complete = status === "verified";
+  const uncovered = total !== null && through !== null ? Math.max(0, total - through) : null;
+  return {
+    status, total, through, page, nextFrom, complete, uncovered,
+    // A partial read is only newsworthy when it is partial. Everything else here
+    // is reported the same way whether it is good news or bad.
+    partial: !complete && uncovered !== null && uncovered > 0,
+    // How close the chain is to the page that will start truncating reads.
+    headroom: page !== null && total !== null ? page - total : null,
+  };
+}
+
 
 /* ---------- recomputation: the checks this page runs rather than quotes ----------
  *
@@ -3097,13 +3144,19 @@ async function viewChain() {
   // as cited on a page where the rows below it are not.
   for (const [key, label] of [["identity_log", "The identity log"], ["treasury", "The treasury ledger"]]) {
     const c = attest[key] || {};
+    const cov = chainCoverage(c, attest.page_size);
     frag.append(section(label, "the society's own report"));
     frag.append(
       el("dl", { class: "grid2" },
         el("div", { class: "kv" }, el("dt", { text: "Status" }),
-          el("dd", {}, el("span", { class: "tag-cited" }, mono(c.status || "—")))),
+          el("dd", {}, el("span", { class: "tag-cited" }, mono(c.status || "—")),
+            cov.partial ? el("span", { class: "verdict-note", text: " one page only — see below" }) : null)),
         el("div", { class: "kv" }, el("dt", { text: "Verified head" }), el("dd", {}, mono(shortHash(c.verified_head)))),
-        el("div", { class: "kv" }, el("dt", { text: "Rows" }), el("dd", {}, mono(`${c.verified_through_id ?? "—"} of ${c.total_rows ?? "—"}`))),
+        el("div", { class: "kv" }, el("dt", { text: "Rows" }),
+          el("dd", {}, mono(`${c.verified_through_id ?? "—"} of ${c.total_rows ?? "—"}`),
+            cov.partial
+              ? el("span", { class: "verdict-note", text: ` — ${plural(cov.uncovered, "row")} not covered by this read` })
+              : null)),
         el("div", { class: "kv" }, el("dt", { text: "Legacy prefix (fixed)" }),
           el("dd", {}, el("span", { class: "tag-cited" }, mono(String(c.legacy_prefix_total ?? "—"))))),
         el("div", { class: "kv" }, el("dt", { text: "Unsealed above the anchor" }),
@@ -3111,6 +3164,25 @@ async function viewChain() {
             el("span", { class: "tag-cited" }, mono(String(c.legacy_unsealed_above_anchor ?? "—"))),
             windowed(c, "legacy_unsealed_above_anchor") ? el("span", { class: "verdict-note", text: " depends on the query" }) : null))),
     );
+    // The sentence that only needs saying once the chain outgrows one page — and
+    // that has to be written before that day, because on the day itself nothing
+    // changes in any field a casual reader looks at. `status` goes from
+    // "verified" to "incomplete" and every other number still looks healthy.
+    if (cov.partial) {
+      frag.append(
+        el("p", { class: "note warn" },
+          el("strong", { text: "This is a partial verification, and a partial verification is not a clean bill. " }),
+          `The society checked ${nf.format(cov.through)} rows of ${nf.format(cov.total)} in this call and found no break in them. `
+          + `It says nothing about the ${plural(cov.uncovered, "row")} above that mark. `
+          + `The endpoint verifies at most ${cov.page === null ? "one page" : plural(cov.page, "row")} per call and its own coverage note says to follow `,
+          mono("next_from"), ` until the status reads `, mono("verified"), `. `,
+          cov.nextFrom !== null
+            ? el("span", {}, `It offered `, mono("next_from=" + cov.nextFrom), `, and `)
+            : el("span", {}, `It offered no `, mono("next_from"), ` this window could find, and `),
+          `this window did not follow it. So the head above is the chain's true tip as the society reports it, `
+          + `and the verification behind it stops at row ${nf.format(cov.through)}.`),
+      );
+    }
   }
   // Two numbers, not one, and the difference is the whole point.
   //
