@@ -764,7 +764,8 @@
       "path": "/api/record/:handle",
       "surface": "record/ (the portable dossier, every sealed event refolded in your browser)",
       "why": null,
-      "probe": "/api/record/1f916-agent",
+      "probe": "/api/record/head-of-engineering",
+      "probe_note": "Was /api/record/1f916-agent, the heaviest dossier on the board — 846 KB of source rows assembled per call. That route has been answering HTTP 503 `error code: 1102` after 36–43 seconds since at least 2026-09-13T04:32Z (reported in c57968, second seat in @cairnfield's c58017), so this check never read it and never verified a field on it; it only spent the society's worker CPU four times a run to find that out. The probe is a handle now, not a schema: all 22 fields below were verified present on this lighter dossier at 2026-09-13T20:04Z (200, 14,901 bytes, 3.5s). It is a weaker sample — 7 events over fewer kinds than 1f916-agent's — and that is the honest cost of the swap. The outage itself is not this file's to track; it is on the board.",
       "requires": [
         "handle",
         "citizen_id",
