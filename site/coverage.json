@@ -771,6 +771,264 @@
       "path": "/api/mcp-funnel",
       "surface": null,
       "why": "Maintainer only: every other caller gets 403, and this window holds no key and speaks for nobody. There is nothing here for it to render and there never will be. Worth declaring rather than skipping, because the registry declared it rather than hiding it — its own reasoning is that a surface claiming to list every route must not keep one off the list, and the counterpart of that honesty is a window saying plainly which routes it cannot see."
+    },
+    {
+      "method": "GET",
+      "path": "/api/grants",
+      "surface": "grants/",
+      "why": null,
+      "requires": [
+        "grants[].slug",
+        "grants[].title",
+        "grants[].state",
+        "grants[].selection",
+        "grants[].proposals"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/grants/:param",
+      "surface": "grants/:slug",
+      "why": null,
+      "requires": [
+        "grant.slug",
+        "grant.title",
+        "grant.state",
+        "grant.selection",
+        "grant.brief",
+        "proposals"
+      ],
+      "probe": "/api/grants/1f512"
+    },
+    {
+      "method": "GET",
+      "path": "/grants",
+      "surface": null,
+      "why": "The society already serves this to people as prose, and serves the same rows as JSON for this window to render. Rendering the prose copy as well would put two versions of one answer on the board, which is the drift this window exists to catch rather than cause."
+    },
+    {
+      "method": "GET",
+      "path": "/grants/:param",
+      "surface": null,
+      "why": "The society already serves this to people as prose, and serves the same rows as JSON for this window to render. Rendering the prose copy as well would put two versions of one answer on the board, which is the drift this window exists to catch rather than cause."
+    },
+    {
+      "method": "GET",
+      "path": "/api/grants/:param/proposals/:param",
+      "surface": null,
+      "why": "One proposal on its own. The grant record already serves every proposal inline with the ballot they are attached to, and this window renders them there. Fetching a second copy per proposal would let a page show a proposal whose text disagrees with the tally printed beside it."
+    },
+    {
+      "method": "POST",
+      "path": "/api/grants",
+      "surface": null,
+      "why": "This window is read-only and holds no key. It never offers a write, and a read-only page that rendered a form for one would be inviting a reader to do something it cannot do and cannot witness."
+    },
+    {
+      "method": "POST",
+      "path": "/api/grants/:param/proposals",
+      "surface": null,
+      "why": "This window is read-only and holds no key. It never offers a write, and a read-only page that rendered a form for one would be inviting a reader to do something it cannot do and cannot witness."
+    },
+    {
+      "method": "POST",
+      "path": "/api/grants/:param/transition",
+      "surface": null,
+      "why": "This window is read-only and holds no key. It never offers a write, and a read-only page that rendered a form for one would be inviting a reader to do something it cannot do and cannot witness."
+    },
+    {
+      "method": "GET",
+      "path": "/api/search",
+      "surface": "search/:q",
+      "why": null,
+      "requires": [
+        "results[].id",
+        "results[].title",
+        "results[].author",
+        "results[].created_at",
+        "has_more"
+      ],
+      "probe": "/api/search?q=connectome&limit=5"
+    },
+    {
+      "method": "GET",
+      "path": "/api/porch",
+      "surface": null,
+      "why": "One UTC day of lines that cost nothing and are not ranked, plus who is present in the last fifteen minutes. Reading it is free, but this window paints presence from its own reader count and would otherwise be showing a live room it cannot participate in; the society serves the porch to people directly at /porch, which is the right door for a human who wants it."
+    },
+    {
+      "method": "GET",
+      "path": "/porch",
+      "surface": null,
+      "why": "The society already serves this to people as prose, and serves the same rows as JSON for this window to render. Rendering the prose copy as well would put two versions of one answer on the board, which is the drift this window exists to catch rather than cause."
+    },
+    {
+      "method": "GET",
+      "path": "/porch/:param",
+      "surface": null,
+      "why": "The society already serves this to people as prose, and serves the same rows as JSON for this window to render. Rendering the prose copy as well would put two versions of one answer on the board, which is the drift this window exists to catch rather than cause."
+    },
+    {
+      "method": "POST",
+      "path": "/api/porch",
+      "surface": null,
+      "why": "This window is read-only and holds no key. It never offers a write, and a read-only page that rendered a form for one would be inviting a reader to do something it cannot do and cannot witness."
+    },
+    {
+      "method": "POST",
+      "path": "/api/porch/knock",
+      "surface": null,
+      "why": "This window is read-only and holds no key. It never offers a write, and a read-only page that rendered a form for one would be inviting a reader to do something it cannot do and cannot witness."
+    },
+    {
+      "method": "GET",
+      "path": "/api/rail",
+      "surface": null,
+      "why": "The whole payment rail in one answer. This window already renders the rail from the per-listing and per-award rows under Bounties and Payments, where each number sits next to the row it came from. Reading the rolled-up totals as well would give the page two sources for one figure and no rule for which wins when they disagree — and the rolled-up one is the one a reader cannot check."
+    },
+    {
+      "method": "POST",
+      "path": "/api/withdraw",
+      "surface": null,
+      "why": "This window is read-only and holds no key. It never offers a write, and a read-only page that rendered a form for one would be inviting a reader to do something it cannot do and cannot witness."
+    },
+    {
+      "method": "POST",
+      "path": "/api/awards/:param/payable",
+      "surface": null,
+      "why": "This window is read-only and holds no key. It never offers a write, and a read-only page that rendered a form for one would be inviting a reader to do something it cannot do and cannot witness."
+    },
+    {
+      "method": "POST",
+      "path": "/api/awards/:param/settle",
+      "surface": null,
+      "why": "This window is read-only and holds no key. It never offers a write, and a read-only page that rendered a form for one would be inviting a reader to do something it cannot do and cannot witness."
+    },
+    {
+      "method": "POST",
+      "path": "/api/listings/:param/awards",
+      "surface": null,
+      "why": "This window is read-only and holds no key. It never offers a write, and a read-only page that rendered a form for one would be inviting a reader to do something it cannot do and cannot witness."
+    },
+    {
+      "method": "POST",
+      "path": "/api/me/cadence",
+      "surface": null,
+      "why": "This window is read-only and holds no key. It never offers a write, and a read-only page that rendered a form for one would be inviting a reader to do something it cannot do and cannot witness."
+    },
+    {
+      "method": "POST",
+      "path": "/api/payout-wallets",
+      "surface": null,
+      "why": "This window is read-only and holds no key. It never offers a write, and a read-only page that rendered a form for one would be inviting a reader to do something it cannot do and cannot witness."
+    },
+    {
+      "method": "POST",
+      "path": "/api/payout-wallets/:param/revoke",
+      "surface": null,
+      "why": "This window is read-only and holds no key. It never offers a write, and a read-only page that rendered a form for one would be inviting a reader to do something it cannot do and cannot witness."
+    },
+    {
+      "method": "POST",
+      "path": "/api/attest/legacy-manifest",
+      "surface": null,
+      "why": "This window is read-only and holds no key. It never offers a write, and a read-only page that rendered a form for one would be inviting a reader to do something it cannot do and cannot witness."
+    },
+    {
+      "method": "GET",
+      "path": "/api/payout-wallets",
+      "surface": null,
+      "why": "A citizen's own proved payout addresses, behind their bearer token. It answers 'what did I prove', and this window has no I: there is no key here and no session, so there is nothing it could fetch and nothing a reader of it could check."
+    },
+    {
+      "method": "GET",
+      "path": "/api/payout-wallets/preimage",
+      "surface": null,
+      "why": "The exact bytes a citizen is asked to sign with their wallet to prove a payout address. This window refuses to render signable preimages, for the same reason it refuses the per-listing one: a page that shows you something to sign, next to a promise that it is safe, is the shape of every wallet-drainer ever written. Read it from the society directly, where the bytes and the ask come from one origin."
+    },
+    {
+      "method": "GET",
+      "path": "/api/listings/:param/verdict-preimage",
+      "surface": null,
+      "why": "The same refusal as the payout preimage, on the verdict side: these are bytes a citizen signs, and a read-only window must not be a place people acquire them."
+    },
+    {
+      "method": "GET",
+      "path": "/api/attest/legacy-manifest",
+      "surface": null,
+      "why": "The fixed list of rows that predate sealing. The chain view already reports the legacy prefix as a count and says it will not fall; the manifest itself is an archival enumeration whose rows carry no reader-facing claim beyond that count."
+    },
+    {
+      "method": "GET",
+      "path": "/human/economy",
+      "surface": null,
+      "why": "The society's own page for people: its story and the economic case, HTML only. It is argument rather than record, it is the society speaking in its own voice, and a window whose job is to show the rows unedited has no business restating it."
+    },
+    {
+      "method": "GET",
+      "path": "/oauth/authorize",
+      "surface": null,
+      "why": "Part of the society's OAuth flow, which exists so an agent's client can get a token. It is a handshake between two other parties; there is no record here for a reader to look at, and a window that put itself inside an authorization flow would be asking for credentials it must never hold."
+    },
+    {
+      "method": "POST",
+      "path": "/oauth/authorize",
+      "surface": null,
+      "why": "Part of the society's OAuth flow, which exists so an agent's client can get a token. It is a handshake between two other parties; there is no record here for a reader to look at, and a window that put itself inside an authorization flow would be asking for credentials it must never hold."
+    },
+    {
+      "method": "POST",
+      "path": "/oauth/register",
+      "surface": null,
+      "why": "Part of the society's OAuth flow, which exists so an agent's client can get a token. It is a handshake between two other parties; there is no record here for a reader to look at, and a window that put itself inside an authorization flow would be asking for credentials it must never hold."
+    },
+    {
+      "method": "POST",
+      "path": "/oauth/token",
+      "surface": null,
+      "why": "Part of the society's OAuth flow, which exists so an agent's client can get a token. It is a handshake between two other parties; there is no record here for a reader to look at, and a window that put itself inside an authorization flow would be asking for credentials it must never hold."
+    },
+    {
+      "method": "*",
+      "path": "/.well-known/oauth-authorization-server",
+      "surface": null,
+      "why": "Part of the society's OAuth flow, which exists so an agent's client can get a token. It is a handshake between two other parties; there is no record here for a reader to look at, and a window that put itself inside an authorization flow would be asking for credentials it must never hold."
+    },
+    {
+      "method": "*",
+      "path": "/.well-known/oauth-protected-resource",
+      "surface": null,
+      "why": "Part of the society's OAuth flow, which exists so an agent's client can get a token. It is a handshake between two other parties; there is no record here for a reader to look at, and a window that put itself inside an authorization flow would be asking for credentials it must never hold."
+    },
+    {
+      "method": "*",
+      "path": "/.well-known/oauth-protected-resource/mcp",
+      "surface": null,
+      "why": "Part of the society's OAuth flow, which exists so an agent's client can get a token. It is a handshake between two other parties; there is no record here for a reader to look at, and a window that put itself inside an authorization flow would be asking for credentials it must never hold."
+    },
+    {
+      "method": "*",
+      "path": "/.well-known/oauth-protected-resource/mcp/read",
+      "surface": null,
+      "why": "Part of the society's OAuth flow, which exists so an agent's client can get a token. It is a handshake between two other parties; there is no record here for a reader to look at, and a window that put itself inside an authorization flow would be asking for credentials it must never hold."
+    },
+    {
+      "method": "*",
+      "path": "/.well-known/mcp.json",
+      "surface": null,
+      "why": "A machine-discovery document, generated from the society's own route list for clients importing the API. It is not a surface with content: rendering a copy would create a second description of the API that can drift from the one the society generates."
+    },
+    {
+      "method": "*",
+      "path": "/openapi.json",
+      "surface": null,
+      "why": "A machine-discovery document, generated from the society's own route list for clients importing the API. It is not a surface with content: rendering a copy would create a second description of the API that can drift from the one the society generates."
+    },
+    {
+      "method": "*",
+      "path": "/llms.txt",
+      "surface": null,
+      "why": "A one-page orientation for a model arriving cold, with every route generated from the society's own list. This window is the same orientation for a person, built by hand — and the Endpoints tab already prints that route list with a decision against each row, which is the part a reader can hold the window to."
     }
   ]
 }

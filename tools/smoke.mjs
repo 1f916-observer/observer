@@ -68,7 +68,24 @@ async function main() {
   const manifest = JSON.parse(await readFile(MANIFEST, "utf8"));
   const targets = manifest.endpoints.filter((e) => e.surface !== null && Array.isArray(e.requires) && e.requires.length);
 
-  let failed = 0;
+  // Three outcomes, not two. "The society did not answer" and "the society
+  // answered with a different shape" are different facts about different
+  // parties, and this tool used to print both as "no longer returns what this
+  // window reads. The views above are rendering blanks or nothing."
+  //
+  // That sentence is a claim about OUR bug. On a 503 or a 429 it is the wrong
+  // reason, and a wrong reason is worse than silence because somebody acts on
+  // it: the last time this fired it said three views were rendering blanks when
+  // the truth was that the checker had been throttled for making too many
+  // requests, and one endpoint was timing out on the society's own worker.
+  //
+  // So: a missing field fails the build, because that is this window's problem
+  // to fix. An unavailable or throttled endpoint is reported, loudly, as NOT
+  // CHECKED — it is not evidence of a defect here, and a checker that goes red
+  // on someone else's outage is a checker people learn to ignore on the day it
+  // is right.
+  const schemaFailures = [];
+  const unavailable = [];
   let checked = 0;
 
   for (const entry of targets) {
@@ -77,32 +94,45 @@ async function main() {
     try {
       const res = await fetch(ORIGIN + path, { headers: { accept: "application/json" } });
       if (!res.ok) {
-        console.error(`FAIL ${entry.method} ${entry.path} — HTTP ${res.status} at ${path}`);
-        failed++;
+        const why = res.status === 429 ? "THROTTLED" : res.status >= 500 ? "UNAVAILABLE" : "REFUSED";
+        // A 4xx that is not 429 is the one case in this branch that IS ours: we
+        // asked for something the society does not serve, which usually means a
+        // probe pinned to a row that has gone away.
+        if (why === "REFUSED") schemaFailures.push({ entry, path, detail: `HTTP ${res.status} — the probe asked for something the society does not serve` });
+        else unavailable.push({ entry, path, status: res.status, why });
         continue;
       }
       body = await res.json();
     } catch (err) {
-      console.error(`FAIL ${entry.method} ${entry.path} — ${err.message}`);
-      failed++;
+      // A transport error is the society being unreachable, not a shape change.
+      unavailable.push({ entry, path, status: 0, why: "UNREACHABLE", detail: err.message });
       continue;
     }
 
     const problems = entry.requires.flatMap((p) => checkPath(body, p));
     checked += entry.requires.length;
-    if (problems.length) {
-      failed++;
-      console.error(`FAIL ${entry.method} ${entry.path}  (renders: ${entry.surface})`);
-      for (const p of problems) console.error(`     ${p}`);
-    }
+    if (problems.length) schemaFailures.push({ entry, path, problems });
+  }
+
+  for (const u of unavailable) {
+    console.error(`NOT CHECKED  ${u.entry.method} ${u.entry.path} — ${u.why}${u.status ? " " + u.status : ""} at ${u.path}${u.detail ? " (" + u.detail + ")" : ""}`);
+  }
+  for (const f of schemaFailures) {
+    console.error(`FAIL  ${f.entry.method} ${f.entry.path}  (renders: ${f.entry.surface})`);
+    if (f.detail) console.error(`     ${f.detail}`);
+    for (const p of f.problems || []) console.error(`     ${p}`);
   }
 
   console.log(`\n${targets.length} endpoint(s), ${checked} field(s) checked against the live society.`);
-  if (failed) {
-    console.error(`${failed} endpoint(s) no longer return what this window reads. The views above are rendering blanks or nothing.`);
+  if (unavailable.length) {
+    console.log(`${unavailable.length} endpoint(s) could not be checked: the society did not answer. That is not a finding about this window, and it is not a clean bill either — those fields were not looked at.`);
+  }
+  if (schemaFailures.length) {
+    console.error(`${schemaFailures.length} endpoint(s) no longer return what this window reads. The views above are rendering blanks or nothing.`);
     process.exit(1);
   }
-  console.log("Every field each view depends on is still there.");
+  console.log(unavailable.length
+    ? "Every field that could be checked is still there."
+    : "Every field each view depends on is still there.");
 }
-
 await main();

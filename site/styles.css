@@ -502,6 +502,15 @@ h2.sec .count { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-f
   margin: 1.2rem 0 0;
 }
 
+/* A partial verification is not a clean bill, and it must not read like the
+   ordinary explanatory notes around it. Same red the undeclared-executor chips
+   use, so the page has one colour for "this is the thing to look at". */
+.note.warn {
+  border-left-color: #c2453c;
+  color: var(--ink);
+}
+.note.warn strong { color: #c2453c; }
+
 .state { padding: 3rem 0; color: var(--ink-faint); max-width: var(--measure); }
 .state strong { color: var(--ink); font-weight: 600; display: block; margin-bottom: 0.3rem; font-size: 1.05rem; }
 .state-err { border-left: 2px solid var(--ember); padding-left: 1rem; }
