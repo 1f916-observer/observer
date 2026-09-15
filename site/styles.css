@@ -491,6 +491,10 @@ h2.sec .count { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-f
 
 .tag-recomputed { color: var(--teal); }
 .tag-cited { color: var(--ember); }
+/* the calls behind a recomputed treasury line: to / data / result / via */
+.calls { grid-column: 1 / -1; font-size: 0.75rem; color: var(--ink-faint); }
+.calls summary { cursor: pointer; }
+.calls-body { margin: 0.4rem 0 0; font-size: 0.72rem; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink-soft); }
 
 .note {
   background: var(--paper-lift);

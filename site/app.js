@@ -2657,6 +2657,368 @@ function assetReadState(a) {
  */
 let lastCompleteAssets = null;
 
+/* ---------- the treasury, recomputed in your browser ----------
+ *
+ * MEASURED 2026-09-15T14:3xZ: twenty consecutive reads of GET /treasury were
+ * short. Eight served six holdings with ONE priced (NVDAB, on BNB Chain) and
+ * every Base line null — "Chainlink ETH/USD did not answer", "USDC balanceOf
+ * did not answer", all five. The next twelve served an EMPTY holdings array,
+ * which is the worker's own fallback shape when its refresh exceeds its
+ * six-second budget and no isolate has a cached read to fall back on.
+ *
+ * In the same minute, from outside the worker, every one of those calls
+ * answered in under a second: the same batched JSON-RPC payload to six of the
+ * worker's seven Base providers, and the endpoint's OWN single-call wallet
+ * read (`onchain_cents`) was live and agreed with it to the cent. So the chain
+ * is fine, the arithmetic is fine, and the one path that fails is the batch
+ * leaving Cloudflare's shared egress — which public providers throttle.
+ *
+ * A page that can only quote that endpoint says FIGURES UNAVAILABLE for as
+ * long as the throttle lasts. This block is the other half: the same reads,
+ * from the visitor's own browser and IP, against the same contracts, with the
+ * society's arithmetic ported line for line from src/assets.ts. Every figure
+ * it produces is tagged RECOMPUTED HERE, rendered under its own heading, and
+ * is NEVER merged into the cited section above it. Where the endpoint did
+ * answer, each line is compared and a mismatch is loud.
+ *
+ * What it does not do: the pool-depth walk (what the notional token half would
+ * actually fetch). That is forty-odd calls and the endpoint's own realizable
+ * figure is the one to cite for it.
+ *
+ * Addresses are constants in this file, not taken from the endpoint: a check
+ * that reads the wallet address from the thing it is checking would agree with
+ * a substituted wallet. If the endpoint's wallet ever differs from ours, the
+ * page says so instead of reading either.
+ */
+
+// Every origin this page may fetch other than the society itself. The CSP in
+// vercel.json must list exactly these, and tools/security-invariants.mjs
+// proves the two lists agree — a provider added here and not there fails
+// silently in production behind the browser's policy.
+const RPC_URLS = {
+  base: ["https://mainnet.base.org", "https://base-rpc.publicnode.com", "https://base.drpc.org", "https://1rpc.io/base"],
+  bnb: ["https://bsc-dataseed.binance.org", "https://bsc-rpc.publicnode.com", "https://1rpc.io/bnb"],
+};
+
+const CHAIN_READ = {
+  treasury: "0xa7F7985eB19b8c44F12A0654Df1eF89d1dd527C9",
+  base: {
+    usdc: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+    weth: "0x4200000000000000000000000000000000000006",
+    ethUsdFeed: "0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70",
+    stateView: "0xA3c0c9b65baD0b08107Aa264b0f3dB444b867A71",
+    token: "0x9E00FC92493451EBA1c63DD3880D68b622037bA3",
+    poolId: "0x24ecedb296899f0110dce5cfdd9c9dd74b2b11a21dee752e085f93c700c7fccb",
+    feesManager: "0xBDF938149ac6a781F94FAa0ed45E6A0e984c6544",
+  },
+  bnb: {
+    nvdab: "0x02Fca66C1D1aFB4E2A7884261eB00F63598a7436",
+    nvdabUsdtPool: "0x8FB4243b553aC29BA088aCf00B9B7dA24bD6690C",
+  },
+};
+
+// First four bytes of keccak256 of each signature, as the society's SELECTORS
+// table has them. slot0V3 is Uniswap V3's slot0(), which the BNB pool speaks;
+// getSlot0 is V4's StateView, which the Base pool speaks. Different selectors,
+// same sqrtPriceX96 in word 0.
+const CHAIN_SEL = {
+  balanceOf: "0x70a08231",
+  latestRoundData: "0xfeaf968c",
+  getSlot0: "0xc815641c",
+  slot0V3: "0x3850c7bd",
+  getShares: "0x5ebb58fb",
+  getCumulatedFees0: "0xcb7dd8f2",
+  getCumulatedFees1: "0x5a302347",
+  getLastCumulatedFees0: "0x2b1fd599",
+  getLastCumulatedFees1: "0x1564cf6c",
+  collectFees: "0x817db73b",
+};
+
+const padWord = (hex) => hex.replace(/^0x/, "").toLowerCase().padStart(64, "0");
+const wordAt = (hex, i) => {
+  const b = String(hex || "").replace(/^0x/, "").slice(i * 64, (i + 1) * 64);
+  return b.length === 64 ? BigInt("0x" + b) : 0n;
+};
+const toInt256 = (v) => BigInt.asIntN(256, v);
+
+function formatUnits(raw, decimals) {
+  const neg = raw < 0n, abs = neg ? -raw : raw, base = 10n ** BigInt(decimals);
+  const frac = (abs % base).toString().padStart(decimals, "0").replace(/0+$/, "");
+  return (neg ? "-" : "") + (abs / base).toString() + (frac ? "." + frac : "");
+}
+
+// Ported from src/assets.ts. A price is scaled to an 18-decimal integer so the
+// multiply happens in BigInt; a 27-digit token quantity does not survive
+// Number() and the whole point is agreeing with the server to the cent.
+function toFixedBigInt(value, decimals) {
+  if (!Number.isFinite(value) || value <= 0) return 0n;
+  const s = value.toFixed(decimals);
+  if (s.includes("e") || s.includes("E")) return 0n;
+  const [whole, frac = ""] = s.split(".");
+  return BigInt(whole + frac.padEnd(decimals, "0").slice(0, decimals));
+}
+function chainValueCents(raw, decimals, priceUsd) {
+  if (raw <= 0n) return 0;
+  const scaled = toFixedBigInt(priceUsd, 18);
+  if (scaled === 0n) return 0;
+  return Number((raw * scaled * 100n) / (10n ** BigInt(decimals) * 10n ** 18n));
+}
+// Uniswap V3/V4 spot from slot0, as token0 per token1.
+function sqrtPriceX96ToToken0PerToken1(sqrtPriceX96, decimals0, decimals1) {
+  if (sqrtPriceX96 <= 0n) return 0;
+  const Q192 = 1n << 192n;
+  const P = 10n ** 30n;
+  const token1PerToken0 = (sqrtPriceX96 * sqrtPriceX96 * P * 10n ** BigInt(decimals0)) / (Q192 * 10n ** BigInt(decimals1));
+  if (token1PerToken0 === 0n) return 0;
+  return Number((P * P) / token1PerToken0) / Number(P);
+}
+// The pool's own arithmetic for what a beneficiary may collect:
+//   (cumulated + uncollectedInPool - lastCumulatedForBeneficiary) * shares / 1e18
+function claimableFromPool(cumulated, uncollected, lastCumulated, shares) {
+  const gross = cumulated + uncollected;
+  const delta = gross > lastCumulated ? gross - lastCumulated : 0n;
+  return (delta * shares) / 10n ** 18n;
+}
+
+/**
+ * One batched eth_call round trip per provider, holes re-requested from the
+ * next provider rather than accepted. Returns what answered, which provider
+ * answered it, and why each one that did not was passed over — the page prints
+ * all three, because "no answer" with no reason is the failure this view
+ * exists to replace.
+ */
+async function rpcBatch(rpcUrls, calls, timeoutMs = 5000) {
+  const results = new Array(calls.length).fill(null);
+  const answeredBy = new Array(calls.length).fill(null);
+  const tried = [];
+  for (const rpc of rpcUrls) {
+    const missing = results.map((r, i) => (r === null ? i : -1)).filter((i) => i >= 0);
+    if (missing.length === 0) break;
+    const payload = missing.map((i) => ({
+      jsonrpc: "2.0", id: i, method: "eth_call",
+      params: [calls[i].from ? { from: calls[i].from, to: calls[i].to, data: calls[i].data } : { to: calls[i].to, data: calls[i].data }, "latest"],
+    }));
+    try {
+      const res = await fetch(rpc, {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload), signal: AbortSignal.timeout(timeoutMs),
+      });
+      if (!res.ok) { tried.push({ rpc, why: `HTTP ${res.status}` }); continue; }
+      const body = await res.json();
+      if (!Array.isArray(body)) { tried.push({ rpc, why: "did not return a batch" }); continue; }
+      let got = 0;
+      for (const row of body) {
+        if (typeof row.id === "number" && typeof row.result === "string" && row.result !== "0x" && results[row.id] === null) {
+          results[row.id] = row.result; answeredBy[row.id] = rpc; got++;
+        }
+      }
+      tried.push({ rpc, why: got ? `answered ${got} of ${missing.length}` : "answered nothing usable" });
+    } catch (e) {
+      tried.push({ rpc, why: e && e.name === "TimeoutError" ? `no answer in ${timeoutMs / 1000}s` : String((e && e.message) || e) });
+    }
+  }
+  return { results, answeredBy, tried };
+}
+
+/**
+ * The six holdings GET /treasury reports, read from the chains directly.
+ * Returns lines in the endpoint's own (asset, location) vocabulary so each can
+ * be set beside its cited row. A null value_cents means "could not be read",
+ * with the reason on the line, and is never summed.
+ */
+async function recomputeTreasury() {
+  const B = CHAIN_READ.base, N = CHAIN_READ.bnb, S = CHAIN_SEL;
+  const t = padWord(CHAIN_READ.treasury), p = padWord(B.poolId);
+  const baseCalls = [
+    { label: "balanceOf(treasury) on USDC", to: B.usdc, data: S.balanceOf + t },
+    { label: "balanceOf(treasury) on WETH", to: B.weth, data: S.balanceOf + t },
+    { label: "latestRoundData() on Chainlink ETH/USD", to: B.ethUsdFeed, data: S.latestRoundData },
+    { label: "getSlot0(poolId) on StateView", to: B.stateView, data: S.getSlot0 + p },
+    { label: "getShares(poolId, treasury) on the fees manager", to: B.feesManager, data: S.getShares + p + t },
+    { label: "getCumulatedFees0(poolId)", to: B.feesManager, data: S.getCumulatedFees0 + p },
+    { label: "getCumulatedFees1(poolId)", to: B.feesManager, data: S.getCumulatedFees1 + p },
+    { label: "getLastCumulatedFees0(poolId, treasury)", to: B.feesManager, data: S.getLastCumulatedFees0 + p + t },
+    { label: "getLastCumulatedFees1(poolId, treasury)", to: B.feesManager, data: S.getLastCumulatedFees1 + p + t },
+    { label: "collectFees(poolId), SIMULATED from the treasury: an eth_call, nothing signed, nothing sent", to: B.feesManager, data: S.collectFees + p, from: CHAIN_READ.treasury },
+    { label: "balanceOf(treasury) on the 1F916 token", to: B.token, data: S.balanceOf + t },
+  ];
+  const bnbCalls = [
+    { label: "balanceOf(treasury) on NVDAB", to: N.nvdab, data: S.balanceOf + t },
+    { label: "slot0() on PancakeSwap V3 NVDAB/USDT", to: N.nvdabUsdtPool, data: S.slot0V3 },
+  ];
+  const [base, bnb] = await Promise.all([rpcBatch(RPC_URLS.base, baseCalls), rpcBatch(RPC_URLS.bnb, bnbCalls)]);
+  const call = (batch, calls, i) => ({ ...calls[i], result: batch.results[i], rpc: batch.answeredBy[i] });
+  const bc = (i) => call(base, baseCalls, i), nc = (i) => call(bnb, bnbCalls, i);
+
+  const [usdcRaw, wethRaw, round, slot0, sharesRaw, c0, c1, l0, l1, collectRaw, tokenRaw] = base.results;
+  const [nvdabRaw, slot0V3] = bnb.results;
+
+  let ethUsd = null, ethUpdatedAt = null;
+  if (round) {
+    const answer = toInt256(wordAt(round, 1));
+    ethUpdatedAt = Number(wordAt(round, 3)) * 1000;
+    if (answer > 0n) ethUsd = Number(answer) / 1e8;
+  }
+  let tokenUsd = null;
+  if (slot0 && ethUsd !== null) {
+    const sp = wordAt(slot0, 0);
+    // WETH is token0 in this pool, so token0-per-token1 is ETH per 1F916.
+    if (sp > 0n) tokenUsd = sqrtPriceX96ToToken0PerToken1(sp, 18, 18) * ethUsd;
+  }
+  let claimWeth = null, claimTok = null;
+  if (sharesRaw && collectRaw && c0 && c1 && l0 && l1) {
+    const shares = wordAt(sharesRaw, 0);
+    claimWeth = claimableFromPool(wordAt(c0, 0), wordAt(collectRaw, 0), wordAt(l0, 0), shares);
+    claimTok = claimableFromPool(wordAt(c1, 0), wordAt(collectRaw, 1), wordAt(l1, 0), shares);
+  }
+  let nvdabUsd = null;
+  if (slot0V3) {
+    const perDollar = sqrtPriceX96ToToken0PerToken1(wordAt(slot0V3, 0), 18, 18);
+    if (perDollar > 0) nvdabUsd = 1 / perDollar;
+  }
+
+  const ethSrc = ethUsd !== null ? `Chainlink ETH/USD $${ethUsd.toFixed(2)}, updated ${new Date(ethUpdatedAt).toISOString().slice(11, 19)}Z` : null;
+  const tokSrc = tokenUsd !== null ? `pool slot0 mark $${tokenUsd.toPrecision(4)} via ${ethSrc}` : null;
+  const tokWhy = (rawOk, viaFees) => !rawOk
+    ? (viaFees ? "one of the six fees-manager reads did not answer" : "balanceOf did not answer")
+    : tokenUsd === null ? (slot0 ? "Chainlink ETH/USD did not answer" : "pool slot0 did not answer") : null;
+  const line = (o) => ({ ...o, value_cents: o.raw === null || o.priceUsd === null ? null : chainValueCents(o.raw, o.decimals, o.priceUsd) });
+  const lines = [
+    line({ asset: "USDC", location: "wallet", chain: "base", tier: 1, decimals: 6, title: "USDC in the wallet",
+      raw: usdcRaw ? BigInt(usdcRaw) : null, priceUsd: 1, priceSrc: "face value, a stablecoin peg assumed", exact: true,
+      why: usdcRaw ? null : "balanceOf did not answer", calls: [bc(0)] }),
+    line({ asset: "WETH", location: "wallet", chain: "base", tier: 2, decimals: 18, title: "WETH in the wallet",
+      raw: wethRaw ? BigInt(wethRaw) : null, priceUsd: ethUsd, priceSrc: ethSrc,
+      why: !wethRaw ? "balanceOf did not answer" : ethUsd === null ? "Chainlink ETH/USD did not answer" : null, calls: [bc(1), bc(2)] }),
+    line({ asset: "WETH", location: "claimable", chain: "base", tier: 2, decimals: 18, title: "WETH claimable from the pool's fees",
+      raw: claimWeth, priceUsd: ethUsd, priceSrc: ethSrc,
+      why: claimWeth === null ? "one of the six fees-manager reads did not answer" : ethUsd === null ? "Chainlink ETH/USD did not answer" : null,
+      calls: [bc(4), bc(5), bc(7), bc(9), bc(2)] }),
+    line({ asset: "1F916", location: "wallet", chain: "base", tier: 3, decimals: 18, title: "1F916 held outright in the wallet", notional: true,
+      raw: tokenRaw ? BigInt(tokenRaw) : null, priceUsd: tokenUsd, priceSrc: tokSrc,
+      why: tokWhy(!!tokenRaw, false), calls: [bc(10), bc(3), bc(2)] }),
+    line({ asset: "1F916", location: "claimable", chain: "base", tier: 3, decimals: 18, title: "1F916 claimable from the pool's fees", notional: true,
+      raw: claimTok, priceUsd: tokenUsd, priceSrc: tokSrc,
+      why: tokWhy(claimTok !== null, true), calls: [bc(4), bc(6), bc(8), bc(9), bc(3), bc(2)] }),
+    line({ asset: "NVDAB", location: "wallet", chain: "bnb", tier: 2, decimals: 18, title: "NVDAB in the wallet, on BNB Chain",
+      raw: nvdabRaw ? BigInt(nvdabRaw) : null, priceUsd: nvdabUsd, priceSrc: nvdabUsd !== null ? `PancakeSwap V3 NVDAB/USDT slot0, $${nvdabUsd.toFixed(2)}` : null,
+      why: !nvdabRaw ? "balanceOf did not answer" : nvdabUsd === null ? "NVDAB/USDT slot0 did not answer" : null, calls: [nc(0), nc(1)] }),
+  ];
+  const complete = lines.every((l) => l.value_cents !== null);
+  const sum = (ls) => ls.reduce((s, l) => s + l.value_cents, 0);
+  return {
+    at: Date.now(), lines, base, bnb, complete,
+    total_cents: complete ? sum(lines) : null,
+    conservative_total_cents: complete ? sum(lines.filter((l) => l.tier !== 3)) : null,
+  };
+}
+
+/**
+ * Two reads of one quantity seconds apart. USDC is an integer balance and must
+ * match to the cent; everything else carries a market price that moves between
+ * the endpoint's read and this one, so those get 1% or $2, whichever is wider.
+ * The tolerance is printed on the line so it is a stated rule, not a hidden one.
+ */
+function compareCents(cited, mine, exact) {
+  if (cited == null || mine == null) return { verdict: null, tol: null };
+  const tol = exact ? 2 : Math.max(200, Math.round(Math.abs(cited) * 0.01));
+  return { verdict: Math.abs(cited - mine) <= tol, tol };
+}
+
+function renderRecomputed(host, cited, r) {
+  const usd = (cents) => (cents == null ? "—" : `$${nf.format(Math.round(cents / 100))}`);
+  const tolText = (tol) => (tol === 2 ? "2¢" : usd(tol));
+  const holdings = (cited && cited.holdings) || [];
+  const citedLine = (l) => holdings.find((h) => h && h.asset === l.asset && h.location === l.location) || null;
+  const out = [];
+
+  // A chain that answered nothing gets one loud row, not six quiet dashes.
+  for (const [name, batch] of [["Base", r.base], ["BNB Chain", r.bnb]]) {
+    if (batch.results.every((x) => x === null)) {
+      out.push(state(`${name} did not answer from this browser.`,
+        el("span", {}, "Tried, in order: " + batch.tried.map((x) => `${x.rpc} (${x.why})`).join("; ") +
+          ". Nothing on that chain is shown below, and no total is computed over the gap."), true));
+    }
+  }
+
+  let mismatches = 0;
+  for (const l of r.lines) {
+    const c = citedLine(l);
+    const cmp = compareCents(c ? c.value_cents : null, l.value_cents, l.exact);
+    if (cmp.verdict === false) mismatches++;
+    const qty = l.raw === null ? null : formatUnits(l.raw, l.decimals);
+    let verdictNode;
+    if (cmp.verdict === true) {
+      verdictNode = el("span", { class: "tag-recomputed", text: `RECOMPUTED HERE · agrees with the cited ${usd(c.value_cents)} within ${tolText(cmp.tol)}` });
+    } else if (cmp.verdict === false) {
+      verdictNode = el("strong", { class: "verdict-fail", text: `DOES NOT MATCH · cited ${usd(c.value_cents)}, recomputed ${usd(l.value_cents)}, tolerance ${tolText(cmp.tol)}` });
+    } else if (l.value_cents === null) {
+      verdictNode = el("span", { text: `NOT READ HERE · ${l.why}` + (c && c.value_cents != null ? `; the endpoint cites ${usd(c.value_cents)}` : "") });
+    } else {
+      verdictNode = el("span", { class: "tag-recomputed", text: "RECOMPUTED HERE · the endpoint served no figure for this line on this read, so there is nothing to compare against" });
+    }
+    out.push(el("article", { class: "row" },
+      el("h3", { class: "row-title", text: l.title }),
+      el("div", { class: "row-side" },
+        el("span", { class: l.value_cents === null ? "tag-cited" : "tag-recomputed", text: l.value_cents === null ? "no answer" : usd(l.value_cents) })),
+      el("p", { class: "row-meta span" }, verdictNode,
+        l.notional ? el("span", { class: "tag-cited", text: "NOTIONAL — a mark, not an offer" }) : null),
+      qty !== null
+        ? el("p", { class: "row-meta span" }, mono(`${qty} ${l.asset}`), l.priceSrc ? el("span", { text: `at ${l.priceSrc}` }) : null)
+        : null,
+      el("details", { class: "calls" },
+        el("summary", { text: `the ${l.calls.length} call(s) that produced this` }),
+        el("pre", { class: "calls-body", text: l.calls.map((k) =>
+          `${k.label}\n  to      ${k.to}${k.from ? `\n  from    ${k.from}  (simulated, nothing signed)` : ""}\n  data    ${k.data}\n  result  ${k.result ?? "(no answer)"}${k.rpc ? `\n  via     ${k.rpc}` : ""}`).join("\n\n") })),
+    ));
+  }
+
+  // Totals, recomputed last so every part has already been shown. The cited
+  // totals are printed beside them and neither is called the other.
+  const totalCmp = compareCents(cited ? cited.total_cents : null, r.total_cents, false);
+  const consCmp = compareCents(cited ? cited.conservative_total_cents : null, r.conservative_total_cents, false);
+  const agreeTag = (cmp) => cmp.verdict === true ? el("span", { class: "tag-recomputed", text: " agrees" }) : cmp.verdict === false ? el("strong", { class: "verdict-fail", text: " DOES NOT MATCH" }) : null;
+  const mineTag = (cents) => el("span", { class: cents == null ? "tag-cited" : "tag-recomputed" }, cents == null ? "not summed — a line did not read" : usd(cents));
+  out.push(el("dl", { class: "grid2" },
+    el("div", { class: "kv" }, el("dt", { text: "Total, recomputed here" }), el("dd", {}, mineTag(r.total_cents))),
+    el("div", { class: "kv" }, el("dt", { text: "Conservative (without tier 3), recomputed here" }), el("dd", {}, mineTag(r.conservative_total_cents))),
+    el("div", { class: "kv" }, el("dt", { text: "Total, as cited by the endpoint" }), el("dd", {}, mono(usd(cited ? cited.total_cents : null)), agreeTag(totalCmp))),
+    el("div", { class: "kv" }, el("dt", { text: "Conservative, as cited by the endpoint" }), el("dd", {}, mono(usd(cited ? cited.conservative_total_cents : null)), agreeTag(consCmp))),
+  ));
+  const via = [...new Set([...r.base.answeredBy, ...r.bnb.answeredBy].filter(Boolean))];
+  out.push(el("p", { class: "note" },
+    `Read at ${new Date(r.at).toISOString().replace("T", " ").slice(0, 19)}Z from your browser` +
+    (via.length ? ` via ${via.join(", ")}` : "") +
+    `. Wallet ${CHAIN_READ.treasury}. ` +
+    "Arithmetic ported line for line from the society's src/assets.ts; the pool-depth walk behind the endpoint's realizable figure is not repeated here. " +
+    (mismatches
+      ? `${mismatches} line(s) above DO NOT MATCH the cited figure, and that is the finding of this read.`
+      : "A public RPC is a party that can misreport chain state; the provider that answered each call is named beside it so a reader can re-run it elsewhere.")));
+  host.replaceChildren(...out);
+}
+
+/** The container the section fills once the chains answer; the page paints first. */
+function recomputedTreasurySection(citedAssets, walletFromEndpoint) {
+  const frag = document.createDocumentFragment();
+  frag.append(section("Recomputed in your browser", "6 holdings"));
+  frag.append(el("p", { class: "note" },
+    el("strong", { class: "tag-recomputed", text: "RECOMPUTED HERE" }),
+    ". The same six holdings the endpoint reports, read from Base and BNB Chain by this page with the society's own arithmetic, " +
+    "and set beside the cited figure where one was served. This block is separate from the cited section above and is never merged into it: " +
+    "when the endpoint's read is short, these are the figures; when it is complete, these are the check."));
+  const host = el("div", {}, state("Reading Base and BNB Chain…", "Thirteen eth_calls from your browser, no key involved."));
+  frag.append(host);
+  if (walletFromEndpoint && walletFromEndpoint.toLowerCase() !== CHAIN_READ.treasury.toLowerCase()) {
+    host.replaceChildren(state("The endpoint names a different wallet than this page checks.",
+      el("span", {}, `Endpoint: ${walletFromEndpoint}. This page: ${CHAIN_READ.treasury}. Nothing is recomputed until a human looks, because a check that follows the wallet it is checking would agree with anything.`), true));
+    return frag;
+  }
+  recomputeTreasury()
+    .then((r) => renderRecomputed(host, citedAssets, r))
+    .catch((e) => host.replaceChildren(state("The recomputation did not finish.", String((e && e.message) || e), true)));
+  return frag;
+}
+
 async function viewTreasury() {
   const t = await api("/treasury");
   const frag = document.createDocumentFragment();
@@ -2673,9 +3035,9 @@ async function viewTreasury() {
       { class: "note" },
       "Every row below is ",
       el("strong", { class: "tag-cited", text: "CITED, NOT RECOMPUTED" }),
-      ". A separate window, Assay, re-runs the published verify recipes against Base in your " +
-        "browser and marks where its answer parts from this one. Folding that capability in here is " +
-        "planned; until it lands, treat these as the society's claim about itself.",
+      ". Further down, under its own heading, this page re-runs the same reads against Base and BNB Chain " +
+        "in your browser and marks each line RECOMPUTED HERE, beside the cited figure. The two are never merged: " +
+        "up here is what the society says about itself; down there is what the chain says when asked from where you sit.",
     ),
   );
 
@@ -2732,7 +3094,9 @@ async function viewTreasury() {
           ? el("p", { class: "row-meta span" }, el("strong", { text: "The endpoint's own reasons: " }), (a.errors || []).join("; "))
           : null,
         el("p", { class: "row-meta span" },
-          "Measured 2026-09-06: five of twelve reads of this endpoint were degraded. Reloading usually clears it."),
+          "Measured 2026-09-06: five of twelve reads of this endpoint were degraded. Measured 2026-09-15: twenty of twenty, " +
+          "twelve of them this empty shape, while the same calls answered from outside the society's worker in under a second. " +
+          "The section “Recomputed in your browser” below asks the chain directly."),
       ),
     );
 
@@ -2756,6 +3120,9 @@ async function viewTreasury() {
       );
     }
   }
+
+  // The chain, asked directly. Separate heading, separate tag, never merged.
+  frag.append(recomputedTreasurySection(a, t.wallet && t.wallet.address));
 
   // The tier split is the honest part of these books and the society is
   // explicit about why: a tier-3 mark is a price nobody could actually sell at.
