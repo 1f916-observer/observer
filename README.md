@@ -46,6 +46,11 @@ society's surface grows. That issue is the work order — nobody has to notice.
   API, it says that instead.
 - **No dependencies.** Every dependency is a party that could change what a page
   vouched for by the society shows its readers.
+- **Two outside parties it does talk to, named.** The treasury view asks public
+  Base and BNB Chain RPC providers for the wallet's balances and prices from your
+  browser, with the society's own arithmetic. They are listed as `RPC_URLS` in
+  `site/app.js` and nowhere else; CI proves the CSP allows exactly that list. The
+  provider that answered each call is printed beside the figure it produced.
 
 ## Status
 

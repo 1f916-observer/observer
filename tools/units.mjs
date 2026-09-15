@@ -601,5 +601,68 @@ eq("no urls is empty, not a failure", extractUrls("re-run the numbers in c123"),
     chainCoverage({ status: "incomplete", total_rows: 100, verified_through_id: 140 }, 20000).uncovered, 0);
 }
 
+/* ---------- the treasury arithmetic, ported from src/assets.ts ---------- */
+//
+// The treasury view recomputes the society's six holdings in the browser. The
+// arithmetic is a port of the society's own, and a port that drifts by one
+// decimal place would print a confident wrong number under a RECOMPUTED tag —
+// the exact failure the tag exists to rule out. These vectors are the
+// society's published test values and figures captured off the wire on
+// 2026-09-15, when the endpoint's own composite was dark and the wallet read
+// still served 2881093 cents.
+{
+  const src = readFileSync(new URL("../site/app.js", import.meta.url), "utf8").replace(/\r\n/g, "\n");
+  // Each definition is cut from the source at its own terminator: a one-line
+  // const ends at ";\n", a block-bodied one at "\n};\n", a function at "\n}\n".
+  const grab = (name, kind = "function", term = "\n}\n") => {
+    const start = src.indexOf(`${kind} ${name}`);
+    if (start < 0) throw new Error(`site/app.js no longer defines ${name}`);
+    const end = src.indexOf(term, start);
+    if (end < 0) throw new Error(`site/app.js: no terminator for ${name}`);
+    return src.slice(start, end + term.length);
+  };
+  const body = [grab("padWord", "const", ";\n"), grab("wordAt", "const", "\n};\n"), grab("toInt256", "const", ";\n")].join("\n") +
+    ["formatUnits", "toFixedBigInt", "chainValueCents", "sqrtPriceX96ToToken0PerToken1", "claimableFromPool", "compareCents"].map((n) => grab(n)).join("\n") +
+    "; return { padWord, wordAt, toInt256, formatUnits, toFixedBigInt, chainValueCents, sqrtPriceX96ToToken0PerToken1, claimableFromPool, compareCents };";
+  const T = new Function(body)();
+
+  // USDC: 6 decimals at face value is a pure divide by 1e4. The wire said
+  // onchain_cents 2881093 on 2026-09-15T14:39Z; balanceOf said 28810930000.
+  eq("USDC value is the balance over 1e4", T.chainValueCents(28810930000n, 6, 1), 2881093);
+  eq("a zero balance is zero cents, not null", T.chainValueCents(0n, 18, 2419), 0);
+  // WETH at the Chainlink price captured that minute.
+  eq("one WETH at $2,419.00 is 241900 cents", T.chainValueCents(10n ** 18n, 18, 2419), 241900);
+  eq("a 27-digit quantity survives the multiply", T.chainValueCents(10n ** 27n, 18, 0.5), 50000000000);
+  // BigInt results are compared as strings: the eq helper serialises with JSON.
+  eq("price scaling refuses exponent notation", String(T.toFixedBigInt(1e21, 18)), "0");
+  eq("price scaling keeps 18 places", String(T.toFixedBigInt(2419.5, 18)), "2419500000000000000000");
+
+  // Spot from slot0: sqrtPriceX96 of 2^96 is a price of exactly 1 either way.
+  eq("2^96 sqrt price is 1.0", T.sqrtPriceX96ToToken0PerToken1(1n << 96n, 18, 18), 1);
+  eq("2^97 sqrt price is a token1-per-token0 of 4, so 0.25 the other way", T.sqrtPriceX96ToToken0PerToken1(1n << 97n, 18, 18), 0.25);
+  eq("decimals shift the spot", T.sqrtPriceX96ToToken0PerToken1(1n << 96n, 6, 18), 1e12);
+  eq("a zero sqrt price is 0, never Infinity", T.sqrtPriceX96ToToken0PerToken1(0n, 18, 18), 0);
+
+  // The pool's claim arithmetic: all three terms load-bearing.
+  eq("claimable is (cumulated + uncollected - last) * shares / 1e18",
+    String(T.claimableFromPool(100n * 10n ** 18n, 10n * 10n ** 18n, 40n * 10n ** 18n, 95n * 10n ** 16n)), String(665n * 10n ** 17n));
+  eq("a claim already taken past the gross is zero, not negative",
+    String(T.claimableFromPool(10n, 0n, 20n, 10n ** 18n)), "0");
+
+  // ABI words and units.
+  eq("wordAt reads the second 32-byte word", String(T.wordAt("0x" + "00".repeat(31) + "01" + "00".repeat(31) + "02", 1)), "2");
+  eq("wordAt on a short answer is 0n, not a throw", String(T.wordAt("0x1234", 1)), "0");
+  eq("toInt256 reads a negative oracle answer as negative", String(T.toInt256((1n << 256n) - 1n)), "-1");
+  eq("formatUnits trims trailing zeros", T.formatUnits(28810930000n, 6), "28810.93");
+  eq("formatUnits keeps a sub-unit fraction", T.formatUnits(5n, 18), "0.000000000000000005");
+  eq("padWord lowercases and left-pads an address", T.padWord("0xA7F7985eB19b8c44F12A0654Df1eF89d1dd527C9").length, 64);
+
+  // Comparison: USDC exact, priced lines within 1% or $2, and the tolerance is
+  // returned so the page can print it rather than hide it.
+  eq("USDC must match to 2 cents", [T.compareCents(2881093, 2881095, true).verdict, T.compareCents(2881093, 2881096, true).verdict], [true, false]);
+  eq("a priced line gets 1% or $2, whichever is wider", [T.compareCents(100, 250, false).tol, T.compareCents(1000000, 1005000, false).verdict, T.compareCents(1000000, 1015000, false).verdict], [200, true, false]);
+  eq("no cited figure means no verdict, not a pass", T.compareCents(null, 100, false).verdict, null);
+}
+
 console.log(`${pass} passed, ${fail} failed`);
 process.exitCode = fail ? 1 : 0;

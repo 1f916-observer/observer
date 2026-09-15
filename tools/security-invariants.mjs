@@ -63,8 +63,25 @@ const RULES = [
   },
   {
     id: "no-write-methods",
-    test: (s) => [...s.matchAll(/method\s*:\s*["'](POST|PUT|PATCH|DELETE)["']/gi)].map((m) => m[0]),
-    why: "The Observer is read-only. A window that cannot write cannot be made to phish.",
+    // One POST is allowed, and only one: the JSON-RPC eth_call batch in
+    // rpcBatch(). JSON-RPC has no GET, so a chain READ travels as a POST; the
+    // call executes against a discarded state, nothing is signed, nothing is
+    // broadcast, and a `from` on it is a simulation, not a sender. The
+    // allowance is bounded three ways: the match must sit inside rpcBatch, that
+    // function must name "eth_call" as the only method it sends, and it must
+    // never touch the society's API constant.
+    test: (raw) => {
+      // Windows checkouts carry CRLF; the terminator below is matched on LF.
+      const s = raw.replace(/\r\n/g, "\n");
+      const hits = [...s.matchAll(/method\s*:\s*["'](POST|PUT|PATCH|DELETE)["']/gi)];
+      const start = s.indexOf("async function rpcBatch(");
+      const end = start < 0 ? -1 : s.indexOf("\n}\n", start);
+      const fn = start < 0 ? "" : s.slice(start, end);
+      const fnOk = fn && /method:\s*"eth_call"/.test(fn) && !/\bAPI\b/.test(fn) &&
+        (fn.match(/method\s*:\s*["'][A-Za-z_]+["']/g) || []).every((m) => /eth_call|POST/.test(m));
+      return hits.filter((m) => !(fnOk && m.index > start && m.index < end)).map((m) => m[0]);
+    },
+    why: "The Observer is read-only. A window that cannot write cannot be made to phish. (The single allowed POST is the eth_call batch in rpcBatch.)",
   },
 ];
 
@@ -153,7 +170,47 @@ for await (const file of walk(SITE)) {
   }
 }
 
-console.log(`${checked} file(s) inspected against ${RULES.length} invariants.`);
+/**
+ * The CSP and the page must name the same outside origins.
+ *
+ * The treasury view fetches public Base and BNB Chain RPCs from the reader's
+ * browser, declared in site/app.js as RPC_URLS. Our CSP sets connect-src, so a
+ * provider added to the page and not to vercel.json fails silently in
+ * production — the browser blocks it with no visible error — and a provider
+ * left in the CSP that the page no longer uses is a standing permission
+ * nobody reads. Both directions are checked, so the two lists cannot drift.
+ */
+{
+  const app = await readFile(join(SITE, "app.js"), "utf8");
+  const m = app.match(/const RPC_URLS = \{([\s\S]*?)\n\};/);
+  const declared = new Set((m ? m[1] : "").match(/https:\/\/[^"'\s]+/g)?.map((u) => new URL(u).origin) ?? []);
+  let connect = null;
+  try {
+    const vercel = JSON.parse(await readFile("vercel.json", "utf8"));
+    for (const h of vercel.headers ?? []) for (const kv of h.headers ?? []) {
+      if (kv.key === "Content-Security-Policy") {
+        const d = kv.value.split(";").map((s) => s.trim()).find((s) => s.startsWith("connect-src"));
+        if (d) connect = new Set(d.split(/\s+/).slice(1).filter((s) => s.startsWith("https://")));
+      }
+    }
+  } catch { /* reported below */ }
+  const ALWAYS = new Set(["https://1f916.ai"]);
+  if (!m || !connect) {
+    failed = true;
+    console.error(`FAIL csp-connect-src — ${!m ? "site/app.js no longer declares RPC_URLS" : "vercel.json has no connect-src"}`);
+  } else {
+    const missing = [...declared].filter((o) => !connect.has(o));
+    const stale = [...connect].filter((o) => !declared.has(o) && !ALWAYS.has(o));
+    if (missing.length || stale.length) {
+      failed = true;
+      console.error("FAIL csp-connect-src — site/app.js RPC_URLS and vercel.json connect-src disagree");
+      for (const o of missing) console.error(`     > page fetches ${o} but the CSP does not allow it (blocked silently in production)`);
+      for (const o of stale) console.error(`     > CSP allows ${o} but the page does not declare it`);
+    }
+  }
+}
+
+console.log(`${checked} file(s) inspected against ${RULES.length} invariants, plus css-braces and csp-connect-src.`);
 if (failed) {
   console.error("\nSecurity invariants failed. This page would be listed as trustworthy; it is not.");
   process.exit(1);
