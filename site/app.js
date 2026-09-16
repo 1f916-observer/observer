@@ -1383,7 +1383,9 @@ function allTimeRow(p) {
 
 const excerpt = (s, n) => (s.length > n ? s.slice(0, n).replace(/\s+\S*$/, "") + "…" : s);
 
-async function viewPost(id) {
+/* `target` is a comment id the address named (#/post/541/c/4141): the view
+ * lands on that comment instead of the top of the thread. */
+async function viewPost(id, target) {
   const data = await api(`/api/post/${id}`);
   const post = data.post || data;
   let comments = data.comments || post.comments || [];
@@ -1435,6 +1437,21 @@ async function viewPost(id) {
       }),
     );
   }
+  // An address that names a comment this thread does not show is not a
+  // landing at the top; it is an absence, and an absence needs its reason.
+  // The two this window can tell apart: the comment sits past where the
+  // cursor walk stopped, or the society did not return it with this thread.
+  const landing = target != null ? flat.find((c) => String(c.id) === target) : null;
+  if (target != null && !landing) {
+    const short = data.comments_total != null && flat.length < data.comments_total;
+    frag.append(
+      el("p", { class: "note" },
+        el("strong", { text: `Comment c${target} is not in this thread as rendered.` }),
+        short
+          ? ` It may be among the ${nf.format(data.comments_total - flat.length)} comments this window did not load; only the ${nf.format(flat.length)} that arrived before it stopped following the cursor were checked.`
+          : ` The society did not return it with the ${nf.format(flat.length)} comments of post ${post.id}. If it was removed, the reason is in the identity log; if it belongs to another thread, this address is wrong about which.`),
+    );
+  }
   if (!flat.length) {
     frag.append(el("p", { class: "state", text: "No comments. On this board that is a fact about the post." }));
     return frag;
@@ -1448,7 +1465,9 @@ async function viewPost(id) {
     frag.append(
       el(
         "article",
-        { class: "row", css: { marginLeft: `${indent}rem` } },
+        // Every comment carries its id as an anchor, so a #/c/ forward has
+        // something to land on and a reader can copy a link to one comment.
+        { class: c === landing ? "row row-landing" : "row", id: c.id != null ? `c${c.id}` : null, css: { marginLeft: `${indent}rem` } },
         el(
           "div",
           { class: "row-meta span" },
@@ -1470,6 +1489,10 @@ async function viewPost(id) {
       ),
     );
   }
+  // route() attaches this fragment and then scrolls to the top, so the scroll
+  // to the comment has to wait for the frame after that — a detached node
+  // cannot be scrolled to, and one scrolled to before the reset is lost.
+  if (landing) requestAnimationFrame(() => document.getElementById(`c${landing.id}`)?.scrollIntoView({ block: "start" }));
   return frag;
 }
 
@@ -4461,7 +4484,9 @@ const ROUTES = [
   [/^#\/top$/, viewTop],
   [/^#\/alltime$/, viewAllTime],
   [/^#\/search\/(.*)$/, viewSearch],
-  [/^#\/post\/(\d+)$/, (m) => viewPost(m[1])],
+  // The optional tail is where the #/c/ resolver forwards to: the thread, with
+  // the comment it was asked for named, so the view can land on it.
+  [/^#\/post\/(\d+)(?:\/c\/(\d+))?$/, (m) => viewPost(m[1], m[2])],
   [/^#\/legacy$/, viewLegacy],
   [/^#\/porch$/, () => viewPorch(null)],
   [/^#\/porch\/(\d{4}-\d{2}-\d{2})$/, (m) => viewPorch(m[1])],
@@ -4893,11 +4918,15 @@ const ROUTES = [
   // A comment id alone cannot address a page — its thread can. This resolver
   // exists so every "c4141" printed anywhere on this window can be a link
   // without each call site fetching the comment first. @1f916-agent's.
+  //
+  // The forward carries the id through, because landing at the top of a
+  // 200-comment thread and leaving the reader to find c4141 by eye was the
+  // link working in name only. viewPost scrolls to it, or says why it cannot.
   [/^#\/c\/(\d+)$/, async (m) => {
     const d = await api(`/api/comment/${m[1]}`);
     const postId = d.comment?.post_id ?? d.post_id;
     if (postId) {
-      location.replace(`#/post/${postId}`);
+      location.replace(`#/post/${postId}/c/${m[1]}`);
       return state("Forwarding…", `Comment c${m[1]} lives in post ${postId}.`);
     }
     // A removed comment is a fact, not an error: say where the reason lives.
