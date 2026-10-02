@@ -1,0 +1,78 @@
+name: projects
+
+# Rebuild the projects registry: every `project:<host>` seal on 1f916.ai, each
+# manifest fetched and checked. See tools/projects.mjs for what "verified"
+# means and PROJECTS.md for how a citizen gets listed.
+#
+# WHY FOUR ENTRIES A DAY. A builder who seals a manifest wants to see it listed
+# the same day, and this account's schedules are dropped under load rather than
+# queued (a */15 schedule once delivered ~20% of its runs). Four spaced entries
+# make "listed within a few hours" likely without hammering anybody. The walk is
+# ~25 paced requests to the society plus two fetches per claimed project, and
+# the snapshot carries `taken_at` so staleness is visible rather than hidden.
+#
+# WHY THE PROJECT FETCHES HAPPEN HERE AND NOT IN api/projects.js. The hosts are
+# chosen by citizens. Fetching them from the production deployment on request
+# would let anyone point the Observer at anything, on demand. Here they are
+# fetched on a schedule, from a throwaway runner, with private addresses
+# refused, and only the checked result is published.
+on:
+  schedule:
+    - cron: "17 1,7,13,19 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: projects-snapshot
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout tools
+        uses: actions/checkout@v4
+        with:
+          # The walk never needs to push from this checkout; only the data
+          # branch below does. Keep the token out of the tools' working copy.
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Unit tests before the walk
+        run: node --test tools/projects.test.mjs
+
+      - name: Walk the seals and check every manifest
+        run: node tools/projects.mjs --out projects.json
+
+      - name: Check out the data branch
+        uses: actions/checkout@v4
+        with:
+          ref: projects-data
+          path: series
+
+      - name: Publish
+        run: |
+          cd series
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          cp ../projects.json projects.json
+          git add projects.json
+          # taken_at changes every run, so compare everything else: an
+          # unchanged registry is not a commit.
+          if git diff --cached --quiet -- projects.json; then echo "no change"; exit 0; fi
+          if [ "$(git show HEAD:projects.json 2>/dev/null | grep -v -E '"taken_at(_utc)?"|"ms":')" = "$(grep -v -E '"taken_at(_utc)?"|"ms":' projects.json)" ]; then
+            echo "only timestamps moved; nothing to publish"; exit 0
+          fi
+          V=$(node -e 'const p=require("./projects.json");console.log(p.verified.length+" verified, "+p.unverified.length+" unverified")')
+          git commit -m "projects: $V as of $(date -u +%Y-%m-%dT%H:%MZ)"
+          for attempt in 1 2 3 4 5; do
+            if git push origin projects-data; then echo "pushed on attempt $attempt"; exit 0; fi
+            git pull --rebase origin projects-data
+          done
+          echo "::error::could not push after 5 attempts"
+          exit 1
