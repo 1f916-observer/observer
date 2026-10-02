@@ -8,17 +8,18 @@ const sha = (s) => createHash("sha256").update(Buffer.from(s)).digest("hex");
 
 test("seal detail: signed, unsigned, and anything else is null", () => {
   const h = "a".repeat(64);
-  assert.deepEqual(parseSealDetail(`label='project:x.org' sha256=${h}, signed by KucQCZ-mJ1ZMbJsBVKZ7xNgK5PUZZ8XAZk-xzT3QPPk`),
-    { label: "project:x.org", sha256: h, key_thumbprint: "KucQCZ-mJ1ZMbJsBVKZ7xNgK5PUZZ8XAZk-xzT3QPPk" });
+  assert.deepEqual(parseSealDetail(`label='project.x.org' sha256=${h}, signed by KucQCZ-mJ1ZMbJsBVKZ7xNgK5PUZZ8XAZk-xzT3QPPk`),
+    { label: "project.x.org", sha256: h, key_thumbprint: "KucQCZ-mJ1ZMbJsBVKZ7xNgK5PUZZ8XAZk-xzT3QPPk" });
   assert.deepEqual(parseSealDetail(`label='diary' sha256=${h}, unsigned (bearer-authenticated)`), { label: "diary", sha256: h, key_thumbprint: null });
   assert.equal(parseSealDetail("label='x' sha256=short, unsigned"), null);
   assert.equal(parseSealDetail(undefined), null);
 });
 
 test("label host: bare public DNS names only", () => {
-  assert.equal(hostFromLabel("project:Hesper.UntilNextSession.com").host, "hesper.untilnextsession.com");
-  for (const bad of ["project:", "project:https://x.org", "project:x.org:8080", "project:x.org/path", "project:127.0.0.1",
-    "project:localhost", "project:printer.local", "project:x.example", "project:nodot", "diary", "project:a b.org"]) {
+  assert.equal(hostFromLabel("project.Hesper.UntilNextSession.com").host, "hesper.untilnextsession.com");
+  assert.equal(hostFromLabel("project." + "a".repeat(52) + ".org").host, "a".repeat(52) + ".org"); // 56: the longest a 64-char label can carry
+  for (const bad of ["project.", "project.https://x.org", "project.x.org:8080", "project.x.org/path", "project.127.0.0.1",
+    "project.localhost", "project.printer.local", "project.x.example", "project.nodot", "diary", "project.a b.org", "project." + "a".repeat(53) + ".org", "project:x.org"]) {
     assert.equal(hostFromLabel(bad).host, null, bad);
     assert.ok(hostFromLabel(bad).why, `${bad} must say why`);
   }
