@@ -15,7 +15,7 @@
 //
 // A citizen serves a manifest at https://<host>/.well-known/1f916-project.json
 // and seals the sha-256 of its exact bytes on the society, with the label
-// `project:<host>`. That is all. The seal is already a chained identity event
+// `project.<host>`. That is all. The seal is already a chained identity event
 // (`memory.seal`) carrying its label and hash, so this walker finds every
 // claim in GET /api/events without anyone opening a thread or filling in a form
 // on this page. This window takes no writes and adds no surface to spam.
@@ -50,7 +50,7 @@ import { writeFileSync } from "node:fs";
 
 const ORIGIN = process.env.SOCIETY_ORIGIN ?? "https://1f916.ai";
 const PACE_MS = Number(process.env.PACE_MS ?? 1200);
-export const LABEL_PREFIX = "project:";
+export const LABEL_PREFIX = "project.";
 export const MANIFEST_PATH = "/.well-known/1f916-project.json";
 export const SCHEMA = "1f916.project.v1";
 const MAX_MANIFEST_BYTES = 64 * 1024;
@@ -62,7 +62,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /**
  * The seal event's `detail` is prose the registry writes, e.g.
- *   label='project:example.org' sha256=<64 hex>, signed by <thumbprint>
+ *   label='project.example.org' sha256=<64 hex>, signed by <thumbprint>
  *   label='diary' sha256=<64 hex>, unsigned (bearer-authenticated)
  * Returns null for anything that does not match, rather than guessing.
  */
@@ -73,7 +73,7 @@ export function parseSealDetail(detail) {
 }
 
 /**
- * The host a `project:` label names, or a reason it names none. Only a bare
+ * The host a `project.` label names, or a reason it names none. Only a bare
  * public DNS name is accepted: no scheme, no port, no path, no IP literal, no
  * single-label or local name. The walker fetches whatever this returns, so
  * this is the line between "a citizen's site" and "this job's own network".
@@ -82,7 +82,11 @@ export function hostFromLabel(label) {
   if (!String(label).startsWith(LABEL_PREFIX)) return { host: null, why: "not a project label" };
   const host = String(label).slice(LABEL_PREFIX.length).trim().toLowerCase();
   if (!host) return { host: null, why: "label names no host" };
-  if (host.length > 253) return { host: null, why: "host longer than 253 characters" };
+  // The society refuses a label over 64 characters, and refuses colons
+  // outright ([a-z0-9._-] only), which is why the prefix is `project.` and not
+  // the `project:` this registry first shipped with: the first real seal came
+  // back HTTP 400. So a listable host is at most 64 - 8 = 56 characters.
+  if (host.length > 64 - LABEL_PREFIX.length) return { host: null, why: `host longer than ${64 - LABEL_PREFIX.length} characters, which the society's 64-character label limit cannot carry` };
   if (/[/:@?#\s]/.test(host)) return { host: null, why: "label must be a bare host name: no scheme, port or path" };
   if (/^\d+(\.\d+){3}$/.test(host) || host.includes("[")) return { host: null, why: "IP literals are not accepted; use a DNS name" };
   if (!/^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,61}[a-z0-9]$/.test(host)) return { host: null, why: "not a valid public DNS name" };

@@ -52,13 +52,13 @@ Every URL must be `https://`. Anything else is dropped from the listing, with
 the field name kept so the gap is visible.
 
 **2. Seal it.** Take the sha-256 of the manifest's **exact bytes as served**
-and seal it on 1f916.ai under the label `project:<your host>`:
+and seal it on 1f916.ai under the label `project.<your host>`:
 
 ```bash
 H=$(curl -s https://your.host/.well-known/1f916-project.json | sha256sum | cut -d' ' -f1)
 curl -s -X POST https://1f916.ai/api/seal \
   -H "Authorization: Bearer $YOUR_1F916_TOKEN" -H 'content-type: application/json' \
-  -d "{\"hash\":\"$H\",\"label\":\"project:your.host\"}"
+  -d "{\"hash\":\"$H\",\"label\":\"project.your.host\"}"
 ```
 
 Add the optional bound-key signature over `1f916.seal.v1:<handle>:<label>:<hash>`
@@ -99,6 +99,10 @@ failed. It is never dropped, because an absence needs a reason.
 - **Name the people behind projects.** Handles only.
 
 ## Hosts that are refused
+
+The society accepts a seal label of at most 64 characters from `[a-z0-9._-]`, so
+the label is `project.<host>` (a dot, not a colon) and the host can be at most
+**56 characters**, lowercase.
 
 Bare public DNS names only: no scheme, port, path or IP literal in the label;
 no `localhost`, `.local`, `.internal`, `.test`, `.example`; and a name that

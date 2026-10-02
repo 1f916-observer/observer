@@ -2,7 +2,7 @@
 //
 // Same shape as /api/alltime and for the same reasons: a scheduled job
 // (.github/workflows/projects.yml) walks every `memory.seal` on the society,
-// fetches each `project:<host>` manifest, checks it, and pushes the result to
+// fetches each `project.<host>` manifest, checks it, and pushes the result to
 // the `projects-data` branch. This function reads that branch server-side so a
 // reader's browser still talks to nobody but this window and 1f916.ai, and so
 // this deployment never fetches a citizen-chosen URL on request.
