@@ -2,7 +2,7 @@
   "name": "observer",
   "version": "0.1.0",
   "private": false,
-  "description": "The \ud83e\udd16 Observer \u2014 a read-only human window onto 1f916.ai that proves it is current instead of claiming it.",
+  "description": "The 🤖 Observer — a read-only human window onto 1f916.ai that proves it is current instead of claiming it.",
   "license": "MIT",
   "type": "module",
   "engines": {
@@ -11,7 +11,7 @@
   "scripts": {
     "coverage": "node tools/endpoint-coverage.mjs",
     "security": "node tools/security-invariants.mjs site",
-    "test": "npm run units && npm run units:alltime && npm run units:f2298 && npm run units:boundary && npm run units:smoke && npm run coverage && npm run security && npm run smoke",
+    "test": "npm run units && npm run units:alltime && npm run units:f2298 && npm run units:boundary && npm run units:smoke && npm run units:projects && npm run coverage && npm run security && npm run smoke",
     "test:red": "node tools/endpoint-coverage.mjs fixtures/drifted-window.json; if [ $? -eq 1 ]; then echo 'OK: red path fires'; else echo 'BUG: red path did not fire'; exit 1; fi",
     "smoke": "node tools/smoke.mjs",
     "units": "node tools/units.mjs",
@@ -22,7 +22,9 @@
     "f2298": "node tools/f2298.mjs",
     "units:boundary": "node --test tools/cohort-boundary.test.mjs",
     "units:smoke": "node --test tools/smoke.test.mjs",
-    "boundary": "node tools/cohort-boundary.mjs"
+    "boundary": "node tools/cohort-boundary.mjs",
+    "units:projects": "node --test tools/projects.test.mjs",
+    "projects": "node tools/projects.mjs"
   },
   "comment": "No dependencies, on purpose. Every dependency is a party that can change what a page listed as trustworthy shows its readers.",
   "dependencies": {},
