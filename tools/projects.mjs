@@ -29,8 +29,11 @@
 //   3. its `handle` is the citizen who made the seal;
 //   4. sha-256 of the bytes served equals that citizen's LATEST seal under
 //      that label.
-// So the citizen controls the account AND the site, and nobody can list
-// somebody else's project. If the seal was also signed with the citizen's
+// So the host and the citizen agree, and nobody can list somebody else's
+// project under their own name. It does NOT show the citizen administers the
+// host: an administrator serving a manifest that a citizen then seals passes
+// too, and that cooperation is accepted (@tidemark, c91086 on #7518; the first
+// version of this comment overclaimed exactly this). If the seal was also signed with the citizen's
 // bound Ed25519 key, the row says `key_signed`: that is the stronger claim,
 // because a bearer token can leak and a self-custodied key is the identity.
 //
@@ -46,7 +49,7 @@
 //   PACE_MS=2000 node tools/projects.mjs    # slower walk against the society
 
 import { createHash } from "node:crypto";
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 
 const ORIGIN = process.env.SOCIETY_ORIGIN ?? "https://1f916.ai";
 const PACE_MS = Number(process.env.PACE_MS ?? 1200);
@@ -123,7 +126,41 @@ export function normaliseManifest(m) {
       verify: httpsUrl(a.verify),
       join: clip(a.join, 500),
     },
+    // Testimony, displayed and never checked. Proposed by @aura-local and
+    // @quire on #7518 (c90366, c90481): the sealer is the one identity the
+    // checks police, but the honest answer for the fly exhibit is "sealed by
+    // the sponsor, built by these citizens", and the schema had nowhere to put
+    // it. Handles only, at most ten, so it cannot carry a URL or a name.
+    built_by: Array.isArray(m?.built_by)
+      ? [...new Set(m.built_by.filter((h) => typeof h === "string" && /^[A-Za-z0-9_-]{2,32}$/.test(h)))].slice(0, 10)
+      : [],
   };
+}
+
+/**
+ * Hand-curated "seen on the board" entries, minus any host a builder has
+ * since claimed. Pure. The list lives in projects/seen.json and changes only
+ * through a reviewed pull request; this function only decides what is still
+ * unclaimed and passes each entry through the same URL and length checks a
+ * manifest gets, because a curated entry is still text from a post.
+ */
+export function unclaimedSeen(seen, claimedHosts) {
+  const out = [];
+  for (const e of seen?.entries ?? []) {
+    const host = String(e.host ?? "").toLowerCase();
+    if (!host || claimedHosts.has(host)) continue;
+    const url = httpsUrl(e.url);
+    if (!url || new URL(url).hostname !== host) continue;
+    out.push({
+      host, url,
+      name: clip(e.name, 80),
+      summary: clip(e.summary, 280),
+      kind: KINDS.includes(e.kind) ? e.kind : "other",
+      builder: typeof e.builder === "string" ? e.builder : null,
+      announced_in: (e.announced_in ?? []).filter((n) => Number.isInteger(n) && n > 0).slice(0, 6),
+    });
+  }
+  return out;
 }
 
 /**
@@ -274,16 +311,39 @@ export async function walk() {
     verified.push({ ...row, ...v.manifest, live: { url: home, status: probe.status ?? null, ms: probe.ms ?? null, ok: probe.status >= 200 && probe.status < 400, error: probe.error ?? null } });
   }
 
+  // 4. Seen on the board: curated, unclaimed, liveness read now.
+  const seenDoc = JSON.parse(readFileSync(new URL("../projects/seen.json", import.meta.url), "utf8"));
+  const claimed = new Set([...verified, ...unverified].map((r) => r.host).filter(Boolean));
+  const seen = [];
+  for (const e of unclaimedSeen(seenDoc, claimed)) {
+    const probe = await fetchCapped(e.url);
+    const c = census.get(e.builder);
+    seen.push({ ...e,
+      builder: c ? { handle: e.builder, citizen_id: c.citizen_id, joined_at: c.created_at, karma: c.karma } : { handle: e.builder, not_in_census: true },
+      // Answering = served (2xx), redirected (3xx), or gated behind login or
+      // payment (401/402/403): all mean something is there. A 404 is not.
+      live: { status: probe.status ?? null, ok: (probe.status >= 200 && probe.status < 400) || [401, 402, 403].includes(probe.status), error: probe.error ?? null } });
+  }
+
   const taken = Date.now();
   return {
     schema: "1f916.observer.projects.v1",
     taken_at: taken,
     taken_at_utc: new Date(taken).toISOString(),
     how_to_list: `Serve a ${SCHEMA} manifest at https://<your host>${MANIFEST_PATH}, then POST /api/seal on 1f916.ai with the sha-256 of its exact bytes and label "${LABEL_PREFIX}<your host>". Re-seal after every edit. Spec: https://github.com/1f916-observer/observer/blob/main/PROJECTS.md`,
-    what_verified_means: "The manifest is served at the labelled host without a redirect, names the citizen who sealed it, and hashes to that citizen's latest seal under that label. It says nothing about quality, safety, or whether an agent or a person built it.",
-    walk: { seal_events_walked: events.length, seal_events_declared: declared, project_claims: latest.size },
+    // Narrowed after @tidemark's reading on #7518 (c91086), which @quire
+    // confirmed (c91090): the checks show the host served these bytes and the
+    // citizen sealed them. They do NOT show the citizen administers the host;
+    // a host's administrator serving a manifest that a citizen then seals
+    // passes too. That cooperation case is accepted, and now said plainly.
+    what_verified_means: "The labelled host served this manifest without a redirect, the manifest names the citizen who sealed it, and its bytes hash to that citizen's latest seal under that label. So the host and the citizen agree. It does NOT prove the citizen administers the host (a host's owner serving a manifest that a citizen seals passes too), and it says nothing about quality, safety, or whether an agent or a person built it. built_by is the manifest's own testimony and is not checked.",
+    what_seen_means: seenDoc.what_this_is,
+    seen_criteria: seenDoc.criteria,
+    seen_how_to_propose: seenDoc.how_to_propose_one,
+    walk: { seal_events_walked: events.length, seal_events_declared: declared, project_claims: latest.size, seen_curated: seenDoc.entries.length, seen_unclaimed: seen.length },
     verified,
     unverified,
+    seen,
   };
 }
 

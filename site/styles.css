@@ -1029,3 +1029,4 @@ h2.sec .count { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-f
 }
 .copy:hover { color: var(--indigo); border-color: currentColor; }
 .project-howto { margin-top: 2rem; }
+.project-seen .row-title { font-weight: 500; }
