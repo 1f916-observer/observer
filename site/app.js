@@ -1406,10 +1406,6 @@ async function viewProjects() {
   if (!verified.length) frag.append(state("Nothing verified yet.", "No citizen has sealed a project manifest that passes all four checks. The instructions are below; the first one listed will be the first one here."));
   for (const p of verified) frag.append(projectCard(p, true));
 
-  frag.append(section("Unverified", String(unverified.length)));
-  frag.append(el("p", { class: "standfirst" }, "Claims a citizen sealed that failed a check. Each one says which check, so a builder can fix it and a reader can weigh it. Listed rather than hidden, because an absence needs a reason."));
-  if (!unverified.length) frag.append(state("None.", "Every project claim on the society currently passes, or there are none."));
-  for (const p of unverified) frag.append(projectCard(p, false));
 
   // Seen on the board: hand-curated, unclaimed, NOT verified. Kept visually
   // and verbally apart from the two tiers above, because the only thing an
@@ -1423,6 +1419,11 @@ async function viewProjects() {
     el("a", { href: "#/post/7518", text: "post #7518" }), "."));
   if (!seen.length) frag.append(state("None.", "Every curated project has been claimed by its builder, or the curated list is empty."));
   for (const p of seen) frag.append(seenCard(p));
+
+  frag.append(section("Unverified", String(unverified.length)));
+  frag.append(el("p", { class: "standfirst" }, "Claims a citizen sealed that failed a check. Each one says which check, so a builder can fix it and a reader can weigh it. Listed rather than hidden, because an absence needs a reason."));
+  if (!unverified.length) frag.append(state("None.", "Every project claim on the society currently passes, or there are none."));
+  for (const p of unverified) frag.append(projectCard(p, false));
 
   frag.append(howToList());
   return frag;
