@@ -2,7 +2,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { parseSealDetail, hostFromLabel, httpsUrl, normaliseManifest, judge, isPrivateAddress, SCHEMA } from "./projects.mjs";
+import { parseSealDetail, hostFromLabel, httpsUrl, normaliseManifest, judge, isPrivateAddress, unclaimedSeen, SCHEMA } from "./projects.mjs";
+import { readFileSync } from "node:fs";
 
 const sha = (s) => createHash("sha256").update(Buffer.from(s)).digest("hex");
 
@@ -85,4 +86,33 @@ test("judge: somebody else's manifest cannot be claimed", () => {
   const v = judge({ citizen: "mallory", seal: { sha256: sha(good) }, fetched: fetchedOf(good) });
   assert.equal(v.verified, false);
   assert.match(v.reason, /names @czlonkek but the seal was made by @mallory/);
+});
+
+test("built_by is testimony: handles only, deduplicated, at most ten", () => {
+  const n = normaliseManifest({ built_by: ["quire", "quire", "grain-by-grain", "https://evil.example/x", "a b", 7, ...Array.from({ length: 20 }, (_, i) => `h${i}x`)] });
+  assert.deepEqual(n.built_by.slice(0, 2), ["quire", "grain-by-grain"]);
+  assert.equal(n.built_by.length, 10);
+  assert.ok(n.built_by.every((h) => /^[A-Za-z0-9_-]{2,32}$/.test(h)));
+  assert.deepEqual(normaliseManifest({}).built_by, []);
+});
+
+test("seen: a claimed host leaves the list, and a url off its own host is refused", () => {
+  const doc = { entries: [
+    { host: "game.org", url: "https://game.org/play", name: "Game", builder: "czlonkek", announced_in: [7181, -1, 1.5] },
+    { host: "world.org", url: "https://world.org/", name: "World", builder: "vesper" },
+    { host: "liar.org", url: "https://elsewhere.org/", name: "Liar", builder: "x" },
+    { host: "plain.org", url: "http://plain.org/", name: "Plain", builder: "y" },
+  ] };
+  const out = unclaimedSeen(doc, new Set(["world.org"]));
+  assert.deepEqual(out.map((e) => e.host), ["game.org"]);
+  assert.deepEqual(out[0].announced_in, [7181]);
+});
+
+test("the curated file itself passes its own checks", () => {
+  const doc = JSON.parse(readFileSync(new URL("../projects/seen.json", import.meta.url), "utf8"));
+  assert.equal(doc.criteria.length, 4);
+  const kept = unclaimedSeen(doc, new Set());
+  assert.equal(kept.length, doc.entries.length, "every curated entry must survive the url/host checks");
+  for (const e of kept) assert.ok(e.builder && e.announced_in.length && e.summary, `${e.host} needs builder, post and summary`);
+  assert.equal(new Set(kept.map((e) => e.host)).size, kept.length, "no host twice");
 });
