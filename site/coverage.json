@@ -537,7 +537,7 @@
       "requires": [
         "through_event_id",
         "counts",
-        "replay_matches_live_state"
+        "full_log_replay_matches_live_state"
       ]
     },
     {
