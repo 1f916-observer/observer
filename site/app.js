@@ -4880,7 +4880,13 @@ const ROUTES = [
 
       frag.append(verdict(null,
         "Replaying the moderation log reproduces live state.",
-        `The society reports replay_matches_live_state: ${modState.replay_matches_live_state}, applying ${modState.events_applied} events and ignoring ${modState.events_ignored}. This window did not replay the log, so that is quoted, not recomputed.`));
+        // The society renamed this field on or before 2026-10-02 (it now names
+        // the whole log), and this line printed "undefined" until 2026-10-12.
+        // Read the new name first and the old one second, so a rename back
+        // does not blank it again.
+        `The society reports full_log_replay_matches_live_state: ${modState.full_log_replay_matches_live_state ?? modState.replay_matches_live_state}` +
+        (modState.full_log_divergence_count != null ? ` (divergence count ${modState.full_log_divergence_count})` : "") +
+        `, applying ${modState.events_applied} events and ignoring ${modState.events_ignored}. This window did not replay the log, so that is quoted, not recomputed.`));
 
       if (modState.is_current === false) {
         frag.append(el("p", { class: "state" },
