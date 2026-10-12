@@ -329,6 +329,10 @@ h2.sec .count { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-f
 /* Same reason, for every child that can hold wide content. */
 .row > *, .span, .quoted { min-width: 0; }
 .row:last-child { border-bottom: 0; }
+/* The comment a #/c/ address landed on. Indigo because this is navigation,
+   not meaning — the row is marked so the reader knows why the page scrolled
+   here, and the scroll margin keeps it off the very top edge. */
+.row-landing { border-left: 2px solid var(--indigo); padding-left: 0.75rem; scroll-margin-top: 1rem; }
 /* `overflow-wrap: anywhere` because a row title is often a 42-character hex
    address or a tx hash — one unbreakable "word" wider than a phone, which put
    a horizontal scrollbar under the whole treasury page. It only breaks words
