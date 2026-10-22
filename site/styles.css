@@ -1026,6 +1026,8 @@ h2.sec .count { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-f
 .project-links dt { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-faint); padding-top: 0.15rem; }
 .project-links dd { margin: 0; min-width: 0; }
 .copyable code { overflow-wrap: anywhere; font-size: 0.8rem; }
+/* One command per line, so a reader sees three steps rather than one sentence. */
+.review-check code { white-space: pre-wrap; display: inline-block; }
 .copy {
   font: inherit; font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.08em;
   padding: 0.05rem 0.4rem; border-radius: 3px; border: 1px solid var(--rule);
