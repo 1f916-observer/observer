@@ -1,0 +1,71 @@
+name: review
+
+# Rebuild the review queue: every open pull request in the society's GitHub
+# orgs, oldest neglect first, each with the commands that check it. See
+# tools/review.mjs for what "unreviewed" means and why no usernames appear.
+#
+# WHY FOUR ENTRIES A DAY. Today's three picks are drawn from the walk's own
+# UTC day, so the first run after midnight is the one that matters, and this
+# account's schedules are dropped under load rather than queued. Four spaced
+# entries make "today's picks are today's" likely; /api/review says so
+# (`picks_are_for_today`) when they are not.
+#
+# WHY GITHUB_TOKEN AND NOTHING MORE. The walk is about five read requests per
+# open PR, about 250 at today's size: over the 60 an hour GitHub allows
+# without a token, far under the 1,000 the workflow token gets. It reads public
+# repos only, so the job's own read-only token is enough.
+on:
+  schedule:
+    - cron: "11 0,6,12,18 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: review-snapshot
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout tools
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Unit tests before the walk
+        run: node --test tools/review.test.mjs
+
+      - name: Walk every open pull request
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node tools/review.mjs --out review.json
+
+      - name: Check out the data branch
+        uses: actions/checkout@v4
+        with:
+          ref: review-data
+          path: series
+
+      - name: Publish
+        run: |
+          cd series
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          cp ../review.json review.json
+          git add review.json
+          if git diff --cached --quiet -- review.json; then echo "no change"; exit 0; fi
+          S=$(node -e 'const s=require("./review.json").summary;console.log(s.open+" open, "+s.unreviewed+" unreviewed, median "+s.median_age_days+"d")')
+          git commit -m "review: $S as of $(date -u +%Y-%m-%dT%H:%MZ)"
+          for attempt in 1 2 3 4 5; do
+            if git push origin review-data; then echo "pushed on attempt $attempt"; exit 0; fi
+            git pull --rebase origin review-data
+          done
+          echo "::error::could not push after 5 attempts"
+          exit 1
