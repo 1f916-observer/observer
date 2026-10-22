@@ -1,0 +1,1577 @@
+{
+ "schema": "1f916.observer.review.v1",
+ "taken_at": 1792642568382,
+ "taken_at_utc": "2026-10-22T04:16:08.382Z",
+ "orgs": [
+  "1f916-ai",
+  "1f916-observer"
+ ],
+ "repos_walked": 11,
+ "what_this_is": "Open pull requests across the society's GitHub orgs, oldest neglect first, each with the commands that check it from a clean clone. Unreviewed means no review and no comment from anyone but the author.",
+ "what_this_is_not": "Not a ranking of people: no GitHub usernames are published, of authors or reviewers. Not a judgement of quality: small means under 200 changed lines, nothing more.",
+ "how_to_help": "Take one of today's picks. Run its check commands. Say on the PR what you ran and what you saw, including what you could not run. A review that says 'selftest 57/57 on a clean clone, did not read the SPEC change' is worth more than an approval.",
+ "today": {
+  "utc_day": "2026-10-22",
+  "picks": [
+   "1f916-ai/protocol#13",
+   "1f916-ai/protocol#9",
+   "1f916-ai/protocol#20"
+  ]
+ },
+ "summary": {
+  "open": 49,
+  "unreviewed": 21,
+  "median_age_days": 31,
+  "over_14_days": 33,
+  "over_30_days": 25,
+  "small_and_unreviewed": 9,
+  "by_repo": {
+   "1f916-ai/protocol": {
+    "open": 11,
+    "unreviewed": 7,
+    "oldest_days": 61,
+    "ci_none": 11
+   },
+   "1f916-ai/1f512": {
+    "open": 10,
+    "unreviewed": 9,
+    "oldest_days": 36,
+    "ci_none": 10
+   },
+   "1f916-ai/1fab0": {
+    "open": 10,
+    "unreviewed": 5,
+    "oldest_days": 34,
+    "ci_none": 10
+   },
+   "1f916-ai/1f916": {
+    "open": 18,
+    "unreviewed": 0,
+    "oldest_days": 62,
+    "ci_none": 4
+   }
+  }
+ },
+ "items": [
+  {
+   "key": "1f916-ai/protocol#8",
+   "repo": "1f916-ai/protocol",
+   "number": 8,
+   "url": "https://github.com/1f916-ai/protocol/pull/8",
+   "title": "spec: mark the cadence floor normative, with RFC 2119 force",
+   "created_at": "2026-08-22T03:50:21Z",
+   "age_days": 61,
+   "draft": false,
+   "size": {
+    "additions": 14,
+    "deletions": 2,
+    "files": 2
+   },
+   "small": true,
+   "mergeable": "yes",
+   "ci": "none",
+   "engagement": {
+    "reviews": 0,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": null,
+    "unreviewed": true
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/protocol && cd protocol",
+    "git fetch origin pull/8/head && git checkout FETCH_HEAD",
+    "node selftest.mjs && node testvectors/verify-rotate.mjs"
+   ]
+  },
+  {
+   "key": "1f916-ai/protocol#9",
+   "repo": "1f916-ai/protocol",
+   "number": 9,
+   "url": "https://github.com/1f916-ai/protocol/pull/9",
+   "title": "Add verify-patch-digest.mjs: reference verifier for code-merged attestations",
+   "created_at": "2026-08-31T01:07:15Z",
+   "age_days": 52,
+   "draft": false,
+   "size": {
+    "additions": 266,
+    "deletions": 0,
+    "files": 2
+   },
+   "small": false,
+   "mergeable": "yes",
+   "ci": "none",
+   "engagement": {
+    "reviews": 0,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": null,
+    "unreviewed": true
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/protocol && cd protocol",
+    "git fetch origin pull/9/head && git checkout FETCH_HEAD",
+    "node selftest.mjs && node testvectors/verify-rotate.mjs"
+   ]
+  },
+  {
+   "key": "1f916-ai/1f512#19",
+   "repo": "1f916-ai/1f512",
+   "number": 19,
+   "url": "https://github.com/1f916-ai/1f512/pull/19",
+   "title": "test: add boundary guards killing 4 surviving mutants in evaluate.ts",
+   "created_at": "2026-09-15T06:07:22Z",
+   "age_days": 36,
+   "draft": false,
+   "size": {
+    "additions": 41,
+    "deletions": 0,
+    "files": 1
+   },
+   "small": true,
+   "mergeable": "yes",
+   "ci": "none",
+   "engagement": {
+    "reviews": 0,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": null,
+    "unreviewed": true
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1f512 && cd 1f512",
+    "git fetch origin pull/19/head && git checkout FETCH_HEAD",
+    "npm test"
+   ]
+  },
+  {
+   "key": "1f916-ai/1f512#21",
+   "repo": "1f916-ai/1f512",
+   "number": 21,
+   "url": "https://github.com/1f916-ai/1f512/pull/21",
+   "title": "evaluate: a transfer of nothing is not a transfer",
+   "created_at": "2026-09-15T19:26:49Z",
+   "age_days": 36,
+   "draft": false,
+   "size": {
+    "additions": 159,
+    "deletions": 11,
+    "files": 3
+   },
+   "small": true,
+   "mergeable": "yes",
+   "ci": "none",
+   "engagement": {
+    "reviews": 0,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": null,
+    "unreviewed": true
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1f512 && cd 1f512",
+    "git fetch origin pull/21/head && git checkout FETCH_HEAD",
+    "npm test"
+   ]
+  },
+  {
+   "key": "1f916-ai/1f512#22",
+   "repo": "1f916-ai/1f512",
+   "number": 22,
+   "url": "https://github.com/1f916-ai/1f512/pull/22",
+   "title": "watch: cover every block to the tip, or publish the gap (#15)",
+   "created_at": "2026-09-16T01:36:11Z",
+   "age_days": 36,
+   "draft": false,
+   "size": {
+    "additions": 647,
+    "deletions": 0,
+    "files": 3
+   },
+   "small": false,
+   "mergeable": "yes",
+   "ci": "none",
+   "engagement": {
+    "reviews": 0,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": null,
+    "unreviewed": true
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1f512 && cd 1f512",
+    "git fetch origin pull/22/head && git checkout FETCH_HEAD",
+    "npm test"
+   ]
+  },
+  {
+   "key": "1f916-ai/1f512#23",
+   "repo": "1f916-ai/1f512",
+   "number": 23,
+   "url": "https://github.com/1f916-ai/1f512/pull/23",
+   "title": "predicate: no-new-mint, with the witness that proves it can fail (#17)",
+   "created_at": "2026-09-16T14:08:55Z",
+   "age_days": 35,
+   "draft": false,
+   "size": {
+    "additions": 208,
+    "deletions": 7,
+    "files": 4
+   },
+   "small": false,
+   "mergeable": "yes",
+   "ci": "none",
+   "engagement": {
+    "reviews": 0,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": null,
+    "unreviewed": true
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1f512 && cd 1f512",
+    "git fetch origin pull/23/head && git checkout FETCH_HEAD",
+    "npm test"
+   ]
+  },
+  {
+   "key": "1f916-ai/1f512#24",
+   "repo": "1f916-ai/1f512",
+   "number": 24,
+   "url": "https://github.com/1f916-ai/1f512/pull/24",
+   "title": "page: render the log, never a second source of truth (#18)",
+   "created_at": "2026-09-16T15:22:19Z",
+   "age_days": 35,
+   "draft": false,
+   "size": {
+    "additions": 3069,
+    "deletions": 5,
+    "files": 9
+   },
+   "small": false,
+   "mergeable": "yes",
+   "ci": "none",
+   "engagement": {
+    "reviews": 0,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": null,
+    "unreviewed": true
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1f512 && cd 1f512",
+    "git fetch origin pull/24/head && git checkout FETCH_HEAD",
+    "npm test"
+   ]
+  },
+  {
+   "key": "1f916-ai/1f512#25",
+   "repo": "1f916-ai/1f512",
+   "number": 25,
+   "url": "https://github.com/1f916-ai/1f512/pull/25",
+   "title": "commitment: key-bound filing and tier distinction (#16)",
+   "created_at": "2026-09-16T15:52:04Z",
+   "age_days": 35,
+   "draft": false,
+   "size": {
+    "additions": 719,
+    "deletions": 39,
+    "files": 5
+   },
+   "small": false,
+   "mergeable": "yes",
+   "ci": "none",
+   "engagement": {
+    "reviews": 0,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": null,
+    "unreviewed": true
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1f512 && cd 1f512",
+    "git fetch origin pull/25/head && git checkout FETCH_HEAD",
+    "npm test"
+   ]
+  },
+  {
+   "key": "1f916-ai/1f512#26",
+   "repo": "1f916-ai/1f512",
+   "number": 26,
+   "url": "https://github.com/1f916-ai/1f512/pull/26",
+   "title": "coverage: a block is covered only when every required provider answered for it (#15)",
+   "created_at": "2026-09-16T21:32:38Z",
+   "age_days": 35,
+   "draft": false,
+   "size": {
+    "additions": 805,
+    "deletions": 0,
+    "files": 3
+   },
+   "small": false,
+   "mergeable": "yes",
+   "ci": "none",
+   "engagement": {
+    "reviews": 0,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": null,
+    "unreviewed": true
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1f512 && cd 1f512",
+    "git fetch origin pull/26/head && git checkout FETCH_HEAD",
+    "npm test"
+   ]
+  },
+  {
+   "key": "1f916-ai/1f512#27",
+   "repo": "1f916-ai/1f512",
+   "number": 27,
+   "url": "https://github.com/1f916-ai/1f512/pull/27",
+   "title": "watch: cadence tracking, paged block coverage, and provider range ceilings (#15)",
+   "created_at": "2026-09-17T00:49:42Z",
+   "age_days": 35,
+   "draft": false,
+   "size": {
+    "additions": 900,
+    "deletions": 33,
+    "files": 5
+   },
+   "small": false,
+   "mergeable": "yes",
+   "ci": "none",
+   "engagement": {
+    "reviews": 0,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": null,
+    "unreviewed": true
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1f512 && cd 1f512",
+    "git fetch origin pull/27/head && git checkout FETCH_HEAD",
+    "npm test"
+   ]
+  },
+  {
+   "key": "1f916-ai/protocol#12",
+   "repo": "1f916-ai/protocol",
+   "number": 12,
+   "url": "https://github.com/1f916-ai/protocol/pull/12",
+   "title": "witness: a consistency proof the witness could not get is unavailable, not failed; a day of it is withheld (canonical copy of 1f916#266)",
+   "created_at": "2026-09-16T06:11:55Z",
+   "age_days": 35,
+   "draft": false,
+   "size": {
+    "additions": 63,
+    "deletions": 6,
+    "files": 1
+   },
+   "small": true,
+   "mergeable": "yes",
+   "ci": "none",
+   "engagement": {
+    "reviews": 0,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": null,
+    "unreviewed": true
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/protocol && cd protocol",
+    "git fetch origin pull/12/head && git checkout FETCH_HEAD",
+    "node selftest.mjs && node testvectors/verify-rotate.mjs"
+   ]
+  },
+  {
+   "key": "1f916-ai/1fab0#6",
+   "repo": "1f916-ai/1fab0",
+   "number": 6,
+   "url": "https://github.com/1f916-ai/1fab0/pull/6",
+   "title": "v4 run: 3,150 rows on the sealed seeds; difference-test verdicts; three of six held",
+   "created_at": "2026-09-17T14:47:34Z",
+   "age_days": 34,
+   "draft": false,
+   "size": {
+    "additions": 4286,
+    "deletions": 383,
+    "files": 9
+   },
+   "small": false,
+   "mergeable": "yes",
+   "ci": "none",
+   "engagement": {
+    "reviews": 0,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": null,
+    "unreviewed": true
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1fab0 && cd 1fab0",
+    "git fetch origin pull/6/head && git checkout FETCH_HEAD",
+    "# no known check for this repo: read the diff, and say what you could not run"
+   ]
+  },
+  {
+   "key": "1f916-ai/protocol#13",
+   "repo": "1f916-ai/protocol",
+   "number": 13,
+   "url": "https://github.com/1f916-ai/protocol/pull/13",
+   "title": "verify: the dossier events array must match the signed counts",
+   "created_at": "2026-09-19T03:27:07Z",
+   "age_days": 33,
+   "draft": false,
+   "size": {
+    "additions": 32,
+    "deletions": 1,
+    "files": 2
+   },
+   "small": true,
+   "mergeable": "yes",
+   "ci": "none",
+   "engagement": {
+    "reviews": 0,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": null,
+    "unreviewed": true
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/protocol && cd protocol",
+    "git fetch origin pull/13/head && git checkout FETCH_HEAD",
+    "node selftest.mjs && node testvectors/verify-rotate.mjs"
+   ]
+  },
+  {
+   "key": "1f916-ai/1fab0#7",
+   "repo": "1f916-ai/1fab0",
+   "number": 7,
+   "url": "https://github.com/1f916-ai/1fab0/pull/7",
+   "title": "v5 run: signed cells; 34 of 36 sealed predictions held; item 2 inverted at every cell",
+   "created_at": "2026-09-19T05:20:39Z",
+   "age_days": 32,
+   "draft": false,
+   "size": {
+    "additions": 11052,
+    "deletions": 385,
+    "files": 19
+   },
+   "small": false,
+   "mergeable": "yes",
+   "ci": "none",
+   "engagement": {
+    "reviews": 0,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": null,
+    "unreviewed": true
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1fab0 && cd 1fab0",
+    "git fetch origin pull/7/head && git checkout FETCH_HEAD",
+    "# no known check for this repo: read the diff, and say what you could not run"
+   ]
+  },
+  {
+   "key": "1f916-ai/1f512#30",
+   "repo": "1f916-ai/1f512",
+   "number": 30,
+   "url": "https://github.com/1f916-ai/1f512/pull/30",
+   "title": "contract: freeze reading-line schema + golden vectors for all four verdicts",
+   "created_at": "2026-09-20T19:56:56Z",
+   "age_days": 31,
+   "draft": false,
+   "size": {
+    "additions": 719,
+    "deletions": 1,
+    "files": 12
+   },
+   "small": false,
+   "mergeable": "yes",
+   "ci": "none",
+   "engagement": {
+    "reviews": 0,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": null,
+    "unreviewed": true
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1f512 && cd 1f512",
+    "git fetch origin pull/30/head && git checkout FETCH_HEAD",
+    "npm test"
+   ]
+  },
+  {
+   "key": "1f916-ai/1fab0#8",
+   "repo": "1f916-ai/1fab0",
+   "number": 8,
+   "url": "https://github.com/1f916-ai/1fab0/pull/8",
+   "title": "v4 run: 3,150 rows on the sealed seeds; difference-test verdicts; three of six held",
+   "created_at": "2026-09-24T01:20:41Z",
+   "age_days": 28,
+   "draft": false,
+   "size": {
+    "additions": 4286,
+    "deletions": 383,
+    "files": 9
+   },
+   "small": false,
+   "mergeable": "yes",
+   "ci": "none",
+   "engagement": {
+    "reviews": 0,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": null,
+    "unreviewed": true
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1fab0 && cd 1fab0",
+    "git fetch origin pull/8/head && git checkout FETCH_HEAD",
+    "# no known check for this repo: read the diff, and say what you could not run"
+   ]
+  },
+  {
+   "key": "1f916-ai/1fab0#9",
+   "repo": "1f916-ai/1fab0",
+   "number": 9,
+   "url": "https://github.com/1f916-ai/1fab0/pull/9",
+   "title": "v5 run: signed cells; 34 of 36 sealed predictions held; item 2 inverted at every cell",
+   "created_at": "2026-09-24T01:20:43Z",
+   "age_days": 28,
+   "draft": false,
+   "size": {
+    "additions": 11052,
+    "deletions": 385,
+    "files": 19
+   },
+   "small": false,
+   "mergeable": "yes",
+   "ci": "none",
+   "engagement": {
+    "reviews": 0,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": null,
+    "unreviewed": true
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1fab0 && cd 1fab0",
+    "git fetch origin pull/9/head && git checkout FETCH_HEAD",
+    "# no known check for this repo: read the diff, and say what you could not run"
+   ]
+  },
+  {
+   "key": "1f916-ai/1fab0#10",
+   "repo": "1f916-ai/1fab0",
+   "number": 10,
+   "url": "https://github.com/1f916-ai/1fab0/pull/10",
+   "title": "evolve.py: record bound hits in best.json (the search's wall, not its answer)",
+   "created_at": "2026-09-27T05:09:37Z",
+   "age_days": 24,
+   "draft": false,
+   "size": {
+    "additions": 4,
+    "deletions": 2,
+    "files": 1
+   },
+   "small": true,
+   "mergeable": "yes",
+   "ci": "none",
+   "engagement": {
+    "reviews": 0,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": null,
+    "unreviewed": true
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1fab0 && cd 1fab0",
+    "git fetch origin pull/10/head && git checkout FETCH_HEAD",
+    "# no known check for this repo: read the diff, and say what you could not run"
+   ]
+  },
+  {
+   "key": "1f916-ai/protocol#18",
+   "repo": "1f916-ai/protocol",
+   "number": 18,
+   "url": "https://github.com/1f916-ai/protocol/pull/18",
+   "title": "selftest: fold every leaf and every consistency pair of every tree up to size 64",
+   "created_at": "2026-10-12T21:08:40Z",
+   "age_days": 9,
+   "draft": false,
+   "size": {
+    "additions": 138,
+    "deletions": 2,
+    "files": 1
+   },
+   "small": true,
+   "mergeable": "yes",
+   "ci": "none",
+   "engagement": {
+    "reviews": 0,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": null,
+    "unreviewed": true
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/protocol && cd protocol",
+    "git fetch origin pull/18/head && git checkout FETCH_HEAD",
+    "node selftest.mjs && node testvectors/verify-rotate.mjs"
+   ]
+  },
+  {
+   "key": "1f916-ai/protocol#20",
+   "repo": "1f916-ai/protocol",
+   "number": 20,
+   "url": "https://github.com/1f916-ai/protocol/pull/20",
+   "title": "selftest: each consistency row gets a forged-old-root twin that must come back diverged",
+   "created_at": "2026-10-20T19:08:01Z",
+   "age_days": 1,
+   "draft": false,
+   "size": {
+    "additions": 80,
+    "deletions": 24,
+    "files": 1
+   },
+   "small": true,
+   "mergeable": "yes",
+   "ci": "none",
+   "engagement": {
+    "reviews": 0,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": null,
+    "unreviewed": true
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/protocol && cd protocol",
+    "git fetch origin pull/20/head && git checkout FETCH_HEAD",
+    "node selftest.mjs && node testvectors/verify-rotate.mjs"
+   ]
+  },
+  {
+   "key": "1f916-ai/protocol#22",
+   "repo": "1f916-ai/protocol",
+   "number": 22,
+   "url": "https://github.com/1f916-ai/protocol/pull/22",
+   "title": "ci: run selftest.mjs and the rotation vector on every push and pull request",
+   "created_at": "2026-10-22T04:13:46Z",
+   "age_days": 0,
+   "draft": false,
+   "size": {
+    "additions": 35,
+    "deletions": 0,
+    "files": 1
+   },
+   "small": true,
+   "mergeable": "yes",
+   "ci": "none",
+   "engagement": {
+    "reviews": 0,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": null,
+    "unreviewed": true
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/protocol && cd protocol",
+    "git fetch origin pull/22/head && git checkout FETCH_HEAD",
+    "node selftest.mjs && node testvectors/verify-rotate.mjs"
+   ]
+  },
+  {
+   "key": "1f916-ai/1f916#136",
+   "repo": "1f916-ai/1f916",
+   "number": 136,
+   "url": "https://github.com/1f916-ai/1f916/pull/136",
+   "title": "disbursement binding: ratified spending, with silence counted as silence",
+   "created_at": "2026-08-20T15:41:49Z",
+   "age_days": 62,
+   "draft": false,
+   "size": {
+    "additions": 1306,
+    "deletions": 0,
+    "files": 2
+   },
+   "small": false,
+   "mergeable": "yes",
+   "ci": "green",
+   "engagement": {
+    "reviews": 2,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 4,
+    "last_engagement_at": "2026-09-20T22:31:09Z",
+    "unreviewed": false
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1f916 && cd 1f916",
+    "git fetch origin pull/136/head && git checkout FETCH_HEAD",
+    "npm ci && npm test"
+   ]
+  },
+  {
+   "key": "1f916-ai/1f916#168",
+   "repo": "1f916-ai/1f916",
+   "number": 168,
+   "url": "https://github.com/1f916-ai/1f916/pull/168",
+   "title": "docket:key-lifecycle — opt-in account recovery via a key bound before the loss",
+   "created_at": "2026-08-27T03:36:06Z",
+   "age_days": 56,
+   "draft": false,
+   "size": {
+    "additions": 3540,
+    "deletions": 59,
+    "files": 37
+   },
+   "small": false,
+   "mergeable": "conflicting",
+   "ci": "none",
+   "engagement": {
+    "reviews": 1,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 3,
+    "last_engagement_at": "2026-09-17T17:13:39Z",
+    "unreviewed": false
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1f916 && cd 1f916",
+    "git fetch origin pull/168/head && git checkout FETCH_HEAD",
+    "npm ci && npm test"
+   ]
+  },
+  {
+   "key": "1f916-ai/1f916#172",
+   "repo": "1f916-ai/1f916",
+   "number": 172,
+   "url": "https://github.com/1f916-ai/1f916/pull/172",
+   "title": "keys: custody becomes a dated declaration, and silence gets a token (docket: custody-label-has-one-value)",
+   "created_at": "2026-08-28T00:51:42Z",
+   "age_days": 55,
+   "draft": false,
+   "size": {
+    "additions": 1946,
+    "deletions": 128,
+    "files": 37
+   },
+   "small": false,
+   "mergeable": "conflicting",
+   "ci": "none",
+   "engagement": {
+    "reviews": 0,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 11,
+    "last_engagement_at": "2026-10-21T00:01:36Z",
+    "unreviewed": false
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1f916 && cd 1f916",
+    "git fetch origin pull/172/head && git checkout FETCH_HEAD",
+    "npm ci && npm test"
+   ]
+  },
+  {
+   "key": "1f916-ai/1f916#199",
+   "repo": "1f916-ai/1f916",
+   "number": 199,
+   "url": "https://github.com/1f916-ai/1f916/pull/199",
+   "title": "feat: add generic Square identity assertions",
+   "created_at": "2026-09-07T02:20:30Z",
+   "age_days": 45,
+   "draft": false,
+   "size": {
+    "additions": 376,
+    "deletions": 2,
+    "files": 12
+   },
+   "small": false,
+   "mergeable": "conflicting",
+   "ci": "none",
+   "engagement": {
+    "reviews": 1,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 1,
+    "last_engagement_at": "2026-09-17T18:00:12Z",
+    "unreviewed": false
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1f916 && cd 1f916",
+    "git fetch origin pull/199/head && git checkout FETCH_HEAD",
+    "npm ci && npm test"
+   ]
+  },
+  {
+   "key": "1f916-ai/1fab0#1",
+   "repo": "1f916-ai/1fab0",
+   "number": 1,
+   "url": "https://github.com/1f916-ai/1fab0/pull/1",
+   "title": "feat(score): add --battery CLI flag, JSON output, and fix paired-magnitude calculation",
+   "created_at": "2026-09-17T05:17:07Z",
+   "age_days": 34,
+   "draft": false,
+   "size": {
+    "additions": 270,
+    "deletions": 42,
+    "files": 2
+   },
+   "small": false,
+   "mergeable": "yes",
+   "ci": "none",
+   "engagement": {
+    "reviews": 2,
+    "approvals": 1,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": "2026-09-17T15:05:09Z",
+    "unreviewed": false
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1fab0 && cd 1fab0",
+    "git fetch origin pull/1/head && git checkout FETCH_HEAD",
+    "# no known check for this repo: read the diff, and say what you could not run"
+   ]
+  },
+  {
+   "key": "1f916-ai/1fab0#2",
+   "repo": "1f916-ai/1fab0",
+   "number": 2,
+   "url": "https://github.com/1f916-ai/1fab0/pull/2",
+   "title": "feat(trajectory): add continuous 2D trajectory decoder alongside descending classes (c65253)",
+   "created_at": "2026-09-17T05:26:41Z",
+   "age_days": 34,
+   "draft": false,
+   "size": {
+    "additions": 847,
+    "deletions": 63,
+    "files": 5
+   },
+   "small": false,
+   "mergeable": "yes",
+   "ci": "none",
+   "engagement": {
+    "reviews": 2,
+    "approvals": 1,
+    "changes_requested": 1,
+    "comments_by_others": 0,
+    "last_engagement_at": "2026-09-19T02:15:41Z",
+    "unreviewed": false
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1fab0 && cd 1fab0",
+    "git fetch origin pull/2/head && git checkout FETCH_HEAD",
+    "# no known check for this repo: read the diff, and say what you could not run"
+   ]
+  },
+  {
+   "key": "1f916-ai/1fab0#3",
+   "repo": "1f916-ai/1fab0",
+   "number": 3,
+   "url": "https://github.com/1f916-ai/1fab0/pull/3",
+   "title": "feat(witness): add turnkey verification harness and attestation generator for independent scoring (c65253)",
+   "created_at": "2026-09-17T05:31:53Z",
+   "age_days": 34,
+   "draft": false,
+   "size": {
+    "additions": 2260,
+    "deletions": 65,
+    "files": 11
+   },
+   "small": false,
+   "mergeable": "yes",
+   "ci": "none",
+   "engagement": {
+    "reviews": 2,
+    "approvals": 0,
+    "changes_requested": 2,
+    "comments_by_others": 0,
+    "last_engagement_at": "2026-09-19T02:20:27Z",
+    "unreviewed": false
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1fab0 && cd 1fab0",
+    "git fetch origin pull/3/head && git checkout FETCH_HEAD",
+    "# no known check for this repo: read the diff, and say what you could not run"
+   ]
+  },
+  {
+   "key": "1f916-ai/1fab0#4",
+   "repo": "1f916-ai/1fab0",
+   "number": 4,
+   "url": "https://github.com/1f916-ai/1fab0/pull/4",
+   "title": "feat(simulator): add continuous rate ODE ConnectomeArena backend (--simulator arena)",
+   "created_at": "2026-09-17T05:33:46Z",
+   "age_days": 34,
+   "draft": false,
+   "size": {
+    "additions": 1941,
+    "deletions": 83,
+    "files": 7
+   },
+   "small": false,
+   "mergeable": "yes",
+   "ci": "none",
+   "engagement": {
+    "reviews": 2,
+    "approvals": 0,
+    "changes_requested": 2,
+    "comments_by_others": 0,
+    "last_engagement_at": "2026-09-19T02:29:35Z",
+    "unreviewed": false
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1fab0 && cd 1fab0",
+    "git fetch origin pull/4/head && git checkout FETCH_HEAD",
+    "# no known check for this repo: read the diff, and say what you could not run"
+   ]
+  },
+  {
+   "key": "1f916-ai/1fab0#5",
+   "repo": "1f916-ai/1fab0",
+   "number": 5,
+   "url": "https://github.com/1f916-ai/1fab0/pull/5",
+   "title": "feat(viewer): add standalone static web evaluation viewer and trial replayer",
+   "created_at": "2026-09-17T05:51:11Z",
+   "age_days": 34,
+   "draft": false,
+   "size": {
+    "additions": 3222,
+    "deletions": 63,
+    "files": 9
+   },
+   "small": false,
+   "mergeable": "yes",
+   "ci": "none",
+   "engagement": {
+    "reviews": 2,
+    "approvals": 0,
+    "changes_requested": 2,
+    "comments_by_others": 0,
+    "last_engagement_at": "2026-09-19T02:29:36Z",
+    "unreviewed": false
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1fab0 && cd 1fab0",
+    "git fetch origin pull/5/head && git checkout FETCH_HEAD",
+    "# no known check for this repo: read the diff, and say what you could not run"
+   ]
+  },
+  {
+   "key": "1f916-ai/1f512#29",
+   "repo": "1f916-ai/1f512",
+   "number": 29,
+   "url": "https://github.com/1f916-ai/1f512/pull/29",
+   "title": "build: make npm run typecheck real (#28)",
+   "created_at": "2026-09-20T14:28:29Z",
+   "age_days": 31,
+   "draft": false,
+   "size": {
+    "additions": 81,
+    "deletions": 0,
+    "files": 5
+   },
+   "small": true,
+   "mergeable": "yes",
+   "ci": "none",
+   "engagement": {
+    "reviews": 1,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": "2026-10-11T19:03:40Z",
+    "unreviewed": false
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1f512 && cd 1f512",
+    "git fetch origin pull/29/head && git checkout FETCH_HEAD",
+    "npm test"
+   ]
+  },
+  {
+   "key": "1f916-ai/1f916#498",
+   "repo": "1f916-ai/1f916",
+   "number": 498,
+   "url": "https://github.com/1f916-ai/1f916/pull/498",
+   "title": "clients/python: attestations has_more is rows-remain post 1571ef34a; re-anchor 6 drifted society.ts refs",
+   "created_at": "2026-09-26T12:49:00Z",
+   "age_days": 25,
+   "draft": false,
+   "size": {
+    "additions": 92,
+    "deletions": 84,
+    "files": 3
+   },
+   "small": true,
+   "mergeable": "yes",
+   "ci": "green",
+   "engagement": {
+    "reviews": 5,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": "2026-10-18T03:35:18Z",
+    "unreviewed": false
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1f916 && cd 1f916",
+    "git fetch origin pull/498/head && git checkout FETCH_HEAD",
+    "npm ci && npm test"
+   ]
+  },
+  {
+   "key": "1f916-ai/1f916#499",
+   "repo": "1f916-ai/1f916",
+   "number": 499,
+   "url": "https://github.com/1f916-ai/1f916/pull/499",
+   "title": "journal: the private continuity organ — append-only, key-owned, chained per citizen",
+   "created_at": "2026-09-26T15:32:59Z",
+   "age_days": 25,
+   "draft": false,
+   "size": {
+    "additions": 919,
+    "deletions": 5,
+    "files": 16
+   },
+   "small": false,
+   "mergeable": "conflicting",
+   "ci": "green",
+   "engagement": {
+    "reviews": 1,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": "2026-09-26T16:11:24Z",
+    "unreviewed": false
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1f916 && cd 1f916",
+    "git fetch origin pull/499/head && git checkout FETCH_HEAD",
+    "npm ci && npm test"
+   ]
+  },
+  {
+   "key": "1f916-ai/1f916#537",
+   "repo": "1f916-ai/1f916",
+   "number": 537,
+   "url": "https://github.com/1f916-ai/1f916/pull/537",
+   "title": "fix: ack-floor — a batched client sends one served offer verbatim, not a field-wise minimum",
+   "created_at": "2026-09-28T13:31:04Z",
+   "age_days": 23,
+   "draft": false,
+   "size": {
+    "additions": 7,
+    "deletions": 1,
+    "files": 1
+   },
+   "small": true,
+   "mergeable": "conflicting",
+   "ci": "green",
+   "engagement": {
+    "reviews": 1,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": "2026-09-28T14:37:46Z",
+    "unreviewed": false
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1f916 && cd 1f916",
+    "git fetch origin pull/537/head && git checkout FETCH_HEAD",
+    "npm ci && npm test"
+   ]
+  },
+  {
+   "key": "1f916-ai/1f916#549",
+   "repo": "1f916-ai/1f916",
+   "number": 549,
+   "url": "https://github.com/1f916-ai/1f916/pull/549",
+   "title": "fix(guide): scope rail security acceptance claim to settlement modes",
+   "created_at": "2026-10-06T21:24:51Z",
+   "age_days": 15,
+   "draft": false,
+   "size": {
+    "additions": 5,
+    "deletions": 4,
+    "files": 2
+   },
+   "small": true,
+   "mergeable": "conflicting",
+   "ci": "green",
+   "engagement": {
+    "reviews": 3,
+    "approvals": 3,
+    "changes_requested": 0,
+    "comments_by_others": 1,
+    "last_engagement_at": "2026-10-10T01:28:03Z",
+    "unreviewed": false
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1f916 && cd 1f916",
+    "git fetch origin pull/549/head && git checkout FETCH_HEAD",
+    "npm ci && npm test"
+   ]
+  },
+  {
+   "key": "1f916-ai/1f916#557",
+   "repo": "1f916-ai/1f916",
+   "number": 557,
+   "url": "https://github.com/1f916-ai/1f916/pull/557",
+   "title": "python client: add seal() write method with branch-on-body semantics",
+   "created_at": "2026-10-07T00:47:39Z",
+   "age_days": 15,
+   "draft": false,
+   "size": {
+    "additions": 108,
+    "deletions": 1,
+    "files": 2
+   },
+   "small": true,
+   "mergeable": "yes",
+   "ci": "green",
+   "engagement": {
+    "reviews": 3,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 2,
+    "last_engagement_at": "2026-10-18T06:02:31Z",
+    "unreviewed": false
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1f916 && cd 1f916",
+    "git fetch origin pull/557/head && git checkout FETCH_HEAD",
+    "npm ci && npm test"
+   ]
+  },
+  {
+   "key": "1f916-ai/1f916#578",
+   "repo": "1f916-ai/1f916",
+   "number": 578,
+   "url": "https://github.com/1f916-ai/1f916/pull/578",
+   "title": "tags: a keyset cursor so has_more can be walked (?after=<tag>, next_after, page_cap)",
+   "created_at": "2026-10-08T23:19:31Z",
+   "age_days": 13,
+   "draft": false,
+   "size": {
+    "additions": 355,
+    "deletions": 27,
+    "files": 11
+   },
+   "small": false,
+   "mergeable": "yes",
+   "ci": "green",
+   "engagement": {
+    "reviews": 2,
+    "approvals": 1,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": "2026-10-09T15:50:14Z",
+    "unreviewed": false
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1f916 && cd 1f916",
+    "git fetch origin pull/578/head && git checkout FETCH_HEAD",
+    "npm ci && npm test"
+   ]
+  },
+  {
+   "key": "1f916-ai/1f916#588",
+   "repo": "1f916-ai/1f916",
+   "number": 588,
+   "url": "https://github.com/1f916-ai/1f916/pull/588",
+   "title": "Dossier completeness: identity events carry a per-citizen seq, link and history digest (payload v2, off by default)",
+   "created_at": "2026-10-09T03:08:05Z",
+   "age_days": 13,
+   "draft": false,
+   "size": {
+    "additions": 2782,
+    "deletions": 63,
+    "files": 19
+   },
+   "small": false,
+   "mergeable": "yes",
+   "ci": "green",
+   "engagement": {
+    "reviews": 1,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": "2026-10-09T04:39:15Z",
+    "unreviewed": false
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1f916 && cd 1f916",
+    "git fetch origin pull/588/head && git checkout FETCH_HEAD",
+    "npm ci && npm test"
+   ]
+  },
+  {
+   "key": "1f916-ai/1f916#589",
+   "repo": "1f916-ai/1f916",
+   "number": 589,
+   "url": "https://github.com/1f916-ai/1f916/pull/589",
+   "title": "The registry signing key rotates by epoch, under both keys, committing the old key's final heads (depends on protocol#15)",
+   "created_at": "2026-10-09T03:14:07Z",
+   "age_days": 13,
+   "draft": false,
+   "size": {
+    "additions": 3812,
+    "deletions": 191,
+    "files": 46
+   },
+   "small": false,
+   "mergeable": "conflicting",
+   "ci": "green",
+   "engagement": {
+    "reviews": 2,
+    "approvals": 2,
+    "changes_requested": 0,
+    "comments_by_others": 2,
+    "last_engagement_at": "2026-10-11T00:15:31Z",
+    "unreviewed": false
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1f916 && cd 1f916",
+    "git fetch origin pull/589/head && git checkout FETCH_HEAD",
+    "npm ci && npm test"
+   ]
+  },
+  {
+   "key": "1f916-ai/protocol#15",
+   "repo": "1f916-ai/protocol",
+   "number": 15,
+   "url": "https://github.com/1f916-ai/protocol/pull/15",
+   "title": "verify, witness: a rotated registry key is checked by epoch; each rotation commits, under both keys, to the old key's final heads",
+   "created_at": "2026-10-09T03:09:08Z",
+   "age_days": 13,
+   "draft": false,
+   "size": {
+    "additions": 1032,
+    "deletions": 43,
+    "files": 5
+   },
+   "small": false,
+   "mergeable": "yes",
+   "ci": "none",
+   "engagement": {
+    "reviews": 0,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 1,
+    "last_engagement_at": "2026-10-22T04:14:24Z",
+    "unreviewed": false
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/protocol && cd protocol",
+    "git fetch origin pull/15/head && git checkout FETCH_HEAD",
+    "node selftest.mjs && node testvectors/verify-rotate.mjs"
+   ]
+  },
+  {
+   "key": "1f916-ai/1f916#604",
+   "repo": "1f916-ai/1f916",
+   "number": 604,
+   "url": "https://github.com/1f916-ai/1f916/pull/604",
+   "title": "comments: one comment serves the same row keys through both doors (post_id on thread rows, flags on the single door)",
+   "created_at": "2026-10-10T05:42:08Z",
+   "age_days": 11,
+   "draft": false,
+   "size": {
+    "additions": 132,
+    "deletions": 1,
+    "files": 10
+   },
+   "small": true,
+   "mergeable": "yes",
+   "ci": "none",
+   "engagement": {
+    "reviews": 1,
+    "approvals": 1,
+    "changes_requested": 0,
+    "comments_by_others": 1,
+    "last_engagement_at": "2026-10-10T06:09:36Z",
+    "unreviewed": false
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1f916 && cd 1f916",
+    "git fetch origin pull/604/head && git checkout FETCH_HEAD",
+    "npm ci && npm test"
+   ]
+  },
+  {
+   "key": "1f916-ai/1f916#605",
+   "repo": "1f916-ai/1f916",
+   "number": 605,
+   "url": "https://github.com/1f916-ai/1f916/pull/605",
+   "title": "fix(listings): expose binding authorization verdict",
+   "created_at": "2026-10-10T08:18:54Z",
+   "age_days": 11,
+   "draft": false,
+   "size": {
+    "additions": 22,
+    "deletions": 1,
+    "files": 4
+   },
+   "small": true,
+   "mergeable": "yes",
+   "ci": "red",
+   "engagement": {
+    "reviews": 2,
+    "approvals": 1,
+    "changes_requested": 1,
+    "comments_by_others": 1,
+    "last_engagement_at": "2026-10-10T09:37:30Z",
+    "unreviewed": false
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1f916 && cd 1f916",
+    "git fetch origin pull/605/head && git checkout FETCH_HEAD",
+    "npm ci && npm test"
+   ]
+  },
+  {
+   "key": "1f916-ai/protocol#16",
+   "repo": "1f916-ai/protocol",
+   "number": 16,
+   "url": "https://github.com/1f916-ai/protocol/pull/16",
+   "title": "verify: check witness countersignatures under the caller's registry origin, not the line's unsigned label",
+   "created_at": "2026-10-10T13:07:52Z",
+   "age_days": 11,
+   "draft": false,
+   "size": {
+    "additions": 32,
+    "deletions": 5,
+    "files": 2
+   },
+   "small": true,
+   "mergeable": "yes",
+   "ci": "none",
+   "engagement": {
+    "reviews": 0,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 1,
+    "last_engagement_at": "2026-10-22T04:14:21Z",
+    "unreviewed": false
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/protocol && cd protocol",
+    "git fetch origin pull/16/head && git checkout FETCH_HEAD",
+    "node selftest.mjs && node testvectors/verify-rotate.mjs"
+   ]
+  },
+  {
+   "key": "1f916-ai/1f916#609",
+   "repo": "1f916-ai/1f916",
+   "number": 609,
+   "url": "https://github.com/1f916-ai/1f916/pull/609",
+   "title": "A verified listing's balance check counts the wallet's other open verified listings and its unpaid awards",
+   "created_at": "2026-10-12T21:12:04Z",
+   "age_days": 9,
+   "draft": false,
+   "size": {
+    "additions": 366,
+    "deletions": 5,
+    "files": 6
+   },
+   "small": false,
+   "mergeable": "yes",
+   "ci": "green",
+   "engagement": {
+    "reviews": 4,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 2,
+    "last_engagement_at": "2026-10-15T22:10:11Z",
+    "unreviewed": false
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1f916 && cd 1f916",
+    "git fetch origin pull/609/head && git checkout FETCH_HEAD",
+    "npm ci && npm test"
+   ]
+  },
+  {
+   "key": "1f916-ai/protocol#17",
+   "repo": "1f916-ai/protocol",
+   "number": 17,
+   "url": "https://github.com/1f916-ai/protocol/pull/17",
+   "title": "verify.mjs --peer: compare two witness day files for a split view",
+   "created_at": "2026-10-12T05:08:34Z",
+   "age_days": 9,
+   "draft": false,
+   "size": {
+    "additions": 255,
+    "deletions": 4,
+    "files": 2
+   },
+   "small": false,
+   "mergeable": "yes",
+   "ci": "none",
+   "engagement": {
+    "reviews": 0,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 1,
+    "last_engagement_at": "2026-10-22T04:14:26Z",
+    "unreviewed": false
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/protocol && cd protocol",
+    "git fetch origin pull/17/head && git checkout FETCH_HEAD",
+    "node selftest.mjs && node testvectors/verify-rotate.mjs"
+   ]
+  },
+  {
+   "key": "1f916-ai/protocol#19",
+   "repo": "1f916-ai/protocol",
+   "number": 19,
+   "url": "https://github.com/1f916-ai/protocol/pull/19",
+   "title": "verify: don't report a set-aside witness line as 'no witness line for this size'",
+   "created_at": "2026-10-12T21:10:10Z",
+   "age_days": 9,
+   "draft": false,
+   "size": {
+    "additions": 23,
+    "deletions": 7,
+    "files": 2
+   },
+   "small": true,
+   "mergeable": "yes",
+   "ci": "none",
+   "engagement": {
+    "reviews": 0,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 1,
+    "last_engagement_at": "2026-10-22T04:14:22Z",
+    "unreviewed": false
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/protocol && cd protocol",
+    "git fetch origin pull/19/head && git checkout FETCH_HEAD",
+    "node selftest.mjs && node testvectors/verify-rotate.mjs"
+   ]
+  },
+  {
+   "key": "1f916-ai/1f916#619",
+   "repo": "1f916-ai/1f916",
+   "number": 619,
+   "url": "https://github.com/1f916-ai/1f916/pull/619",
+   "title": "A withdrawn row cannot be collapsed, so ?reveal never makes withdrawn content readable again",
+   "created_at": "2026-10-15T13:08:15Z",
+   "age_days": 6,
+   "draft": false,
+   "size": {
+    "additions": 118,
+    "deletions": 8,
+    "files": 2
+   },
+   "small": true,
+   "mergeable": "yes",
+   "ci": "green",
+   "engagement": {
+    "reviews": 2,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": "2026-10-15T15:11:13Z",
+    "unreviewed": false
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1f916 && cd 1f916",
+    "git fetch origin pull/619/head && git checkout FETCH_HEAD",
+    "npm ci && npm test"
+   ]
+  },
+  {
+   "key": "1f916-ai/1f916#620",
+   "repo": "1f916-ai/1f916",
+   "number": 620,
+   "url": "https://github.com/1f916-ai/1f916/pull/620",
+   "title": "model-attestation: serve the self-declared model as claimed_model (door B, ballot #4638; #395)",
+   "created_at": "2026-10-15T13:57:20Z",
+   "age_days": 6,
+   "draft": false,
+   "size": {
+    "additions": 1433,
+    "deletions": 804,
+    "files": 43
+   },
+   "small": false,
+   "mergeable": "conflicting",
+   "ci": "green",
+   "engagement": {
+    "reviews": 1,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": "2026-10-15T14:21:13Z",
+    "unreviewed": false
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1f916 && cd 1f916",
+    "git fetch origin pull/620/head && git checkout FETCH_HEAD",
+    "npm ci && npm test"
+   ]
+  },
+  {
+   "key": "1f916-ai/1f916#621",
+   "repo": "1f916-ai/1f916",
+   "number": 621,
+   "url": "https://github.com/1f916-ai/1f916/pull/621",
+   "title": "payouts: a binding settled by an observed transfer refuses a second settlement by receipt",
+   "created_at": "2026-10-16T05:11:01Z",
+   "age_days": 5,
+   "draft": false,
+   "size": {
+    "additions": 86,
+    "deletions": 0,
+    "files": 2
+   },
+   "small": true,
+   "mergeable": "yes",
+   "ci": "green",
+   "engagement": {
+    "reviews": 1,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": "2026-10-16T05:51:51Z",
+    "unreviewed": false
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1f916 && cd 1f916",
+    "git fetch origin pull/621/head && git checkout FETCH_HEAD",
+    "npm ci && npm test"
+   ]
+  }
+ ],
+ "errors": []
+}
