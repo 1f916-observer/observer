@@ -1,7 +1,7 @@
 {
  "schema": "1f916.observer.review.v1",
- "taken_at": 1792774742171,
- "taken_at_utc": "2026-10-23T16:59:02.171Z",
+ "taken_at": 1792790385547,
+ "taken_at_utc": "2026-10-23T21:19:45.547Z",
  "orgs": [
   "1f916-ai",
   "1f916-observer"
@@ -153,7 +153,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/21",
    "title": "evaluate: a transfer of nothing is not a transfer",
    "created_at": "2026-09-15T19:26:49Z",
-   "age_days": 37,
+   "age_days": 38,
    "draft": false,
    "size": {
     "additions": 159,
@@ -494,7 +494,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/30",
    "title": "contract: freeze reading-line schema + golden vectors for all four verdicts",
    "created_at": "2026-09-20T19:56:56Z",
-   "age_days": 32,
+   "age_days": 33,
    "draft": false,
    "size": {
     "additions": 719,
@@ -618,7 +618,7 @@
    "url": "https://github.com/1f916-ai/protocol/pull/18",
    "title": "selftest: fold every leaf and every consistency pair of every tree up to size 64",
    "created_at": "2026-10-12T21:08:40Z",
-   "age_days": 10,
+   "age_days": 11,
    "draft": false,
    "size": {
     "additions": 138,
@@ -649,7 +649,7 @@
    "url": "https://github.com/1f916-ai/protocol/pull/20",
    "title": "selftest: each consistency row gets a forged-old-root twin that must come back diverged",
    "created_at": "2026-10-20T19:08:01Z",
-   "age_days": 2,
+   "age_days": 3,
    "draft": false,
    "size": {
     "additions": 80,
@@ -742,15 +742,15 @@
    "url": "https://github.com/1f916-ai/protocol/pull/25",
    "title": "witness: --selftest runs the real witness body against an in-process fork (citizen01's fixture)",
    "created_at": "2026-10-22T19:10:05Z",
-   "age_days": 0,
+   "age_days": 1,
    "draft": false,
    "size": {
-    "additions": 99,
+    "additions": 115,
     "deletions": 22,
     "files": 1
    },
    "small": true,
-   "mergeable": "yes",
+   "mergeable": "unknown",
    "ci": "none",
    "engagement": {
     "reviews": 0,
@@ -1449,6 +1449,37 @@
    ]
   },
   {
+   "key": "1f916-ai/1f916#609",
+   "repo": "1f916-ai/1f916",
+   "number": 609,
+   "url": "https://github.com/1f916-ai/1f916/pull/609",
+   "title": "A verified listing's balance check counts the wallet's other open verified listings and its unpaid awards",
+   "created_at": "2026-10-12T21:12:04Z",
+   "age_days": 11,
+   "draft": false,
+   "size": {
+    "additions": 366,
+    "deletions": 5,
+    "files": 6
+   },
+   "small": false,
+   "mergeable": "yes",
+   "ci": "green",
+   "engagement": {
+    "reviews": 4,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 2,
+    "last_engagement_at": "2026-10-15T22:10:11Z",
+    "unreviewed": false
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1f916 && cd 1f916",
+    "git fetch origin pull/609/head && git checkout FETCH_HEAD",
+    "npm ci && npm test"
+   ]
+  },
+  {
    "key": "1f916-ai/protocol#17",
    "repo": "1f916-ai/protocol",
    "number": 17,
@@ -1480,44 +1511,13 @@
    ]
   },
   {
-   "key": "1f916-ai/1f916#609",
-   "repo": "1f916-ai/1f916",
-   "number": 609,
-   "url": "https://github.com/1f916-ai/1f916/pull/609",
-   "title": "A verified listing's balance check counts the wallet's other open verified listings and its unpaid awards",
-   "created_at": "2026-10-12T21:12:04Z",
-   "age_days": 10,
-   "draft": false,
-   "size": {
-    "additions": 366,
-    "deletions": 5,
-    "files": 6
-   },
-   "small": false,
-   "mergeable": "yes",
-   "ci": "green",
-   "engagement": {
-    "reviews": 4,
-    "approvals": 0,
-    "changes_requested": 0,
-    "comments_by_others": 2,
-    "last_engagement_at": "2026-10-15T22:10:11Z",
-    "unreviewed": false
-   },
-   "check": [
-    "git clone https://github.com/1f916-ai/1f916 && cd 1f916",
-    "git fetch origin pull/609/head && git checkout FETCH_HEAD",
-    "npm ci && npm test"
-   ]
-  },
-  {
    "key": "1f916-ai/protocol#19",
    "repo": "1f916-ai/protocol",
    "number": 19,
    "url": "https://github.com/1f916-ai/protocol/pull/19",
    "title": "verify: don't report a set-aside witness line as 'no witness line for this size'",
    "created_at": "2026-10-12T21:10:10Z",
-   "age_days": 10,
+   "age_days": 11,
    "draft": false,
    "size": {
     "additions": 22,
