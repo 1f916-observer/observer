@@ -1,7 +1,7 @@
 {
  "schema": "1f916.observer.review.v1",
- "taken_at": 1792730242931,
- "taken_at_utc": "2026-10-23T04:37:22.931Z",
+ "taken_at": 1792755030244,
+ "taken_at_utc": "2026-10-23T11:30:30.244Z",
  "orgs": [
   "1f916-ai",
   "1f916-observer"
@@ -35,13 +35,13 @@
    "1f916-ai/1f512": {
     "open": 10,
     "unreviewed": 9,
-    "oldest_days": 37,
+    "oldest_days": 38,
     "ci_none": 10
    },
    "1f916-ai/1fab0": {
     "open": 10,
     "unreviewed": 5,
-    "oldest_days": 35,
+    "oldest_days": 36,
     "ci_none": 10
    },
    "1f916-ai/1f916": {
@@ -122,7 +122,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/19",
    "title": "test: add boundary guards killing 4 surviving mutants in evaluate.ts",
    "created_at": "2026-09-15T06:07:22Z",
-   "age_days": 37,
+   "age_days": 38,
    "draft": false,
    "size": {
     "additions": 41,
@@ -206,6 +206,37 @@
     "git clone https://github.com/1f916-ai/1f512 && cd 1f512",
     "git fetch origin pull/22/head && git checkout FETCH_HEAD",
     "npm test"
+   ]
+  },
+  {
+   "key": "1f916-ai/protocol#12",
+   "repo": "1f916-ai/protocol",
+   "number": 12,
+   "url": "https://github.com/1f916-ai/protocol/pull/12",
+   "title": "witness: a consistency proof the witness could not get is unavailable, not failed; a day of it is withheld (canonical copy of 1f916#266)",
+   "created_at": "2026-09-16T06:11:55Z",
+   "age_days": 37,
+   "draft": false,
+   "size": {
+    "additions": 63,
+    "deletions": 6,
+    "files": 1
+   },
+   "small": true,
+   "mergeable": "yes",
+   "ci": "none",
+   "engagement": {
+    "reviews": 0,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": null,
+    "unreviewed": true
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/protocol && cd protocol",
+    "git fetch origin pull/12/head && git checkout FETCH_HEAD",
+    "node selftest.mjs && node testvectors/verify-rotate.mjs"
    ]
   },
   {
@@ -364,37 +395,6 @@
    ]
   },
   {
-   "key": "1f916-ai/protocol#12",
-   "repo": "1f916-ai/protocol",
-   "number": 12,
-   "url": "https://github.com/1f916-ai/protocol/pull/12",
-   "title": "witness: a consistency proof the witness could not get is unavailable, not failed; a day of it is withheld (canonical copy of 1f916#266)",
-   "created_at": "2026-09-16T06:11:55Z",
-   "age_days": 36,
-   "draft": false,
-   "size": {
-    "additions": 63,
-    "deletions": 6,
-    "files": 1
-   },
-   "small": true,
-   "mergeable": "yes",
-   "ci": "none",
-   "engagement": {
-    "reviews": 0,
-    "approvals": 0,
-    "changes_requested": 0,
-    "comments_by_others": 0,
-    "last_engagement_at": null,
-    "unreviewed": true
-   },
-   "check": [
-    "git clone https://github.com/1f916-ai/protocol && cd protocol",
-    "git fetch origin pull/12/head && git checkout FETCH_HEAD",
-    "node selftest.mjs && node testvectors/verify-rotate.mjs"
-   ]
-  },
-  {
    "key": "1f916-ai/1fab0#6",
    "repo": "1f916-ai/1fab0",
    "number": 6,
@@ -422,6 +422,37 @@
    "check": [
     "git clone https://github.com/1f916-ai/1fab0 && cd 1fab0",
     "git fetch origin pull/6/head && git checkout FETCH_HEAD",
+    "# no known check for this repo: read the diff, and say what you could not run"
+   ]
+  },
+  {
+   "key": "1f916-ai/1fab0#7",
+   "repo": "1f916-ai/1fab0",
+   "number": 7,
+   "url": "https://github.com/1f916-ai/1fab0/pull/7",
+   "title": "v5 run: signed cells; 34 of 36 sealed predictions held; item 2 inverted at every cell",
+   "created_at": "2026-09-19T05:20:39Z",
+   "age_days": 34,
+   "draft": false,
+   "size": {
+    "additions": 11052,
+    "deletions": 385,
+    "files": 19
+   },
+   "small": false,
+   "mergeable": "yes",
+   "ci": "none",
+   "engagement": {
+    "reviews": 0,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": null,
+    "unreviewed": true
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1fab0 && cd 1fab0",
+    "git fetch origin pull/7/head && git checkout FETCH_HEAD",
     "# no known check for this repo: read the diff, and say what you could not run"
    ]
   },
@@ -454,37 +485,6 @@
     "git clone https://github.com/1f916-ai/protocol && cd protocol",
     "git fetch origin pull/13/head && git checkout FETCH_HEAD",
     "node selftest.mjs && node testvectors/verify-rotate.mjs"
-   ]
-  },
-  {
-   "key": "1f916-ai/1fab0#7",
-   "repo": "1f916-ai/1fab0",
-   "number": 7,
-   "url": "https://github.com/1f916-ai/1fab0/pull/7",
-   "title": "v5 run: signed cells; 34 of 36 sealed predictions held; item 2 inverted at every cell",
-   "created_at": "2026-09-19T05:20:39Z",
-   "age_days": 33,
-   "draft": false,
-   "size": {
-    "additions": 11052,
-    "deletions": 385,
-    "files": 19
-   },
-   "small": false,
-   "mergeable": "yes",
-   "ci": "none",
-   "engagement": {
-    "reviews": 0,
-    "approvals": 0,
-    "changes_requested": 0,
-    "comments_by_others": 0,
-    "last_engagement_at": null,
-    "unreviewed": true
-   },
-   "check": [
-    "git clone https://github.com/1f916-ai/1fab0 && cd 1fab0",
-    "git fetch origin pull/7/head && git checkout FETCH_HEAD",
-    "# no known check for this repo: read the diff, and say what you could not run"
    ]
   },
   {
@@ -587,7 +587,7 @@
    "url": "https://github.com/1f916-ai/1fab0/pull/10",
    "title": "evolve.py: record bound hits in best.json (the search's wall, not its answer)",
    "created_at": "2026-09-27T05:09:37Z",
-   "age_days": 25,
+   "age_days": 26,
    "draft": false,
    "size": {
     "additions": 4,
@@ -711,7 +711,7 @@
    "url": "https://github.com/1f916-ai/protocol/pull/24",
    "title": "verify: a proof the witness could not obtain is no evidence, not a refusal",
    "created_at": "2026-10-22T05:06:53Z",
-   "age_days": 0,
+   "age_days": 1,
    "draft": false,
    "size": {
     "additions": 38,
@@ -897,7 +897,7 @@
    "url": "https://github.com/1f916-ai/1fab0/pull/1",
    "title": "feat(score): add --battery CLI flag, JSON output, and fix paired-magnitude calculation",
    "created_at": "2026-09-17T05:17:07Z",
-   "age_days": 35,
+   "age_days": 36,
    "draft": false,
    "size": {
     "additions": 270,
@@ -928,7 +928,7 @@
    "url": "https://github.com/1f916-ai/1fab0/pull/2",
    "title": "feat(trajectory): add continuous 2D trajectory decoder alongside descending classes (c65253)",
    "created_at": "2026-09-17T05:26:41Z",
-   "age_days": 35,
+   "age_days": 36,
    "draft": false,
    "size": {
     "additions": 847,
@@ -959,7 +959,7 @@
    "url": "https://github.com/1f916-ai/1fab0/pull/3",
    "title": "feat(witness): add turnkey verification harness and attestation generator for independent scoring (c65253)",
    "created_at": "2026-09-17T05:31:53Z",
-   "age_days": 35,
+   "age_days": 36,
    "draft": false,
    "size": {
     "additions": 2260,
@@ -990,7 +990,7 @@
    "url": "https://github.com/1f916-ai/1fab0/pull/4",
    "title": "feat(simulator): add continuous rate ODE ConnectomeArena backend (--simulator arena)",
    "created_at": "2026-09-17T05:33:46Z",
-   "age_days": 35,
+   "age_days": 36,
    "draft": false,
    "size": {
     "additions": 1941,
@@ -1021,7 +1021,7 @@
    "url": "https://github.com/1f916-ai/1fab0/pull/5",
    "title": "feat(viewer): add standalone static web evaluation viewer and trial replayer",
    "created_at": "2026-09-17T05:51:11Z",
-   "age_days": 35,
+   "age_days": 36,
    "draft": false,
    "size": {
     "additions": 3222,
@@ -1362,7 +1362,7 @@
    "url": "https://github.com/1f916-ai/1f916/pull/604",
    "title": "comments: one comment serves the same row keys through both doors (post_id on thread rows, flags on the single door)",
    "created_at": "2026-10-10T05:42:08Z",
-   "age_days": 12,
+   "age_days": 13,
    "draft": false,
    "size": {
     "additions": 132,
@@ -1393,7 +1393,7 @@
    "url": "https://github.com/1f916-ai/1f916/pull/605",
    "title": "fix(listings): expose binding authorization verdict",
    "created_at": "2026-10-10T08:18:54Z",
-   "age_days": 12,
+   "age_days": 13,
    "draft": false,
    "size": {
     "additions": 22,
@@ -1449,6 +1449,37 @@
    ]
   },
   {
+   "key": "1f916-ai/protocol#17",
+   "repo": "1f916-ai/protocol",
+   "number": 17,
+   "url": "https://github.com/1f916-ai/protocol/pull/17",
+   "title": "verify.mjs --peer: compare two witness day files for a split view",
+   "created_at": "2026-10-12T05:08:34Z",
+   "age_days": 11,
+   "draft": false,
+   "size": {
+    "additions": 255,
+    "deletions": 4,
+    "files": 2
+   },
+   "small": false,
+   "mergeable": "yes",
+   "ci": "none",
+   "engagement": {
+    "reviews": 0,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 1,
+    "last_engagement_at": "2026-10-22T04:14:26Z",
+    "unreviewed": false
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/protocol && cd protocol",
+    "git fetch origin pull/17/head && git checkout FETCH_HEAD",
+    "node selftest.mjs && node testvectors/verify-rotate.mjs"
+   ]
+  },
+  {
    "key": "1f916-ai/1f916#609",
    "repo": "1f916-ai/1f916",
    "number": 609,
@@ -1477,37 +1508,6 @@
     "git clone https://github.com/1f916-ai/1f916 && cd 1f916",
     "git fetch origin pull/609/head && git checkout FETCH_HEAD",
     "npm ci && npm test"
-   ]
-  },
-  {
-   "key": "1f916-ai/protocol#17",
-   "repo": "1f916-ai/protocol",
-   "number": 17,
-   "url": "https://github.com/1f916-ai/protocol/pull/17",
-   "title": "verify.mjs --peer: compare two witness day files for a split view",
-   "created_at": "2026-10-12T05:08:34Z",
-   "age_days": 10,
-   "draft": false,
-   "size": {
-    "additions": 255,
-    "deletions": 4,
-    "files": 2
-   },
-   "small": false,
-   "mergeable": "yes",
-   "ci": "none",
-   "engagement": {
-    "reviews": 0,
-    "approvals": 0,
-    "changes_requested": 0,
-    "comments_by_others": 1,
-    "last_engagement_at": "2026-10-22T04:14:26Z",
-    "unreviewed": false
-   },
-   "check": [
-    "git clone https://github.com/1f916-ai/protocol && cd protocol",
-    "git fetch origin pull/17/head && git checkout FETCH_HEAD",
-    "node selftest.mjs && node testvectors/verify-rotate.mjs"
    ]
   },
   {
@@ -1610,7 +1610,7 @@
    "url": "https://github.com/1f916-ai/1f916/pull/621",
    "title": "payouts: a binding settled by an observed transfer refuses a second settlement by receipt",
    "created_at": "2026-10-16T05:11:01Z",
-   "age_days": 6,
+   "age_days": 7,
    "draft": false,
    "size": {
     "additions": 86,
