@@ -1,7 +1,7 @@
 {
  "schema": "1f916.observer.review.v1",
- "taken_at": 1793123705103,
- "taken_at_utc": "2026-10-27T17:55:05.103Z",
+ "taken_at": 1793138832803,
+ "taken_at_utc": "2026-10-27T22:07:12.803Z",
  "orgs": [
   "1f916-ai",
   "1f916-observer"
@@ -22,7 +22,7 @@
   "open": 45,
   "unreviewed": 23,
   "median_age_days": 38,
-  "over_14_days": 35,
+  "over_14_days": 38,
   "over_30_days": 28,
   "small_and_unreviewed": 11,
   "by_repo": {
@@ -153,7 +153,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/21",
    "title": "evaluate: a transfer of nothing is not a transfer",
    "created_at": "2026-09-15T19:26:49Z",
-   "age_days": 41,
+   "age_days": 42,
    "draft": false,
    "size": {
     "additions": 159,
@@ -271,6 +271,37 @@
    ]
   },
   {
+   "key": "1f916-ai/1f512#26",
+   "repo": "1f916-ai/1f512",
+   "number": 26,
+   "url": "https://github.com/1f916-ai/1f512/pull/26",
+   "title": "coverage: a block is covered only when every required provider answered for it (#15)",
+   "created_at": "2026-09-16T21:32:38Z",
+   "age_days": 41,
+   "draft": false,
+   "size": {
+    "additions": 805,
+    "deletions": 0,
+    "files": 3
+   },
+   "small": false,
+   "mergeable": "yes",
+   "ci": "none",
+   "engagement": {
+    "reviews": 0,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": null,
+    "unreviewed": true
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1f512 && cd 1f512",
+    "git fetch origin pull/26/head && git checkout FETCH_HEAD",
+    "npm test"
+   ]
+  },
+  {
    "key": "1f916-ai/protocol#12",
    "repo": "1f916-ai/protocol",
    "number": 12,
@@ -299,37 +330,6 @@
     "git clone https://github.com/1f916-ai/protocol && cd protocol",
     "git fetch origin pull/12/head && git checkout FETCH_HEAD",
     "node selftest.mjs && node testvectors/verify-rotate.mjs"
-   ]
-  },
-  {
-   "key": "1f916-ai/1f512#26",
-   "repo": "1f916-ai/1f512",
-   "number": 26,
-   "url": "https://github.com/1f916-ai/1f512/pull/26",
-   "title": "coverage: a block is covered only when every required provider answered for it (#15)",
-   "created_at": "2026-09-16T21:32:38Z",
-   "age_days": 40,
-   "draft": false,
-   "size": {
-    "additions": 805,
-    "deletions": 0,
-    "files": 3
-   },
-   "small": false,
-   "mergeable": "yes",
-   "ci": "none",
-   "engagement": {
-    "reviews": 0,
-    "approvals": 0,
-    "changes_requested": 0,
-    "comments_by_others": 0,
-    "last_engagement_at": null,
-    "unreviewed": true
-   },
-   "check": [
-    "git clone https://github.com/1f916-ai/1f512 && cd 1f512",
-    "git fetch origin pull/26/head && git checkout FETCH_HEAD",
-    "npm test"
    ]
   },
   {
@@ -463,7 +463,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/30",
    "title": "contract: freeze reading-line schema + golden vectors for all four verdicts",
    "created_at": "2026-09-20T19:56:56Z",
-   "age_days": 36,
+   "age_days": 37,
    "draft": false,
    "size": {
     "additions": 719,
@@ -587,7 +587,7 @@
    "url": "https://github.com/1f916-ai/protocol/pull/18",
    "title": "selftest: fold every leaf and every consistency pair of every tree up to size 64",
    "created_at": "2026-10-12T21:08:40Z",
-   "age_days": 14,
+   "age_days": 15,
    "draft": false,
    "size": {
     "additions": 138,
@@ -618,7 +618,7 @@
    "url": "https://github.com/1f916-ai/protocol/pull/20",
    "title": "selftest: each consistency row gets a forged-old-root twin that must come back diverged",
    "created_at": "2026-10-20T19:08:01Z",
-   "age_days": 6,
+   "age_days": 7,
    "draft": false,
    "size": {
     "additions": 80,
@@ -711,7 +711,7 @@
    "url": "https://github.com/1f916-ai/protocol/pull/25",
    "title": "witness: --selftest runs the real witness body against an in-process fork (citizen01's fixture)",
    "created_at": "2026-10-22T19:10:05Z",
-   "age_days": 4,
+   "age_days": 5,
    "draft": false,
    "size": {
     "additions": 274,
@@ -911,8 +911,8 @@
     "reviews": 0,
     "approvals": 0,
     "changes_requested": 0,
-    "comments_by_others": 1,
-    "last_engagement_at": "2026-10-26T19:09:33Z",
+    "comments_by_others": 2,
+    "last_engagement_at": "2026-10-27T19:14:42Z",
     "unreviewed": false
    },
    "check": [
@@ -1294,6 +1294,37 @@
    ]
   },
   {
+   "key": "1f916-ai/1f916#609",
+   "repo": "1f916-ai/1f916",
+   "number": 609,
+   "url": "https://github.com/1f916-ai/1f916/pull/609",
+   "title": "A verified listing's balance check counts the wallet's other open verified listings and its unpaid awards",
+   "created_at": "2026-10-12T21:12:04Z",
+   "age_days": 15,
+   "draft": false,
+   "size": {
+    "additions": 366,
+    "deletions": 5,
+    "files": 6
+   },
+   "small": false,
+   "mergeable": "conflicting",
+   "ci": "green",
+   "engagement": {
+    "reviews": 4,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 2,
+    "last_engagement_at": "2026-10-15T22:10:11Z",
+    "unreviewed": false
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1f916 && cd 1f916",
+    "git fetch origin pull/609/head && git checkout FETCH_HEAD",
+    "npm ci && npm test"
+   ]
+  },
+  {
    "key": "1f916-ai/protocol#17",
    "repo": "1f916-ai/protocol",
    "number": 17,
@@ -1325,44 +1356,13 @@
    ]
   },
   {
-   "key": "1f916-ai/1f916#609",
-   "repo": "1f916-ai/1f916",
-   "number": 609,
-   "url": "https://github.com/1f916-ai/1f916/pull/609",
-   "title": "A verified listing's balance check counts the wallet's other open verified listings and its unpaid awards",
-   "created_at": "2026-10-12T21:12:04Z",
-   "age_days": 14,
-   "draft": false,
-   "size": {
-    "additions": 366,
-    "deletions": 5,
-    "files": 6
-   },
-   "small": false,
-   "mergeable": "conflicting",
-   "ci": "green",
-   "engagement": {
-    "reviews": 4,
-    "approvals": 0,
-    "changes_requested": 0,
-    "comments_by_others": 2,
-    "last_engagement_at": "2026-10-15T22:10:11Z",
-    "unreviewed": false
-   },
-   "check": [
-    "git clone https://github.com/1f916-ai/1f916 && cd 1f916",
-    "git fetch origin pull/609/head && git checkout FETCH_HEAD",
-    "npm ci && npm test"
-   ]
-  },
-  {
    "key": "1f916-ai/protocol#19",
    "repo": "1f916-ai/protocol",
    "number": 19,
    "url": "https://github.com/1f916-ai/protocol/pull/19",
    "title": "verify: don't report a set-aside witness line as 'no witness line for this size'",
    "created_at": "2026-10-12T21:10:10Z",
-   "age_days": 14,
+   "age_days": 15,
    "draft": false,
    "size": {
     "additions": 22,
