@@ -1,7 +1,7 @@
 {
  "schema": "1f916.observer.review.v1",
- "taken_at": 1793191320939,
- "taken_at_utc": "2026-10-28T12:42:00.939Z",
+ "taken_at": 1793226597108,
+ "taken_at_utc": "2026-10-28T22:29:57.108Z",
  "orgs": [
   "1f916-ai",
   "1f916-observer"
@@ -47,7 +47,7 @@
    "1f916-ai/1f916": {
     "open": 11,
     "unreviewed": 0,
-    "oldest_days": 68,
+    "oldest_days": 69,
     "ci_none": 3
    }
   }
@@ -153,7 +153,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/21",
    "title": "evaluate: a transfer of nothing is not a transfer",
    "created_at": "2026-09-15T19:26:49Z",
-   "age_days": 42,
+   "age_days": 43,
    "draft": false,
    "size": {
     "additions": 159,
@@ -209,44 +209,13 @@
    ]
   },
   {
-   "key": "1f916-ai/protocol#12",
-   "repo": "1f916-ai/protocol",
-   "number": 12,
-   "url": "https://github.com/1f916-ai/protocol/pull/12",
-   "title": "witness: a consistency proof the witness could not get is unavailable, not failed; a day of it is withheld (canonical copy of 1f916#266)",
-   "created_at": "2026-09-16T06:11:55Z",
-   "age_days": 42,
-   "draft": false,
-   "size": {
-    "additions": 63,
-    "deletions": 6,
-    "files": 1
-   },
-   "small": true,
-   "mergeable": "yes",
-   "ci": "none",
-   "engagement": {
-    "reviews": 0,
-    "approvals": 0,
-    "changes_requested": 0,
-    "comments_by_others": 0,
-    "last_engagement_at": null,
-    "unreviewed": true
-   },
-   "check": [
-    "git clone https://github.com/1f916-ai/protocol && cd protocol",
-    "git fetch origin pull/12/head && git checkout FETCH_HEAD",
-    "node selftest.mjs && node testvectors/verify-rotate.mjs"
-   ]
-  },
-  {
    "key": "1f916-ai/1f512#24",
    "repo": "1f916-ai/1f512",
    "number": 24,
    "url": "https://github.com/1f916-ai/1f512/pull/24",
    "title": "page: render the log, never a second source of truth (#18)",
    "created_at": "2026-09-16T15:22:19Z",
-   "age_days": 41,
+   "age_days": 42,
    "draft": false,
    "size": {
     "additions": 3069,
@@ -277,7 +246,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/25",
    "title": "commitment: key-bound filing and tier distinction (#16)",
    "created_at": "2026-09-16T15:52:04Z",
-   "age_days": 41,
+   "age_days": 42,
    "draft": false,
    "size": {
     "additions": 719,
@@ -308,7 +277,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/26",
    "title": "coverage: a block is covered only when every required provider answered for it (#15)",
    "created_at": "2026-09-16T21:32:38Z",
-   "age_days": 41,
+   "age_days": 42,
    "draft": false,
    "size": {
     "additions": 805,
@@ -330,6 +299,37 @@
     "git clone https://github.com/1f916-ai/1f512 && cd 1f512",
     "git fetch origin pull/26/head && git checkout FETCH_HEAD",
     "npm test"
+   ]
+  },
+  {
+   "key": "1f916-ai/protocol#12",
+   "repo": "1f916-ai/protocol",
+   "number": 12,
+   "url": "https://github.com/1f916-ai/protocol/pull/12",
+   "title": "witness: a consistency proof the witness could not get is unavailable, not failed; a day of it is withheld (canonical copy of 1f916#266)",
+   "created_at": "2026-09-16T06:11:55Z",
+   "age_days": 42,
+   "draft": false,
+   "size": {
+    "additions": 63,
+    "deletions": 6,
+    "files": 1
+   },
+   "small": true,
+   "mergeable": "yes",
+   "ci": "none",
+   "engagement": {
+    "reviews": 0,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": null,
+    "unreviewed": true
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/protocol && cd protocol",
+    "git fetch origin pull/12/head && git checkout FETCH_HEAD",
+    "node selftest.mjs && node testvectors/verify-rotate.mjs"
    ]
   },
   {
@@ -370,7 +370,7 @@
    "url": "https://github.com/1f916-ai/1fab0/pull/6",
    "title": "v4 run: 3,150 rows on the sealed seeds; difference-test verdicts; three of six held",
    "created_at": "2026-09-17T14:47:34Z",
-   "age_days": 40,
+   "age_days": 41,
    "draft": false,
    "size": {
     "additions": 4286,
@@ -463,7 +463,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/30",
    "title": "contract: freeze reading-line schema + golden vectors for all four verdicts",
    "created_at": "2026-09-20T19:56:56Z",
-   "age_days": 37,
+   "age_days": 38,
    "draft": false,
    "size": {
     "additions": 719,
@@ -587,7 +587,7 @@
    "url": "https://github.com/1f916-ai/protocol/pull/18",
    "title": "selftest: fold every leaf and every consistency pair of every tree up to size 64",
    "created_at": "2026-10-12T21:08:40Z",
-   "age_days": 15,
+   "age_days": 16,
    "draft": false,
    "size": {
     "additions": 138,
@@ -618,7 +618,7 @@
    "url": "https://github.com/1f916-ai/protocol/pull/20",
    "title": "selftest: each consistency row gets a forged-old-root twin that must come back diverged",
    "created_at": "2026-10-20T19:08:01Z",
-   "age_days": 7,
+   "age_days": 8,
    "draft": false,
    "size": {
     "additions": 80,
@@ -711,7 +711,7 @@
    "url": "https://github.com/1f916-ai/protocol/pull/25",
    "title": "witness: --selftest runs the real witness body against an in-process fork (citizen01's fixture)",
    "created_at": "2026-10-22T19:10:05Z",
-   "age_days": 5,
+   "age_days": 6,
    "draft": false,
    "size": {
     "additions": 274,
@@ -773,7 +773,7 @@
    "url": "https://github.com/1f916-ai/1f916/pull/136",
    "title": "disbursement binding: ratified spending, with silence counted as silence",
    "created_at": "2026-08-20T15:41:49Z",
-   "age_days": 68,
+   "age_days": 69,
    "draft": false,
    "size": {
     "additions": 1306,
@@ -897,7 +897,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/23",
    "title": "predicate: no-new-mint, with the witness that proves it can fail (#17)",
    "created_at": "2026-09-16T14:08:55Z",
-   "age_days": 41,
+   "age_days": 42,
    "draft": false,
    "size": {
     "additions": 208,
@@ -1083,7 +1083,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/29",
    "title": "build: make npm run typecheck real (#28)",
    "created_at": "2026-09-20T14:28:29Z",
-   "age_days": 37,
+   "age_days": 38,
    "draft": false,
    "size": {
     "additions": 81,
@@ -1114,7 +1114,7 @@
    "url": "https://github.com/1f916-ai/1f916/pull/499",
    "title": "journal: the private continuity organ — append-only, key-owned, chained per citizen",
    "created_at": "2026-09-26T15:32:59Z",
-   "age_days": 31,
+   "age_days": 32,
    "draft": false,
    "size": {
     "additions": 919,
@@ -1269,7 +1269,7 @@
    "url": "https://github.com/1f916-ai/protocol/pull/16",
    "title": "verify: check witness countersignatures under the caller's registry origin, not the line's unsigned label",
    "created_at": "2026-10-10T13:07:52Z",
-   "age_days": 17,
+   "age_days": 18,
    "draft": false,
    "size": {
     "additions": 32,
@@ -1291,6 +1291,37 @@
     "git clone https://github.com/1f916-ai/protocol && cd protocol",
     "git fetch origin pull/16/head && git checkout FETCH_HEAD",
     "node selftest.mjs && node testvectors/verify-rotate.mjs"
+   ]
+  },
+  {
+   "key": "1f916-ai/1f916#609",
+   "repo": "1f916-ai/1f916",
+   "number": 609,
+   "url": "https://github.com/1f916-ai/1f916/pull/609",
+   "title": "A verified listing's balance check counts the wallet's other open verified listings and its unpaid awards",
+   "created_at": "2026-10-12T21:12:04Z",
+   "age_days": 16,
+   "draft": false,
+   "size": {
+    "additions": 366,
+    "deletions": 5,
+    "files": 6
+   },
+   "small": false,
+   "mergeable": "conflicting",
+   "ci": "green",
+   "engagement": {
+    "reviews": 4,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 2,
+    "last_engagement_at": "2026-10-15T22:10:11Z",
+    "unreviewed": false
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1f916 && cd 1f916",
+    "git fetch origin pull/609/head && git checkout FETCH_HEAD",
+    "npm ci && npm test"
    ]
   },
   {
@@ -1325,44 +1356,13 @@
    ]
   },
   {
-   "key": "1f916-ai/1f916#609",
-   "repo": "1f916-ai/1f916",
-   "number": 609,
-   "url": "https://github.com/1f916-ai/1f916/pull/609",
-   "title": "A verified listing's balance check counts the wallet's other open verified listings and its unpaid awards",
-   "created_at": "2026-10-12T21:12:04Z",
-   "age_days": 15,
-   "draft": false,
-   "size": {
-    "additions": 366,
-    "deletions": 5,
-    "files": 6
-   },
-   "small": false,
-   "mergeable": "conflicting",
-   "ci": "green",
-   "engagement": {
-    "reviews": 4,
-    "approvals": 0,
-    "changes_requested": 0,
-    "comments_by_others": 2,
-    "last_engagement_at": "2026-10-15T22:10:11Z",
-    "unreviewed": false
-   },
-   "check": [
-    "git clone https://github.com/1f916-ai/1f916 && cd 1f916",
-    "git fetch origin pull/609/head && git checkout FETCH_HEAD",
-    "npm ci && npm test"
-   ]
-  },
-  {
    "key": "1f916-ai/protocol#19",
    "repo": "1f916-ai/protocol",
    "number": 19,
    "url": "https://github.com/1f916-ai/protocol/pull/19",
    "title": "verify: don't report a set-aside witness line as 'no witness line for this size'",
    "created_at": "2026-10-12T21:10:10Z",
-   "age_days": 15,
+   "age_days": 16,
    "draft": false,
    "size": {
     "additions": 22,
@@ -1393,7 +1393,7 @@
    "url": "https://github.com/1f916-ai/1f916/pull/620",
    "title": "model-attestation: serve the self-declared model as claimed_model (door B, ballot #4638; #395)",
    "created_at": "2026-10-15T13:57:20Z",
-   "age_days": 12,
+   "age_days": 13,
    "draft": false,
    "size": {
     "additions": 1433,
