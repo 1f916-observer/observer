@@ -1,7 +1,7 @@
 {
  "schema": "1f916.observer.review.v1",
- "taken_at": 1793138832803,
- "taken_at_utc": "2026-10-27T22:07:12.803Z",
+ "taken_at": 1793165312202,
+ "taken_at_utc": "2026-10-28T05:28:32.202Z",
  "orgs": [
   "1f916-ai",
   "1f916-observer"
@@ -11,25 +11,25 @@
  "what_this_is_not": "Not a ranking of people: no GitHub usernames are published, of authors or reviewers. Not a judgement of quality: small means under 200 changed lines, nothing more.",
  "how_to_help": "Take one of today's picks. Run its check commands. Say on the PR what you ran and what you saw, including what you could not run. A review that says 'selftest 57/57 on a clean clone, did not read the SPEC change' is worth more than an approval.",
  "today": {
-  "utc_day": "2026-10-27",
+  "utc_day": "2026-10-28",
   "picks": [
-   "1f916-ai/1fab0#7",
-   "1f916-ai/protocol#26",
-   "1f916-ai/1fab0#9"
+   "1f916-ai/1f512#27",
+   "1f916-ai/1f512#26",
+   "1f916-ai/protocol#18"
   ]
  },
  "summary": {
   "open": 45,
   "unreviewed": 23,
-  "median_age_days": 38,
+  "median_age_days": 39,
   "over_14_days": 38,
-  "over_30_days": 28,
+  "over_30_days": 29,
   "small_and_unreviewed": 11,
   "by_repo": {
    "1f916-ai/protocol": {
     "open": 14,
     "unreviewed": 10,
-    "oldest_days": 66,
+    "oldest_days": 67,
     "ci_none": 14
    },
    "1f916-ai/1f512": {
@@ -41,7 +41,7 @@
    "1f916-ai/1fab0": {
     "open": 10,
     "unreviewed": 5,
-    "oldest_days": 40,
+    "oldest_days": 41,
     "ci_none": 10
    },
    "1f916-ai/1f916": {
@@ -60,7 +60,7 @@
    "url": "https://github.com/1f916-ai/protocol/pull/8",
    "title": "spec: mark the cadence floor normative, with RFC 2119 force",
    "created_at": "2026-08-22T03:50:21Z",
-   "age_days": 66,
+   "age_days": 67,
    "draft": false,
    "size": {
     "additions": 14,
@@ -91,7 +91,7 @@
    "url": "https://github.com/1f916-ai/protocol/pull/9",
    "title": "Add verify-patch-digest.mjs: reference verifier for code-merged attestations",
    "created_at": "2026-08-31T01:07:15Z",
-   "age_days": 57,
+   "age_days": 58,
    "draft": false,
    "size": {
     "additions": 266,
@@ -184,7 +184,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/22",
    "title": "watch: cover every block to the tip, or publish the gap (#15)",
    "created_at": "2026-09-16T01:36:11Z",
-   "age_days": 41,
+   "age_days": 42,
    "draft": false,
    "size": {
     "additions": 647,
@@ -302,6 +302,37 @@
    ]
   },
   {
+   "key": "1f916-ai/1f512#27",
+   "repo": "1f916-ai/1f512",
+   "number": 27,
+   "url": "https://github.com/1f916-ai/1f512/pull/27",
+   "title": "watch: cadence tracking, paged block coverage, and provider range ceilings (#15)",
+   "created_at": "2026-09-17T00:49:42Z",
+   "age_days": 41,
+   "draft": false,
+   "size": {
+    "additions": 900,
+    "deletions": 33,
+    "files": 5
+   },
+   "small": false,
+   "mergeable": "yes",
+   "ci": "none",
+   "engagement": {
+    "reviews": 0,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": null,
+    "unreviewed": true
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1f512 && cd 1f512",
+    "git fetch origin pull/27/head && git checkout FETCH_HEAD",
+    "npm test"
+   ]
+  },
+  {
    "key": "1f916-ai/protocol#12",
    "repo": "1f916-ai/protocol",
    "number": 12,
@@ -330,37 +361,6 @@
     "git clone https://github.com/1f916-ai/protocol && cd protocol",
     "git fetch origin pull/12/head && git checkout FETCH_HEAD",
     "node selftest.mjs && node testvectors/verify-rotate.mjs"
-   ]
-  },
-  {
-   "key": "1f916-ai/1f512#27",
-   "repo": "1f916-ai/1f512",
-   "number": 27,
-   "url": "https://github.com/1f916-ai/1f512/pull/27",
-   "title": "watch: cadence tracking, paged block coverage, and provider range ceilings (#15)",
-   "created_at": "2026-09-17T00:49:42Z",
-   "age_days": 40,
-   "draft": false,
-   "size": {
-    "additions": 900,
-    "deletions": 33,
-    "files": 5
-   },
-   "small": false,
-   "mergeable": "yes",
-   "ci": "none",
-   "engagement": {
-    "reviews": 0,
-    "approvals": 0,
-    "changes_requested": 0,
-    "comments_by_others": 0,
-    "last_engagement_at": null,
-    "unreviewed": true
-   },
-   "check": [
-    "git clone https://github.com/1f916-ai/1f512 && cd 1f512",
-    "git fetch origin pull/27/head && git checkout FETCH_HEAD",
-    "npm test"
    ]
   },
   {
@@ -401,7 +401,7 @@
    "url": "https://github.com/1f916-ai/1fab0/pull/7",
    "title": "v5 run: signed cells; 34 of 36 sealed predictions held; item 2 inverted at every cell",
    "created_at": "2026-09-19T05:20:39Z",
-   "age_days": 38,
+   "age_days": 39,
    "draft": false,
    "size": {
     "additions": 11052,
@@ -432,7 +432,7 @@
    "url": "https://github.com/1f916-ai/protocol/pull/13",
    "title": "verify: the dossier events array must match the signed counts",
    "created_at": "2026-09-19T03:27:07Z",
-   "age_days": 38,
+   "age_days": 39,
    "draft": false,
    "size": {
     "additions": 32,
@@ -494,7 +494,7 @@
    "url": "https://github.com/1f916-ai/1fab0/pull/8",
    "title": "v4 run: 3,150 rows on the sealed seeds; difference-test verdicts; three of six held",
    "created_at": "2026-09-24T01:20:41Z",
-   "age_days": 33,
+   "age_days": 34,
    "draft": false,
    "size": {
     "additions": 4286,
@@ -525,7 +525,7 @@
    "url": "https://github.com/1f916-ai/1fab0/pull/9",
    "title": "v5 run: signed cells; 34 of 36 sealed predictions held; item 2 inverted at every cell",
    "created_at": "2026-09-24T01:20:43Z",
-   "age_days": 33,
+   "age_days": 34,
    "draft": false,
    "size": {
     "additions": 11052,
@@ -556,7 +556,7 @@
    "url": "https://github.com/1f916-ai/1fab0/pull/10",
    "title": "evolve.py: record bound hits in best.json (the search's wall, not its answer)",
    "created_at": "2026-09-27T05:09:37Z",
-   "age_days": 30,
+   "age_days": 31,
    "draft": false,
    "size": {
     "additions": 4,
@@ -649,7 +649,7 @@
    "url": "https://github.com/1f916-ai/protocol/pull/22",
    "title": "ci: run selftest.mjs and the rotation vector on every push and pull request",
    "created_at": "2026-10-22T04:13:46Z",
-   "age_days": 5,
+   "age_days": 6,
    "draft": false,
    "size": {
     "additions": 35,
@@ -680,7 +680,7 @@
    "url": "https://github.com/1f916-ai/protocol/pull/24",
    "title": "verify: a proof the witness could not obtain is no evidence, not a refusal",
    "created_at": "2026-10-22T05:06:53Z",
-   "age_days": 5,
+   "age_days": 6,
    "draft": false,
    "size": {
     "additions": 38,
@@ -742,7 +742,7 @@
    "url": "https://github.com/1f916-ai/protocol/pull/26",
    "title": "verify: a consistency proof's ends must be registry-signed, and are compared with the record",
    "created_at": "2026-10-24T05:09:04Z",
-   "age_days": 3,
+   "age_days": 4,
    "draft": false,
    "size": {
     "additions": 98,
@@ -804,7 +804,7 @@
    "url": "https://github.com/1f916-ai/1f916/pull/168",
    "title": "docket:key-lifecycle — opt-in account recovery via a key bound before the loss",
    "created_at": "2026-08-27T03:36:06Z",
-   "age_days": 61,
+   "age_days": 62,
    "draft": false,
    "size": {
     "additions": 3540,
@@ -812,7 +812,7 @@
     "files": 37
    },
    "small": false,
-   "mergeable": "conflicting",
+   "mergeable": "unknown",
    "ci": "none",
    "engagement": {
     "reviews": 1,
@@ -835,7 +835,7 @@
    "url": "https://github.com/1f916-ai/1f916/pull/172",
    "title": "keys: custody becomes a dated declaration, and silence gets a token (docket: custody-label-has-one-value)",
    "created_at": "2026-08-28T00:51:42Z",
-   "age_days": 60,
+   "age_days": 61,
    "draft": false,
    "size": {
     "additions": 1946,
@@ -843,7 +843,7 @@
     "files": 37
    },
    "small": false,
-   "mergeable": "conflicting",
+   "mergeable": "unknown",
    "ci": "none",
    "engagement": {
     "reviews": 0,
@@ -866,7 +866,7 @@
    "url": "https://github.com/1f916-ai/1f916/pull/199",
    "title": "feat: add generic Square identity assertions",
    "created_at": "2026-09-07T02:20:30Z",
-   "age_days": 50,
+   "age_days": 51,
    "draft": false,
    "size": {
     "additions": 376,
@@ -874,7 +874,7 @@
     "files": 12
    },
    "small": false,
-   "mergeable": "conflicting",
+   "mergeable": "unknown",
    "ci": "none",
    "engagement": {
     "reviews": 1,
@@ -928,7 +928,7 @@
    "url": "https://github.com/1f916-ai/1fab0/pull/1",
    "title": "feat(score): add --battery CLI flag, JSON output, and fix paired-magnitude calculation",
    "created_at": "2026-09-17T05:17:07Z",
-   "age_days": 40,
+   "age_days": 41,
    "draft": false,
    "size": {
     "additions": 270,
@@ -959,7 +959,7 @@
    "url": "https://github.com/1f916-ai/1fab0/pull/2",
    "title": "feat(trajectory): add continuous 2D trajectory decoder alongside descending classes (c65253)",
    "created_at": "2026-09-17T05:26:41Z",
-   "age_days": 40,
+   "age_days": 41,
    "draft": false,
    "size": {
     "additions": 847,
@@ -1122,7 +1122,7 @@
     "files": 16
    },
    "small": false,
-   "mergeable": "conflicting",
+   "mergeable": "unknown",
    "ci": "green",
    "engagement": {
     "reviews": 1,
@@ -1145,7 +1145,7 @@
    "url": "https://github.com/1f916-ai/1f916/pull/588",
    "title": "Dossier completeness: identity events carry a per-citizen seq, link and history digest (payload v2, off by default)",
    "created_at": "2026-10-09T03:08:05Z",
-   "age_days": 18,
+   "age_days": 19,
    "draft": false,
    "size": {
     "additions": 2782,
@@ -1176,7 +1176,7 @@
    "url": "https://github.com/1f916-ai/1f916/pull/589",
    "title": "The registry signing key rotates by epoch, under both keys, committing the old key's final heads (depends on protocol#15)",
    "created_at": "2026-10-09T03:14:07Z",
-   "age_days": 18,
+   "age_days": 19,
    "draft": false,
    "size": {
     "additions": 3812,
@@ -1184,7 +1184,7 @@
     "files": 46
    },
    "small": false,
-   "mergeable": "conflicting",
+   "mergeable": "unknown",
    "ci": "green",
    "engagement": {
     "reviews": 2,
@@ -1207,7 +1207,7 @@
    "url": "https://github.com/1f916-ai/protocol/pull/15",
    "title": "verify, witness: a rotated registry key is checked by epoch; each rotation commits, under both keys, to the old key's final heads",
    "created_at": "2026-10-09T03:09:08Z",
-   "age_days": 18,
+   "age_days": 19,
    "draft": false,
    "size": {
     "additions": 1032,
@@ -1294,44 +1294,13 @@
    ]
   },
   {
-   "key": "1f916-ai/1f916#609",
-   "repo": "1f916-ai/1f916",
-   "number": 609,
-   "url": "https://github.com/1f916-ai/1f916/pull/609",
-   "title": "A verified listing's balance check counts the wallet's other open verified listings and its unpaid awards",
-   "created_at": "2026-10-12T21:12:04Z",
-   "age_days": 15,
-   "draft": false,
-   "size": {
-    "additions": 366,
-    "deletions": 5,
-    "files": 6
-   },
-   "small": false,
-   "mergeable": "conflicting",
-   "ci": "green",
-   "engagement": {
-    "reviews": 4,
-    "approvals": 0,
-    "changes_requested": 0,
-    "comments_by_others": 2,
-    "last_engagement_at": "2026-10-15T22:10:11Z",
-    "unreviewed": false
-   },
-   "check": [
-    "git clone https://github.com/1f916-ai/1f916 && cd 1f916",
-    "git fetch origin pull/609/head && git checkout FETCH_HEAD",
-    "npm ci && npm test"
-   ]
-  },
-  {
    "key": "1f916-ai/protocol#17",
    "repo": "1f916-ai/protocol",
    "number": 17,
    "url": "https://github.com/1f916-ai/protocol/pull/17",
    "title": "verify.mjs --peer: compare two witness day files for a split view",
    "created_at": "2026-10-12T05:08:34Z",
-   "age_days": 15,
+   "age_days": 16,
    "draft": false,
    "size": {
     "additions": 255,
@@ -1353,6 +1322,37 @@
     "git clone https://github.com/1f916-ai/protocol && cd protocol",
     "git fetch origin pull/17/head && git checkout FETCH_HEAD",
     "node selftest.mjs && node testvectors/verify-rotate.mjs"
+   ]
+  },
+  {
+   "key": "1f916-ai/1f916#609",
+   "repo": "1f916-ai/1f916",
+   "number": 609,
+   "url": "https://github.com/1f916-ai/1f916/pull/609",
+   "title": "A verified listing's balance check counts the wallet's other open verified listings and its unpaid awards",
+   "created_at": "2026-10-12T21:12:04Z",
+   "age_days": 15,
+   "draft": false,
+   "size": {
+    "additions": 366,
+    "deletions": 5,
+    "files": 6
+   },
+   "small": false,
+   "mergeable": "unknown",
+   "ci": "green",
+   "engagement": {
+    "reviews": 4,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 2,
+    "last_engagement_at": "2026-10-15T22:10:11Z",
+    "unreviewed": false
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1f916 && cd 1f916",
+    "git fetch origin pull/609/head && git checkout FETCH_HEAD",
+    "npm ci && npm test"
    ]
   },
   {
@@ -1401,7 +1401,7 @@
     "files": 43
    },
    "small": false,
-   "mergeable": "conflicting",
+   "mergeable": "unknown",
    "ci": "green",
    "engagement": {
     "reviews": 1,
@@ -1424,7 +1424,7 @@
    "url": "https://github.com/1f916-ai/1f916/pull/621",
    "title": "payouts: a binding settled by an observed transfer refuses a second settlement by receipt",
    "created_at": "2026-10-16T05:11:01Z",
-   "age_days": 11,
+   "age_days": 12,
    "draft": false,
    "size": {
     "additions": 86,
