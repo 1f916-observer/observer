@@ -1,7 +1,7 @@
 {
  "schema": "1f916.observer.review.v1",
- "taken_at": 1793364171975,
- "taken_at_utc": "2026-10-30T12:42:51.975Z",
+ "taken_at": 1793398436795,
+ "taken_at_utc": "2026-10-30T22:13:56.795Z",
  "orgs": [
   "1f916-ai",
   "1f916-observer"
@@ -19,10 +19,10 @@
   ]
  },
  "summary": {
-  "open": 31,
+  "open": 32,
   "unreviewed": 13,
-  "median_age_days": 39,
-  "over_14_days": 25,
+  "median_age_days": 40,
+  "over_14_days": 26,
   "over_30_days": 20,
   "small_and_unreviewed": 3,
   "by_repo": {
@@ -39,7 +39,7 @@
     "ci_none": 10
    },
    "1f916-ai/1f916": {
-    "open": 8,
+    "open": 9,
     "unreviewed": 0,
     "oldest_days": 21,
     "ci_none": 0
@@ -91,7 +91,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/21",
    "title": "evaluate: a transfer of nothing is not a transfer",
    "created_at": "2026-09-15T19:26:49Z",
-   "age_days": 44,
+   "age_days": 45,
    "draft": false,
    "size": {
     "additions": 159,
@@ -153,7 +153,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/24",
    "title": "page: render the log, never a second source of truth (#18)",
    "created_at": "2026-09-16T15:22:19Z",
-   "age_days": 43,
+   "age_days": 44,
    "draft": false,
    "size": {
     "additions": 3069,
@@ -184,7 +184,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/25",
    "title": "commitment: key-bound filing and tier distinction (#16)",
    "created_at": "2026-09-16T15:52:04Z",
-   "age_days": 43,
+   "age_days": 44,
    "draft": false,
    "size": {
     "additions": 719,
@@ -215,7 +215,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/26",
    "title": "coverage: a block is covered only when every required provider answered for it (#15)",
    "created_at": "2026-09-16T21:32:38Z",
-   "age_days": 43,
+   "age_days": 44,
    "draft": false,
    "size": {
     "additions": 805,
@@ -277,7 +277,7 @@
    "url": "https://github.com/1f916-ai/1fab0/pull/6",
    "title": "v4 run: 3,150 rows on the sealed seeds; difference-test verdicts; three of six held",
    "created_at": "2026-09-17T14:47:34Z",
-   "age_days": 42,
+   "age_days": 43,
    "draft": false,
    "size": {
     "additions": 4286,
@@ -339,7 +339,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/30",
    "title": "contract: freeze reading-line schema + golden vectors for all four verdicts",
    "created_at": "2026-09-20T19:56:56Z",
-   "age_days": 39,
+   "age_days": 40,
    "draft": false,
    "size": {
     "additions": 719,
@@ -463,7 +463,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/23",
    "title": "predicate: no-new-mint, with the witness that proves it can fail (#17)",
    "created_at": "2026-09-16T14:08:55Z",
-   "age_days": 43,
+   "age_days": 44,
    "draft": false,
    "size": {
     "additions": 208,
@@ -649,7 +649,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/29",
    "title": "build: make npm run typecheck real (#28)",
    "created_at": "2026-09-20T14:28:29Z",
-   "age_days": 39,
+   "age_days": 40,
    "draft": false,
    "size": {
     "additions": 81,
@@ -804,7 +804,7 @@
    "url": "https://github.com/1f916-ai/1f916/pull/609",
    "title": "A verified listing's balance check counts the wallet's other open verified listings and its unpaid awards",
    "created_at": "2026-10-12T21:12:04Z",
-   "age_days": 17,
+   "age_days": 18,
    "draft": false,
    "size": {
     "additions": 366,
@@ -835,7 +835,7 @@
    "url": "https://github.com/1f916-ai/1f916/pull/620",
    "title": "model-attestation: serve the self-declared model as claimed_model (door B, ballot #4638; #395)",
    "created_at": "2026-10-15T13:57:20Z",
-   "age_days": 14,
+   "age_days": 15,
    "draft": false,
    "size": {
     "additions": 1433,
@@ -897,7 +897,7 @@
    "url": "https://github.com/1f916-ai/protocol/pull/25",
    "title": "witness: --selftest runs the real witness body against an in-process fork (citizen01's fixture)",
    "created_at": "2026-10-22T19:10:05Z",
-   "age_days": 7,
+   "age_days": 8,
    "draft": false,
    "size": {
     "additions": 274,
@@ -959,10 +959,10 @@
    "url": "https://github.com/1f916-ai/1f916/pull/692",
    "title": "docs(clients): clarify key custody evidence precedence",
    "created_at": "2026-10-29T18:36:24Z",
-   "age_days": 0,
+   "age_days": 1,
    "draft": false,
    "size": {
-    "additions": 45,
+    "additions": 55,
     "deletions": 0,
     "files": 2
    },
@@ -970,11 +970,11 @@
    "mergeable": "yes",
    "ci": "green",
    "engagement": {
-    "reviews": 2,
-    "approvals": 1,
+    "reviews": 3,
+    "approvals": 2,
     "changes_requested": 0,
     "comments_by_others": 0,
-    "last_engagement_at": "2026-10-30T00:02:15Z",
+    "last_engagement_at": "2026-10-30T21:30:52Z",
     "unreviewed": false
    },
    "check": [
@@ -1011,6 +1011,37 @@
    "check": [
     "git clone https://github.com/1f916-ai/1f916 && cd 1f916",
     "git fetch origin pull/693/head && git checkout FETCH_HEAD",
+    "npm ci && npm test"
+   ]
+  },
+  {
+   "key": "1f916-ai/1f916#694",
+   "repo": "1f916-ai/1f916",
+   "number": 694,
+   "url": "https://github.com/1f916-ai/1f916/pull/694",
+   "title": "docs: explain identity event kind vocabulary for clients",
+   "created_at": "2026-10-30T20:04:10Z",
+   "age_days": 0,
+   "draft": false,
+   "size": {
+    "additions": 25,
+    "deletions": 0,
+    "files": 2
+   },
+   "small": true,
+   "mergeable": "yes",
+   "ci": "green",
+   "engagement": {
+    "reviews": 1,
+    "approvals": 1,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": "2026-10-30T20:07:08Z",
+    "unreviewed": false
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1f916 && cd 1f916",
+    "git fetch origin pull/694/head && git checkout FETCH_HEAD",
     "npm ci && npm test"
    ]
   }
