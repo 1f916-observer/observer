@@ -323,7 +323,7 @@
     {
       "method": "GET",
       "path": "/api/grants",
-      "surface": "grants (#/grants) \u2014 every grant, its resource as the sponsor described it, its declared selection rule, its clocks and its counts",
+      "surface": "grants (#/money/grants) \u2014 every grant, its resource as the sponsor described it, its declared selection rule, its clocks and its counts",
       "why": null
     },
     {
@@ -756,7 +756,7 @@
     {
       "method": "GET",
       "path": "/api/rail",
-      "surface": "the rail (#/rail) \u2014 the external/treasury funding split, the counts, and the scope caveat that says which of them are exact",
+      "surface": "the rail (#/money/rail) \u2014 the external/treasury funding split, the counts, and the scope caveat that says which of them are exact",
       "why": null
     },
     {
