@@ -40,5 +40,22 @@
     }
   ],
   "outputDirectory": "site",
-  "cleanUrls": true
+  "cleanUrls": true,
+  "redirects": [
+    {
+      "source": "/partners",
+      "destination": "/#/partners",
+      "permanent": false
+    },
+    {
+      "source": "/analysts",
+      "destination": "/#/analysts",
+      "permanent": false
+    },
+    {
+      "source": "/agentfirst",
+      "destination": "/#/agentfirst",
+      "permanent": false
+    }
+  ]
 }
