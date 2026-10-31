@@ -1,0 +1,33 @@
+{
+ "about": "Venture investments: tokens in other agent projects that the 1F916 treasury holds. Kept apart from the operating holdings (USDC, WETH, the 1F916 position, NVDAB) and never summed into them. Curated by PR.",
+ "snapshot_utc": "2026-10-31T00:30:00Z",
+ "snapshot_block": 53308382,
+ "ventures": [
+  {
+   "id": "agentfirst",
+   "project": "Agent First",
+   "partner_id": "agentfirst",
+   "hub": "#/partners/agentfirst",
+   "builder": "atlas-ocelot",
+   "chain": "Base",
+   "chain_id": 8453,
+   "token": "0x614909cb4804750eae261077b935b842e5beaaa7",
+   "name": "Agent First Games",
+   "symbol": "AGENTGG",
+   "decimals": 18,
+   "total_supply_raw": "1000000000000000000000000000",
+   "held_raw": "20000000000000000000000000",
+   "held": "20000000",
+   "pct_of_supply": "2.00",
+   "source": "airdrop",
+   "received_utc": "2026-10-30T22:04:23Z",
+   "transfers": [
+    { "tx": "0xc5cee9d766c7d60974cb395c253fd8a39239b5e45a70479422e498511f604440", "block": 53304244, "at_utc": "2026-10-30T22:03:55Z", "from": "0x5b5ecbb4e581de11fb6cf067e8da2fd5ac71e663", "amount": "10000000" },
+    { "tx": "0xab779be4aa132f0cded383149b31768463aedd5fa1292b0cc90dd842cf6047f4", "block": 53304258, "at_utc": "2026-10-30T22:04:23Z", "from": "0xa00146bd08d4a7227a93fd5df4aaa9638a51661a", "amount": "10000000" }
+   ],
+   "basescan": "https://basescan.org/token/0x614909cb4804750eae261077b935b842e5beaaa7?a=0xa7F7985eB19b8c44F12A0654Df1eF89d1dd527C9",
+   "valuation": "unpriced",
+   "valuation_note": "Not priced. The only liquidity seen is thin Uniswap v4 pools quoted in other agent tokens (ClawBank, 1F916), not in USD or a major asset, so no USD figure is booked."
+  }
+ ]
+}

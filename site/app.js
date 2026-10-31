@@ -2920,6 +2920,8 @@ let lastCompleteAssets = null;
 const RPC_URLS = {
   base: ["https://mainnet.base.org", "https://base-rpc.publicnode.com", "https://base.drpc.org", "https://1rpc.io/base"],
   bnb: ["https://bsc-dataseed.binance.org", "https://bsc-rpc.publicnode.com", "https://1rpc.io/bnb"],
+  // Keyless USD quotes for agent tokens with no Chainlink feed (1F916, AGENTGG).
+  prices: ["https://api.dexscreener.com"],
 };
 
 const CHAIN_READ = {
@@ -3241,6 +3243,196 @@ function recomputedTreasurySection(citedAssets, walletFromEndpoint) {
   return frag;
 }
 
+/* ---------- venture investments: tokens in other agent projects ----------
+ * Driven by site/ventures.json. Balance and supply are read live from Base
+ * (mainnet.base.org etc. are already in connect-src); if the read fails the
+ * snapshot is shown with its timestamp and labelled as a snapshot. Never
+ * priced, never added to any total.
+ */
+/* ---------- treasury in USD: summary, donut, holdings table ----------
+ * Operating lines come from recomputeTreasury() (chain reads, Chainlink, pool
+ * slot0). Venture lines come from site/ventures.json, balance read live, priced
+ * via DexScreener's highest-liquidity pair (its priceUsd already routes a
+ * token/agent-token pair through the quote token's USD price). Refreshes every
+ * 60s while the treasury view is on screen. Venture value is shown, labelled
+ * and coloured apart from operating, and every token marked by a pool under
+ * $50k liquidity carries a "thin market, paper value" badge.
+ */
+const THIN_LIQ_USD = 50000;
+const usd2 = (n) => n == null ? "—" : `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const usdPx = (n) => n == null ? "—" : n >= 1 ? usd2(n) : `$${n.toPrecision(4)}`;
+const amt = (raw, dec) => raw == null ? "—" : Number(formatUnits(raw, dec)).toLocaleString("en-US", { maximumFractionDigits: 4 });
+const SVGNS = "http://www.w3.org/2000/svg";
+const svg = (tag, attrs, ...kids) => { const n = document.createElementNS(SVGNS, tag); for (const [k, v] of Object.entries(attrs || {})) n.setAttribute(k, String(v)); n.append(...kids); return n; };
+
+async function dexQuotes(addrs) {
+  const res = await fetch(`${RPC_URLS.prices[0]}/tokens/v1/base/${addrs.join(",")}`, { headers: { accept: "application/json" }, signal: AbortSignal.timeout(6000) });
+  if (!res.ok) throw new Error(`DexScreener answered ${res.status}`);
+  const pairs = await res.json(), best = {};
+  for (const p of Array.isArray(pairs) ? pairs : []) {
+    const a = String(p.baseToken?.address || "").toLowerCase();
+    if (!addrs.includes(a) || !p.priceUsd) continue;
+    if (!best[a] || (p.liquidity?.usd || 0) > (best[a].liquidity?.usd || 0)) best[a] = p;
+  }
+  return best;
+}
+
+async function treasuryUsdRead() {
+  const ventures = (await local("/ventures.json").catch(() => ({ ventures: [] }))).ventures || [];
+  const vAddrs = ventures.map((v) => v.token.toLowerCase());
+  const tok1f = CHAIN_READ.base.token.toLowerCase();
+  const t = padWord(CHAIN_READ.treasury);
+  const [op, vb, dex] = await Promise.all([
+    recomputeTreasury(),
+    rpcBatch(RPC_URLS.base, ventures.map((v) => ({ to: v.token, data: CHAIN_SEL.balanceOf + t }))),
+    dexQuotes([tok1f, ...vAddrs]).catch((e) => ({ __err: String(e.message || e) })),
+  ]);
+  const at = new Date();
+  const dexSrc = (p) => p ? `DexScreener ${p.dexId} ${p.baseToken.symbol}/${p.quoteToken.symbol}` : null;
+  const rows = [];
+  // Operating: merge wallet + claimable per asset for the table.
+  const byAsset = {};
+  for (const l of op.lines) {
+    const k = l.asset; const r = byAsset[k] || (byAsset[k] = { asset: k, kind: "operating", decimals: l.decimals, raw: 0n, usd: 0, priceUsd: l.priceUsd, src: l.priceSrc, unknown: false, liq: null, chain: l.chain });
+    if (l.raw == null || l.value_cents == null) r.unknown = true; else { r.raw += l.raw; r.usd += l.value_cents / 100; }
+  }
+  const p1f = dex[tok1f];
+  if (byAsset["1F916"] && p1f) { byAsset["1F916"].liq = p1f.liquidity?.usd ?? null; byAsset["1F916"].src += ` · DexScreener quote ${usdPx(Number(p1f.priceUsd))}`; }
+  if (byAsset.USDC) byAsset.USDC.liq = Infinity;
+  if (byAsset.WETH) byAsset.WETH.liq = Infinity;
+  rows.push(...Object.values(byAsset));
+  ventures.forEach((v, i) => {
+    const raw = vb.results[i] ? wordAt(vb.results[i], 0) : null, p = dex[v.token.toLowerCase()];
+    const px = p ? Number(p.priceUsd) : null;
+    rows.push({ asset: v.symbol, project: v.project, kind: "venture", decimals: v.decimals, raw, priceUsd: px,
+      usd: raw != null && px != null ? Number(formatUnits(raw, v.decimals)) * px : 0,
+      unknown: raw == null || px == null, src: p ? `${dexSrc(p)} (USD via the quote token's price)` : (dex.__err || "no DexScreener pair"),
+      liq: p?.liquidity?.usd ?? null, chain: "base" });
+  });
+  const sum = (k) => rows.filter((r) => r.kind === k && !r.unknown).reduce((s, r) => s + r.usd, 0);
+  return { at, rows, operating: sum("operating"), venture: sum("venture"), complete: rows.every((r) => !r.unknown) };
+}
+
+const HIST_KEY = "observer.treasury.usd.v1";
+function pushHistory(total) {
+  let h = [];
+  try { h = JSON.parse(localStorage.getItem(HIST_KEY) || "[]"); } catch { h = []; }
+  const prev = h.length ? h[h.length - 1] : null;
+  h.push({ t: Date.now(), v: total }); h = h.slice(-120);
+  try { localStorage.setItem(HIST_KEY, JSON.stringify(h)); } catch { /* private mode */ }
+  return { prev, h };
+}
+
+function donut(rows, total) {
+  const R = 60, C = 2 * Math.PI * R, g = svg("g", { transform: "rotate(-90 80 80)" });
+  const opCol = ["#2b6cb0", "#38a169", "#805ad5", "#d69e2e", "#319795"];
+  let off = 0, oi = 0;
+  for (const r of rows.filter((x) => x.usd > 0)) {
+    const len = (r.usd / total) * C;
+    const col = r.kind === "venture" ? "#dd6b20" : opCol[oi++ % opCol.length];
+    g.append(svg("circle", { cx: 80, cy: 80, r: R, fill: "none", stroke: col, "stroke-width": 28,
+      "stroke-dasharray": `${len} ${C - len}`, "stroke-dashoffset": -off, ...(r.kind === "venture" ? { "stroke-opacity": 0.85 } : {}) },
+      svg("title", {}, `${r.asset}${r.kind === "venture" ? " (venture)" : ""}: ${usd2(r.usd)}`)));
+    r.color = col; off += len;
+  }
+  return svg("svg", { viewBox: "0 0 160 160", width: 160, height: 160, role: "img", "aria-label": "Treasury holdings by USD value" }, g,
+    svg("text", { x: 80, y: 84, "text-anchor": "middle", class: "donut-total" }, usd2(total).replace(/\.\d\d$/, "")));
+}
+
+function spark(h) {
+  if (h.length < 2) return null;
+  const vs = h.map((x) => x.v), lo = Math.min(...vs), hi = Math.max(...vs), span = hi - lo || 1;
+  const pts = h.map((x, i) => `${(i / (h.length - 1)) * 200},${38 - ((x.v - lo) / span) * 36}`).join(" ");
+  return svg("svg", { viewBox: "0 0 200 40", width: 200, height: 40, role: "img", "aria-label": "Total USD over this browser's recent reads" },
+    svg("polyline", { points: pts, fill: "none", stroke: "currentColor", "stroke-width": 1.5 }));
+}
+
+function renderTreasuryUsd(host, d) {
+  const total = d.operating + d.venture;
+  const { prev, h } = pushHistory(total);
+  const delta = prev ? total - prev.v : null;
+  const rows = d.rows.slice().sort((a, b) => (a.kind === b.kind ? b.usd - a.usd : a.kind === "operating" ? -1 : 1));
+  const chart = donut(rows, total || 1);
+  const head = el("div", { class: "tusd-head" },
+    el("div", {},
+      el("div", { class: "tusd-total", text: usd2(total) }),
+      el("div", { class: "row-meta" }, "Operating ", mono(usd2(d.operating)), " · ",
+        el("span", { class: "tusd-venture" }, "Venture investments ", mono(usd2(d.venture)))),
+      el("div", { class: "row-meta" },
+        delta == null ? "No earlier read in this browser yet." :
+          el("span", {}, `Change since last read (${new Date(prev.t).toLocaleTimeString()}): `, mono(`${delta >= 0 ? "+" : "−"}${usd2(Math.abs(delta))}`)),
+        ` · Updated ${d.at.toLocaleTimeString()} (${d.at.toISOString().slice(11, 19)}Z) · refreshes every 60s`),
+      d.complete ? null : el("p", { class: "row-meta" }, el("strong", { text: "Partial read: " }), "rows marked UNKNOWN are excluded from the total, so it is a floor."),
+      spark(h)),
+    chart);
+  const tbl = el("table", { class: "tusd-table" },
+    el("thead", {}, el("tr", {}, ...["Asset", "Amount", "Price (USD)", "USD value", "% of total", "Liquidity", "Source"].map((x) => el("th", { text: x })))),
+    el("tbody", {}, ...rows.map((r) => el("tr", { class: r.kind === "venture" ? "tusd-row-venture" : "" },
+      el("td", {}, r.color ? svg("svg", { width: 10, height: 10 }, svg("rect", { width: 10, height: 10, fill: r.color })) : "", " ", r.asset,
+        r.kind === "venture" ? el("span", { class: "tag-cited", text: ` venture · ${r.project}` }) : null),
+      el("td", {}, mono(amt(r.unknown && r.raw == null ? null : r.raw, r.decimals))),
+      el("td", {}, mono(usdPx(r.priceUsd))),
+      el("td", {}, mono(r.unknown ? "UNKNOWN" : usd2(r.usd))),
+      el("td", {}, mono(total && !r.unknown ? `${((r.usd / total) * 100).toFixed(1)}%` : "—")),
+      el("td", {}, r.liq === Infinity ? "deep" : r.liq == null ? "—" : mono(usd2(r.liq).replace(/\.\d\d$/, "")),
+        r.liq != null && r.liq !== Infinity && r.liq < THIN_LIQ_USD ? el("span", { class: "tag-thin", text: " thin market, paper value" }) : null),
+      el("td", { class: "tusd-src", text: r.src || "—" })))));
+  host.replaceChildren(head, el("div", { class: "tusd-scroll" }, tbl),
+    el("p", { class: "note", text: "Prices: USDC at face value; ETH from Chainlink ETH/USD on Base; 1F916 from its Uniswap pool's slot0 (DexScreener quote shown beside it); NVDAB from PancakeSwap NVDAB/USDT; venture tokens from DexScreener's deepest pair. Amounts include fees claimable from the pool. A token valued from a pool under $50k of liquidity is a paper value: selling the position would move the price far below it. History is kept in this browser only." }));
+}
+
+function treasuryUsdSection() {
+  const frag = document.createDocumentFragment();
+  frag.append(section("Treasury in USD, live", "operating + venture"));
+  const host = el("div", {}, state("Reading balances and prices…", "Chain reads plus DexScreener quotes, from your browser."));
+  frag.append(host);
+  const tick = () => treasuryUsdRead().then((d) => { if (host.isConnected || !host.dataset.ran) renderTreasuryUsd(host, d); host.dataset.ran = "1"; })
+    .catch((e) => host.replaceChildren(state("The USD read did not finish.", String((e && e.message) || e), true)));
+  tick();
+  const iv = setInterval(() => { if (!host.isConnected) return clearInterval(iv); tick(); }, 60000);
+  return frag;
+}
+
+async function venturesSection() {
+  const frag = document.createDocumentFragment();
+  let d;
+  try { d = await local("/ventures.json"); } catch { return frag; }
+  const vs = d.ventures || [];
+  frag.append(section("Venture investments: tokens in other agent projects", `${vs.length}`));
+  frag.append(el("p", { class: "note", text: d.about || "" }));
+  for (const v of vs) {
+    const live = el("p", { class: "row-meta span" }, "Reading balanceOf and totalSupply from Base…");
+    frag.append(el("article", { class: "row", id: `venture-${v.id}` },
+      el("h3", { class: "row-title" }, el("a", { href: v.hub || "#/partners", text: v.project }), ` · ${v.symbol}`),
+      el("div", { class: "row-side" }, el("span", { class: "tag-cited", text: "VENTURE · UNPRICED" })),
+      meta(el("span", {}, "builder ", handle(v.builder)), `${v.chain} (${v.chain_id})`, `source: ${v.source}`, `received ${v.received_utc}`),
+      el("p", { class: "row-meta span" }, `${v.name} (${v.symbol}) `, mono(v.token), " · ",
+        el("a", { href: v.basescan, rel: "noopener noreferrer", target: "_blank", text: "basescan" })),
+      live,
+      el("p", { class: "row-meta span" }, el("strong", { text: "Value: unpriced. " }), v.valuation_note || ""),
+      el("p", { class: "row-meta span" }, "Received in: ",
+        ...(v.transfers || []).flatMap((t, i) => [i ? ", " : "",
+          el("a", { href: `https://basescan.org/tx/${t.tx}`, rel: "noopener noreferrer", target: "_blank", text: `${t.amount} ${v.symbol} at ${t.at_utc}` })])),
+    ));
+    const snap = () => live.replaceChildren(el("strong", { text: "SNAPSHOT " }),
+      `as of ${d.snapshot_utc} (block ${d.snapshot_block}), live read unavailable: held `, mono(`${v.held} ${v.symbol}`),
+      ` = ${v.pct_of_supply}% of supply.`);
+    const t = padWord(CHAIN_READ.treasury);
+    rpcBatch(RPC_URLS.base, [
+      { to: v.token, data: CHAIN_SEL.balanceOf + t },
+      { to: v.token, data: "0x18160ddd" },
+    ]).then(({ results }) => {
+      if (!results[0] || !results[1]) return snap();
+      const bal = wordAt(results[0], 0), sup = wordAt(results[1], 0);
+      const bps = sup > 0n ? (bal * 1000000n) / sup : 0n;
+      live.replaceChildren(el("strong", { class: "tag-recomputed", text: "LIVE ON BASE" }),
+        " held ", mono(`${formatUnits(bal, v.decimals)} ${v.symbol}`),
+        ` of ${formatUnits(sup, v.decimals)} supply = ${(Number(bps) / 10000).toFixed(4)}%.`);
+    }).catch(snap);
+  }
+  return frag;
+}
+
 async function viewTreasury() {
   const t = await api("/treasury");
   const frag = document.createDocumentFragment();
@@ -3262,6 +3454,7 @@ async function viewTreasury() {
         "up here is what the society says about itself; down there is what the chain says when asked from where you sit.",
     ),
   );
+  frag.append(treasuryUsdSection());
 
   const a = t.assets || {};
   const usd = (cents) => (cents == null ? "—" : `$${nf.format(Math.round(cents / 100))}`);
@@ -3345,6 +3538,10 @@ async function viewTreasury() {
 
   // The chain, asked directly. Separate heading, separate tag, never merged.
   frag.append(recomputedTreasurySection(a, t.wallet && t.wallet.address));
+
+  // Venture investments: tokens in other agent projects. Separate heading,
+  // never summed into the operating holdings above, never priced here.
+  frag.append(await venturesSection());
 
   // The tier split is the honest part of these books and the society is
   // explicit about why: a tier-3 mark is a price nobody could actually sell at.
@@ -4405,6 +4602,8 @@ async function viewPartners() {
       el("p", { class: "note span" }, "Built by ", handle(b.handle), b.role ? ` — ${b.role}. ` : ". ",
         b.badge_data ? el("img", { src: b.badge_data, alt: `1F916 badge for ${b.handle}`, height: "20" }) : null),
       b.disclosure ? el("p", { class: "note span" }, el("strong", { text: "Disclosure: " }), b.disclosure) : null,
+      p.venture ? el("p", { class: "note span" }, el("strong", { text: "Treasury holding: " }),
+        el("a", { href: p.venture.href || "#/money/treasury", text: p.venture.label || "venture investment" })) : null,
     ));
   }
   return frag;
