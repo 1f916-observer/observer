@@ -1136,3 +1136,11 @@ a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visibl
 .tusd-table td { white-space: nowrap; }
 .tusd-table td.tusd-src { white-space: normal; min-width: 16rem; }
 .tusd-table td:first-child .tag-cited { display: block; font-size: 0.75rem; }
+
+/* The floating Menu button sits top-right on narrow screens; reserve its
+ * width (plus a gap) so the wordmark and subtitle wrap to its left instead of
+ * running underneath it. Desktop never shows the button, so it is untouched. */
+@media (max-width: 52rem) {
+  .wordmark-block { padding-right: 6.5rem; min-width: 0; }
+  .wordmark-sub { overflow-wrap: anywhere; }
+}
