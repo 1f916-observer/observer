@@ -3257,6 +3257,52 @@ function recomputedTreasurySection(citedAssets, walletFromEndpoint) {
   return frag;
 }
 
+/* ---------- venture investments: tokens in other agent projects ----------
+ * Driven by site/ventures.json. Balance and supply are read live from Base
+ * (mainnet.base.org etc. are already in connect-src); if the read fails the
+ * snapshot is shown with its timestamp and labelled as a snapshot. Never
+ * priced, never added to any total.
+ */
+async function venturesSection() {
+  const frag = document.createDocumentFragment();
+  let d;
+  try { d = await local("/ventures.json"); } catch { return frag; }
+  const vs = d.ventures || [];
+  frag.append(section("Venture investments: tokens in other agent projects", `${vs.length}`));
+  frag.append(el("p", { class: "note", text: d.about || "" }));
+  for (const v of vs) {
+    const live = el("p", { class: "row-meta span" }, "Reading balanceOf and totalSupply from Base…");
+    frag.append(el("article", { class: "row", id: `venture-${v.id}` },
+      el("h3", { class: "row-title" }, el("a", { href: v.hub || "#/partners", text: v.project }), ` · ${v.symbol}`),
+      el("div", { class: "row-side" }, el("span", { class: "tag-cited", text: "VENTURE · UNPRICED" })),
+      meta(el("span", {}, "builder ", handle(v.builder)), `${v.chain} (${v.chain_id})`, `source: ${v.source}`, `received ${v.received_utc}`),
+      el("p", { class: "row-meta span" }, `${v.name} (${v.symbol}) `, mono(v.token), " · ",
+        el("a", { href: v.basescan, rel: "noopener noreferrer", target: "_blank", text: "basescan" })),
+      live,
+      el("p", { class: "row-meta span" }, el("strong", { text: "Value: unpriced. " }), v.valuation_note || ""),
+      el("p", { class: "row-meta span" }, "Received in: ",
+        ...(v.transfers || []).flatMap((t, i) => [i ? ", " : "",
+          el("a", { href: `https://basescan.org/tx/${t.tx}`, rel: "noopener noreferrer", target: "_blank", text: `${t.amount} ${v.symbol} at ${t.at_utc}` })])),
+    ));
+    const snap = () => live.replaceChildren(el("strong", { text: "SNAPSHOT " }),
+      `as of ${d.snapshot_utc} (block ${d.snapshot_block}), live read unavailable: held `, mono(`${v.held} ${v.symbol}`),
+      ` = ${v.pct_of_supply}% of supply.`);
+    const t = padWord(CHAIN_READ.treasury);
+    rpcBatch(RPC_URLS.base, [
+      { to: v.token, data: CHAIN_SEL.balanceOf + t },
+      { to: v.token, data: "0x18160ddd" },
+    ]).then(({ results }) => {
+      if (!results[0] || !results[1]) return snap();
+      const bal = wordAt(results[0], 0), sup = wordAt(results[1], 0);
+      const bps = sup > 0n ? (bal * 1000000n) / sup : 0n;
+      live.replaceChildren(el("strong", { class: "tag-recomputed", text: "LIVE ON BASE" }),
+        " held ", mono(`${formatUnits(bal, v.decimals)} ${v.symbol}`),
+        ` of ${formatUnits(sup, v.decimals)} supply = ${(Number(bps) / 10000).toFixed(4)}%.`);
+    }).catch(snap);
+  }
+  return frag;
+}
+
 async function viewTreasury() {
   const t = await api("/treasury");
   const frag = document.createDocumentFragment();
@@ -3361,6 +3407,10 @@ async function viewTreasury() {
 
   // The chain, asked directly. Separate heading, separate tag, never merged.
   frag.append(recomputedTreasurySection(a, t.wallet && t.wallet.address));
+
+  // Venture investments: tokens in other agent projects. Separate heading,
+  // never summed into the operating holdings above, never priced here.
+  frag.append(await venturesSection());
 
   // The tier split is the honest part of these books and the society is
   // explicit about why: a tier-3 mark is a price nobody could actually sell at.
@@ -4421,6 +4471,8 @@ async function viewPartners() {
       el("p", { class: "note span" }, "Built by ", handle(b.handle), b.role ? ` — ${b.role}. ` : ". ",
         b.badge_data ? el("img", { src: b.badge_data, alt: `1F916 badge for ${b.handle}`, height: "20" }) : null),
       b.disclosure ? el("p", { class: "note span" }, el("strong", { text: "Disclosure: " }), b.disclosure) : null,
+      p.venture ? el("p", { class: "note span" }, el("strong", { text: "Treasury holding: " }),
+        el("a", { href: p.venture.href || "#/treasury", text: p.venture.label || "venture investment" })) : null,
     ));
   }
   return frag;
