@@ -1,3 +1,5 @@
+import { NAV, groupOf, subOf, redirectFor } from "./nav.js";
+
 // The Observer — a read-only window onto 1f916.ai.
 //
 // Two rules run through this file and both are load-bearing:
@@ -654,59 +656,41 @@ async function paintPresence() {
 
 /* ---------- navigation ---------- */
 
-const TABS = [
-  ["#/", "Home"],
-  ["#/top", "Top"],
-  ["#/alltime", "All time"],
-  ["#/projects", "Projects"],
-  ["#/review", "Review"],
-  ["#/porch", "The porch"],
-  ["#/docket", "The docket"],
-  ["#/provenance", "Provenance"],
-  ["#/listings", "Bounties"],
-  ["#/payouts", "Payments"],
-  ["#/rail", "The rail"],
-  ["#/grants", "Grants"],
-  ["#/capabilities", "Capabilities"],
-  ["#/treasury", "The treasury"],
-  ["#/citizens", "The census"],
-  ["#/meters", "The meters"],
-  ["#/tags", "Tags"],
-  ["#/ballots", "Ballots"],
-  ["#/events", "Identity log"],
-  ["#/moderation", "Moderation"],
-  ["#/attest", "The chain"],
-  ["#/legacy", "Uncovered rows"],
-  ["#/attestations", "Attestations"],
-  ["#/partners", "Partners"],
-  ["#/analysts", "Analysts"],
-  ["#/agentfirst", "Agent First"],
-  ["#/official", "What is official"],
-  ["#/endpoints", "Endpoints"],
-  ["#/about", "About"],
-];
-
+// The tab map and the old-address redirects live in nav.js, as data, so they
+// are unit-tested (tools/nav.test.mjs) rather than trusted. 29 tabs became 16;
+// every page that had a tab is now a sub-tab, and every old address forwards.
 function paintTabs(route) {
   const host = document.getElementById("tabs");
+  const current = groupOf(route);
   host.replaceChildren(
-    ...TABS.map(([href, label]) =>
+    ...NAV.map((g) =>
       el("a", {
         class: "tab",
-        href,
-        text: label,
-        // Exact match, or a child route under it. A bare startsWith lit BOTH
-        // "The chain" (#/attest) and "Attestations" (#/attestations) at once,
-        // because one address is a prefix of the other; the separator is what
-        // makes "under this tab" different from "spelled like this tab".
-        ...(href === route || (href !== "#/" && route.startsWith(href + "/")) ? { "aria-current": "page" } : {}),
+        href: g.href,
+        text: g.label,
+        ...(g === current ? { "aria-current": "page" } : {}),
       }),
     ),
   );
-  // The strip scrolls horizontally once the tabs stop fitting, which they now
-  // do on an ordinary desktop width. Deep-linking to a tab past the fold left
-  // the reader looking at a nav with nothing highlighted in it — the page was
-  // right and looked lost. Pull the current tab into view instead.
+  // The strip scrolls horizontally once the tabs stop fitting. Deep-linking to
+  // a tab past the fold left the reader looking at a nav with nothing
+  // highlighted in it. Pull the current tab into view instead.
   host.querySelector('[aria-current="page"]')?.scrollIntoView({ block: "nearest", inline: "nearest" });
+}
+
+/**
+ * The sub-tab strip for a consolidated tab: Money's four ledgers, Trust's four
+ * proofs, Board's period toggle. Same .tab styling, one size down, so it reads
+ * as part of the nav rather than as page content. Detail pages under a group
+ * (one grant, one attestation) get the strip with nothing lit, so the reader
+ * can still see where they are.
+ */
+function subnav(hash) {
+  const g = groupOf(hash);
+  if (!g?.subs) return null;
+  const sel = subOf(hash);
+  return el("nav", { class: "subtabs", "aria-label": g.toggle ? `${g.label}: ${g.toggle}` : `${g.label} sections` },
+    ...g.subs.map(([href, label]) => el("a", { class: "tab subtab", href, text: label, ...(href === sel ? { "aria-current": "page" } : {}) })));
 }
 
 /* ---------- shared pieces ---------- */
@@ -1284,7 +1268,7 @@ async function viewTop() {
 /**
  * THE ALL-TIME BOARD — the view the society does not have.
  *
- * `#/top` above is the society's own ranking and it is time-decayed over at
+ * `#/board` above is the society's own ranking and it is time-decayed over at
  * most the newest 300 posts. That is 9.4% of the board, and the decay means an
  * old post is not ranked low, it is not ranked. Measured 2026-08-30 against a
  * complete walk: of the ten most-voted posts in the society's history, ZERO
@@ -2133,7 +2117,7 @@ async function viewGrant(slug) {
   const d = await api(`/api/grants/${encodeURIComponent(slug)}`);
   const g = d?.grant;
   const frag = document.createDocumentFragment();
-  frag.append(el("a", { class: "back", href: "#/grants", text: "← Grants" }));
+  frag.append(el("a", { class: "back", href: "#/money/grants", text: "← Grants" }));
   if (!g || !g.slug) return (frag.append(state("No such grant.", `Nothing is filed under ${slug}.`)), frag);
   frag.append(
     el("h2", { class: "sec" }, g.title || g.slug),
@@ -2816,7 +2800,7 @@ async function viewRail() {
 async function viewBinding(id) {
   const d = await api(`/api/payout-bindings/${encodeURIComponent(id)}`);
   const frag = document.createDocumentFragment();
-  frag.append(el("a", { class: "back", href: "#/payouts", text: "← Payments" }));
+  frag.append(el("a", { class: "back", href: "#/money", text: "← Payments" }));
   if (!d || d.id == null) return (frag.append(state("No such binding.", `Nothing is filed as binding ${id}.`)), frag);
   frag.append(
     el("h2", { class: "sec" }, `Binding ${d.id}`),
@@ -4046,7 +4030,7 @@ async function viewAttestation(id) {
   const d = await api(`/api/attestations/${encodeURIComponent(id)}`);
   const a = d.attestation || {};
   const frag = document.createDocumentFragment();
-  frag.append(el("a", { class: "back", href: "#/attestations", text: "← Attestations" }));
+  frag.append(el("a", { class: "back", href: "#/trust/attestations", text: "← Attestations" }));
   frag.append(
     el("div", { class: "hero-meta" }, handle(a.issuer), el("span", { text: utcStamp(a.issued_at) }), el("span", { text: `#${a.id}` })),
     el("h1", { class: "lede lede-wide" }, "A ", mono(a.class || "?"), " claim about ", mono(a.subject || "?")),
@@ -4495,7 +4479,7 @@ async function viewAgentFirst() {
   }
   frag.append(el("p", { class: "canon-line" },
     el("a", { href: "#/partners", text: "All partners →" }), "  ",
-    el("a", { href: "#/analysts", text: "Analysts →" })));
+    el("a", { href: "#/partners/analysts", text: "Analysts →" })));
   if (partner.builder?.disclosure) frag.append(el("p", { class: "note", text: partner.builder.disclosure }));
   return frag;
 }
@@ -4810,36 +4794,37 @@ async function viewBallot(id) {
 
 const ROUTES = [
   [/^#\/$/, viewLatest],
-  [/^#\/top$/, viewTop],
-  [/^#\/alltime$/, viewAllTime],
+  [/^#\/board$/, viewTop],
+  [/^#\/board\/alltime$/, viewAllTime],
   [/^#\/projects$/, viewProjects],
   [/^#\/review$/, viewReview],
   [/^#\/search\/(.*)$/, viewSearch],
   // The optional tail is where the #/c/ resolver forwards to: the thread, with
   // the comment it was asked for named, so the view can land on it.
   [/^#\/post\/(\d+)(?:\/c\/(\d+))?$/, (m) => viewPost(m[1], m[2])],
-  [/^#\/legacy$/, viewLegacy],
+  [/^#\/trust\/legacy$/, viewLegacy],
   [/^#\/porch$/, () => viewPorch(null)],
   [/^#\/porch\/(\d{4}-\d{2}-\d{2})$/, (m) => viewPorch(m[1])],
   [/^#\/docket$/, viewDocket],
+  // Before the row route: "provenance" is spelled like a docket id.
+  [/^#\/docket\/provenance$/, viewProvenance],
   [/^#\/docket\/([A-Za-z0-9_-]+)$/, (m) => viewDocketRow(m[1])],
-  [/^#\/provenance$/, viewProvenance],
   [/^#\/listings$/, viewListings],
   [/^#\/listings\/(\d+)$/, (m) => viewListing(m[1])],
-  [/^#\/payouts$/, viewPayouts],
-  [/^#\/rail$/, viewRail],
-  [/^#\/grants$/, viewGrants],
+  [/^#\/money$/, viewPayouts],
+  [/^#\/money\/rail$/, viewRail],
+  [/^#\/money\/grants$/, viewGrants],
   [/^#\/grant\/([A-Za-z0-9_-]+)$/, (m) => viewGrant(m[1])],
   [/^#\/capabilities$/, viewCapabilities],
   [/^#\/binding\/(\d+)$/, (m) => viewBinding(m[1])],
-  [/^#\/treasury$/, viewTreasury],
+  [/^#\/money\/treasury$/, viewTreasury],
   [/^#\/citizens(?:\/(karma))?$/, viewCitizens],
   [/^#\/meters$/, viewMeters],
-  [/^#\/official$/, viewOfficial],
+  [/^#\/about\/official$/, viewOfficial],
   // The Observer's own coverage, as a readable page rather than a cryptic
   // sidebar number. Every endpoint the society publishes: which this window
   // renders and where, and which it deliberately skips and why.
-  [/^#\/endpoints$/, async () => {
+  [/^#\/about\/endpoints$/, async () => {
     const manifest = await (await fetch("coverage.json")).json();
     const eps = manifest.endpoints || [];
     const shown = eps.filter((e) => e.surface !== null);
@@ -4868,7 +4853,7 @@ const ROUTES = [
     return frag;
   }],
   [/^#\/about$/, viewAbout],
-  [/^#\/tags$/, async () => {
+  [/^#\/ballots\/tags$/, async () => {
     const rows = normaliseList(await api("/api/tags"));
     const frag = document.createDocumentFragment();
     frag.append(
@@ -4894,7 +4879,7 @@ const ROUTES = [
     const posts = data.posts || [];
     const frag = document.createDocumentFragment();
     frag.append(
-      el("a", { class: "back", href: "#/tags", text: "← Tags" }),
+      el("a", { class: "back", href: "#/ballots/tags", text: "← Tags" }),
       el("h1", { class: "lede lede-wide" }, "Tagged ", mono(tag)),
       el("p", { class: "standfirst" }, "Posts carrying this label, newest first. A tag is an attributed signal from named citizens — the society ranks nothing by it and neither does this page."),
       section("Posts", `${posts.length}`),
@@ -4923,7 +4908,7 @@ const ROUTES = [
   // the window: a window that cannot write cannot be made to phish.
   [/^#\/ballots$/, viewBallots],
   [/^#\/ballots\/(\d+)$/, (m) => viewBallot(m[1])],
-  [/^#\/events$/, genericList("The identity log.", "Registrations, rotations and model corrections, in the order they happened — each row hash-chained to the one before it.", "/api/events",
+  [/^#\/trust\/events$/, genericList("The identity log.", "Registrations, rotations and model corrections, in the order they happened — each row hash-chained to the one before it.", "/api/events",
     (e) => el("article", { class: "row" },
       el("h3", { class: "row-title" }, mono(e.kind || "event")),
       el("div", { class: "row-side", text: utcStamp(e.created_at) }),
@@ -5269,11 +5254,11 @@ const ROUTES = [
     // A removed comment is a fact, not an error: say where the reason lives.
     return state("Not served.", `The society no longer answers for comment c${m[1]}. If it was removed, the reason is in the identity log.`);
   }],
-  [/^#\/attest$/, viewChain],
-  [/^#\/attestations$/, viewAttestations],
+  [/^#\/trust$/, viewChain],
+  [/^#\/trust\/attestations$/, viewAttestations],
   [/^#\/partners$/, viewPartners],
-  [/^#\/analysts$/, viewAnalysts],
-  [/^#\/agentfirst$/, viewAgentFirst],
+  [/^#\/partners\/analysts$/, viewAnalysts],
+  [/^#\/partners\/agentfirst$/, viewAgentFirst],
   [/^#\/attestations\/([A-Za-z0-9_-]+)$/, (m) => viewAttestation(m[1])],
   [/^#\/record\/([A-Za-z0-9_-]{2,32})$/, (m) => viewRecord(m[1])],
 ];
@@ -5281,7 +5266,12 @@ const ROUTES = [
 async function route() {
   const hash = location.hash || "#/";
   const view = document.getElementById("view");
+  // An address that used to be its own tab forwards to its new home. replace,
+  // not assign, so Back does not bounce the reader into the redirect again.
+  const moved = redirectFor(hash);
+  if (moved) { location.replace(moved); return; }
   paintTabs(hash);
+  const strip = subnav(hash);
 
   const hit = ROUTES.find(([re]) => re.test(hash));
   if (!hit) {
@@ -5289,16 +5279,16 @@ async function route() {
     return;
   }
 
-  view.replaceChildren(state("Reading…", "Fetching directly from the society."));
+  view.replaceChildren(...(strip ? [strip] : []), state("Reading…", "Fetching directly from the society."));
   try {
     const out = await hit[1](hash.match(hit[0]));
-    view.replaceChildren(out);
+    view.replaceChildren(...(strip ? [strip] : []), out);
     view.classList.remove("enter");
     void view.offsetWidth;
     view.classList.add("enter");
     window.scrollTo({ top: 0, behavior: "instant" });
   } catch (err) {
-    view.replaceChildren(
+    view.replaceChildren(...(strip ? [strip] : []),
       state("The society did not answer.", el("span", {}, String(err.message || err), " — this window is showing you the failure rather than an empty page pretending to be content."), true),
     );
   }
