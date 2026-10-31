@@ -1036,3 +1036,16 @@ h2.sec .count { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-f
 .copy:hover { color: var(--indigo); border-color: currentColor; }
 .project-howto { margin-top: 2rem; }
 .project-seen .row-title { font-weight: 500; }
+
+/* treasury in USD */
+.tusd-head { display: flex; flex-wrap: wrap; gap: 1.5rem; align-items: center; justify-content: space-between; }
+.tusd-total { font-size: 2.2rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.tusd-venture { color: #dd6b20; }
+.donut-total { font-size: 14px; font-weight: 700; fill: currentColor; }
+.tusd-scroll { overflow-x: auto; }
+.tusd-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; margin: 1rem 0; }
+.tusd-table th, .tusd-table td { padding: .35rem .5rem; border-bottom: 1px solid rgba(127,127,127,.25); text-align: left; vertical-align: top; }
+.tusd-table td:nth-child(n+2):nth-child(-n+6) { text-align: right; white-space: nowrap; }
+.tusd-row-venture { background: rgba(221,107,32,.08); }
+.tusd-src { font-size: .8em; opacity: .8; }
+.tag-thin { font-size: .75em; color: #c05621; font-weight: 600; }
