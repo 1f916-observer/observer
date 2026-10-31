@@ -1,7 +1,7 @@
 {
  "schema": "1f916.observer.review.v1",
- "taken_at": 1793424348746,
- "taken_at_utc": "2026-10-31T05:25:48.746Z",
+ "taken_at": 1793448850211,
+ "taken_at_utc": "2026-10-31T12:14:10.211Z",
  "orgs": [
   "1f916-ai",
   "1f916-observer"
@@ -19,9 +19,9 @@
   ]
  },
  "summary": {
-  "open": 39,
+  "open": 40,
   "unreviewed": 13,
-  "median_age_days": 34,
+  "median_age_days": 28,
   "over_14_days": 27,
   "over_30_days": 20,
   "small_and_unreviewed": 3,
@@ -29,7 +29,7 @@
    "1f916-ai/1f512": {
     "open": 10,
     "unreviewed": 8,
-    "oldest_days": 45,
+    "oldest_days": 46,
     "ci_none": 10
    },
    "1f916-ai/1fab0": {
@@ -39,7 +39,7 @@
     "ci_none": 10
    },
    "1f916-ai/1f916": {
-    "open": 16,
+    "open": 17,
     "unreviewed": 0,
     "oldest_days": 22,
     "ci_none": 0
@@ -60,7 +60,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/19",
    "title": "test: add boundary guards killing 4 surviving mutants in evaluate.ts",
    "created_at": "2026-09-15T06:07:22Z",
-   "age_days": 45,
+   "age_days": 46,
    "draft": false,
    "size": {
     "additions": 41,
@@ -525,7 +525,7 @@
    "url": "https://github.com/1f916-ai/1fab0/pull/2",
    "title": "feat(trajectory): add continuous 2D trajectory decoder alongside descending classes (c65253)",
    "created_at": "2026-09-17T05:26:41Z",
-   "age_days": 43,
+   "age_days": 44,
    "draft": false,
    "size": {
     "additions": 847,
@@ -556,7 +556,7 @@
    "url": "https://github.com/1f916-ai/1fab0/pull/3",
    "title": "feat(witness): add turnkey verification harness and attestation generator for independent scoring (c65253)",
    "created_at": "2026-09-17T05:31:53Z",
-   "age_days": 43,
+   "age_days": 44,
    "draft": false,
    "size": {
     "additions": 2260,
@@ -587,7 +587,7 @@
    "url": "https://github.com/1f916-ai/1fab0/pull/4",
    "title": "feat(simulator): add continuous rate ODE ConnectomeArena backend (--simulator arena)",
    "created_at": "2026-09-17T05:33:46Z",
-   "age_days": 43,
+   "age_days": 44,
    "draft": false,
    "size": {
     "additions": 1941,
@@ -618,7 +618,7 @@
    "url": "https://github.com/1f916-ai/1fab0/pull/5",
    "title": "feat(viewer): add standalone static web evaluation viewer and trial replayer",
    "created_at": "2026-09-17T05:51:11Z",
-   "age_days": 43,
+   "age_days": 44,
    "draft": false,
    "size": {
     "additions": 3222,
@@ -773,7 +773,7 @@
    "url": "https://github.com/1f916-ai/1f916/pull/605",
    "title": "fix(listings): expose binding authorization verdict",
    "created_at": "2026-10-10T08:18:54Z",
-   "age_days": 20,
+   "age_days": 21,
    "draft": false,
    "size": {
     "additions": 22,
@@ -1063,11 +1063,11 @@
    "mergeable": "yes",
    "ci": "green",
    "engagement": {
-    "reviews": 1,
-    "approvals": 0,
+    "reviews": 2,
+    "approvals": 1,
     "changes_requested": 0,
     "comments_by_others": 0,
-    "last_engagement_at": "2026-10-31T00:49:45Z",
+    "last_engagement_at": "2026-10-31T06:11:35Z",
     "unreviewed": false
    },
    "check": [
@@ -1259,6 +1259,37 @@
    "check": [
     "git clone https://github.com/1f916-ai/1f916 && cd 1f916",
     "git fetch origin pull/702/head && git checkout FETCH_HEAD",
+    "npm ci && npm test"
+   ]
+  },
+  {
+   "key": "1f916-ai/1f916#703",
+   "repo": "1f916-ai/1f916",
+   "number": 703,
+   "url": "https://github.com/1f916-ai/1f916/pull/703",
+   "title": "docs(clients): clarify explicit @handle mention syntax",
+   "created_at": "2026-10-31T08:25:27Z",
+   "age_days": 0,
+   "draft": false,
+   "size": {
+    "additions": 5,
+    "deletions": 1,
+    "files": 2
+   },
+   "small": true,
+   "mergeable": "yes",
+   "ci": "green",
+   "engagement": {
+    "reviews": 1,
+    "approvals": 1,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": "2026-10-31T08:34:24Z",
+    "unreviewed": false
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1f916 && cd 1f916",
+    "git fetch origin pull/703/head && git checkout FETCH_HEAD",
     "npm ci && npm test"
    ]
   }
