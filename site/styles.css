@@ -24,7 +24,7 @@
   --paper-lift: light-dark(#f6f7f9, #161c22);
   --ink:        light-dark(#0f1519, #e6e9ed);
   --ink-soft:   light-dark(#4a565f, #a4b0ba);
-  --ink-faint:  light-dark(#7d8a94, #6f7d88);
+  --ink-faint:  light-dark(#5f6b75, #8794a0); /* AA contrast on --paper in both themes */
   --rule:       light-dark(#cfd5db, #263039);
 
   /* The two accents are semantic, not decorative.
@@ -1058,3 +1058,81 @@ h2.sec .count { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-f
 .tusd-row-venture { background: rgba(221,107,32,.08); }
 .tusd-src { font-size: .8em; opacity: .8; }
 .tag-thin { font-size: .75em; color: #c05621; font-weight: 600; }
+
+/* ================= mobile polish & human-viewer pass =================
+ * Appended last so it wins the cascade without touching earlier rules. */
+
+/* Flex/grid children default to min-width:auto, so one wide table pushed the
+ * whole page sideways on phones. Let the view shrink; wide blocks scroll. */
+main, #view, #view > * { min-width: 0; }
+#view img, #view svg { max-width: 100%; height: auto; }
+#view dd, #view .mono { overflow-wrap: anywhere; }
+
+/* A plain-language welcome for first-time human readers. */
+.newhere {
+  margin: 0.25rem 0 1.75rem; padding: 1rem 1.2rem;
+  border: 1px solid var(--rule); border-left: 3px solid var(--indigo);
+  border-radius: 8px; background: var(--paper-lift);
+  max-width: var(--measure); line-height: 1.55;
+}
+.newhere p { margin: 0 0 0.5rem; }
+.newhere-h { font-weight: 700; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-soft); }
+.newhere-links { margin: 0.4rem 0 0 !important; font-size: 0.92rem; }
+
+/* Treasury: fluid donut, scrollable table with a sticky asset column. */
+.donut { width: clamp(120px, 40vw, 160px); height: auto; }
+.tusd-scroll { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.tusd-scroll:focus-visible { outline: 2px solid var(--indigo); outline-offset: 2px; }
+.tusd-table th { font-size: 0.78rem; white-space: nowrap; }
+.tusd-table th:first-child, .tusd-table td:first-child {
+  position: sticky; left: 0; z-index: 1; background: var(--paper);
+  box-shadow: 1px 0 0 rgba(127,127,127,.25);
+}
+.tusd-row-venture td:first-child { background: color-mix(in srgb, #dd6b20 8%, var(--paper)); }
+
+/* Generic markdown tables never widen the page. */
+.md-table { display: block; max-width: 100%; overflow-x: auto; }
+
+/* Loading skeleton: a calm shimmer where data is about to land. */
+.skeleton { display: grid; gap: 0.6rem; margin: -2rem 0 2rem; max-width: var(--measure); }
+.skeleton span {
+  display: block; height: 0.9rem; border-radius: 4px;
+  background: linear-gradient(90deg, var(--paper-lift) 25%, var(--rule) 50%, var(--paper-lift) 75%);
+  background-size: 200% 100%; animation: skel 1.4s ease-in-out infinite;
+}
+.skeleton span:nth-child(2) { width: 80%; }
+.skeleton span:nth-child(3) { width: 60%; }
+@keyframes skel { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .skeleton span { animation: none; } }
+
+/* Focus is always visible for keyboard readers. */
+a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visible {
+  outline: 2px solid var(--indigo); outline-offset: 2px; border-radius: 3px;
+}
+
+@media (max-width: 52rem) {
+  /* Sub-tabs: one swipeable row with fade edges, instead of wrapping. */
+  .subtabs {
+    flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none;
+    margin-left: -0.8rem; margin-right: -0.8rem; padding-left: 0.8rem; padding-right: 0.8rem;
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 0.8rem, #000 calc(100% - 1.6rem), transparent);
+            mask-image: linear-gradient(90deg, transparent 0, #000 0.8rem, #000 calc(100% - 1.6rem), transparent);
+  }
+  .subtabs::-webkit-scrollbar { display: none; }
+  .subtab { font-size: 0.88rem; }
+  /* 44px tap targets for the things a thumb actually hits. */
+  .subtab, .tabs-in .tab { min-height: 44px; display: inline-flex; align-items: center; }
+  .nav-toggle { min-height: 44px; }
+  .tabs-in .tab { display: flex; }
+  .newhere-links a { display: inline-block; padding: 0.35rem 0; }
+  .tusd-total { font-size: 1.9rem; }
+  .tusd-head { gap: 1rem; }
+  #view { padding-top: 1.4rem; }
+  body { -webkit-text-size-adjust: 100%; }
+}
+/* Long hashes and addresses in meta lines wrap instead of widening the page. */
+.row-meta > *, .row-meta span { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+/* Keep holdings rows one line tall; the table scrolls sideways instead. */
+.tusd-table td { white-space: nowrap; }
+.tusd-table td.tusd-src { white-space: normal; min-width: 16rem; }
+.tusd-table td:first-child .tag-cited { display: block; font-size: 0.75rem; }
