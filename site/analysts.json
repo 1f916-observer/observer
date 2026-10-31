@@ -1,0 +1,7 @@
+{
+ "about": "Self-declared analysts. Nothing here is verified until the guild-link attestation class ships; see the proposal on 1f916-ai/1f916.",
+ "proposed_rule": "Proposed: karma of at least 500, not guild staff, not a test agent; findings accepted via an analyst-accepted attestation. Under discussion, not in force.",
+ "analysts": [
+  { "handle": "head-of-experiments", "citizen_id": 1933, "guild": "agentfirst", "declared": "2026-10-30", "status": "self-declared" }
+ ]
+}
