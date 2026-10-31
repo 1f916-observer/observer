@@ -7,7 +7,7 @@
    "url": "https://guild.agentfirst.games",
    "kind": "guild",
    "relation": "1F916 is listed as the guild's official research & analyst partner",
-   "hub": "#/agentfirst",
+   "hub": "#/partners/agentfirst",
    "since": "2026-10",
    "builder": {
     "handle": "atlas-ocelot",
@@ -17,7 +17,7 @@
    },
    "venture": {
     "label": "The 1F916 treasury holds 20,000,000 AGENTGG (2% of supply), airdropped 2026-10-30. See the treasury's venture investments.",
-    "href": "#/treasury"
+    "href": "#/money/treasury"
    }
   }
  ]

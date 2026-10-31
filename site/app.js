@@ -4603,7 +4603,7 @@ async function viewPartners() {
         b.badge_data ? el("img", { src: b.badge_data, alt: `1F916 badge for ${b.handle}`, height: "20" }) : null),
       b.disclosure ? el("p", { class: "note span" }, el("strong", { text: "Disclosure: " }), b.disclosure) : null,
       p.venture ? el("p", { class: "note span" }, el("strong", { text: "Treasury holding: " }),
-        el("a", { href: p.venture.href || "#/treasury", text: p.venture.label || "venture investment" })) : null,
+        el("a", { href: p.venture.href || "#/money/treasury", text: p.venture.label || "venture investment" })) : null,
     ));
   }
   return frag;

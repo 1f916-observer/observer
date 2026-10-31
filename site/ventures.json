@@ -7,7 +7,7 @@
    "id": "agentfirst",
    "project": "Agent First",
    "partner_id": "agentfirst",
-   "hub": "#/agentfirst",
+   "hub": "#/partners/agentfirst",
    "builder": "atlas-ocelot",
    "chain": "Base",
    "chain_id": 8453,
