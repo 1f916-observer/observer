@@ -1,7 +1,7 @@
 {
  "schema": "1f916.observer.review.v1",
- "taken_at": 1793512287135,
- "taken_at_utc": "2026-11-01T05:51:27.135Z",
+ "taken_at": 1793538705826,
+ "taken_at_utc": "2026-11-01T13:11:45.826Z",
  "orgs": [
   "1f916-ai",
   "1f916-observer"
@@ -14,22 +14,22 @@
   "utc_day": "2026-11-01",
   "picks": [
    "1f916-ai/1f512#27",
-   "1f916-ai/1fab0#7",
-   "1f916-ai/1f512#30"
+   "1f916-ai/1f916#712",
+   "1f916-ai/1fab0#7"
   ]
  },
  "summary": {
-  "open": 31,
-  "unreviewed": 13,
-  "median_age_days": 41,
+  "open": 30,
+  "unreviewed": 14,
+  "median_age_days": 42,
   "over_14_days": 27,
   "over_30_days": 20,
-  "small_and_unreviewed": 3,
+  "small_and_unreviewed": 4,
   "by_repo": {
    "1f916-ai/1f512": {
     "open": 10,
     "unreviewed": 8,
-    "oldest_days": 46,
+    "oldest_days": 47,
     "ci_none": 10
    },
    "1f916-ai/1fab0": {
@@ -39,8 +39,8 @@
     "ci_none": 10
    },
    "1f916-ai/1f916": {
-    "open": 8,
-    "unreviewed": 0,
+    "open": 7,
+    "unreviewed": 1,
     "oldest_days": 23,
     "ci_none": 0
    },
@@ -60,7 +60,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/19",
    "title": "test: add boundary guards killing 4 surviving mutants in evaluate.ts",
    "created_at": "2026-09-15T06:07:22Z",
-   "age_days": 46,
+   "age_days": 47,
    "draft": false,
    "size": {
     "additions": 41,
@@ -457,6 +457,37 @@
    ]
   },
   {
+   "key": "1f916-ai/1f916#712",
+   "repo": "1f916-ai/1f916",
+   "number": 712,
+   "url": "https://github.com/1f916-ai/1f916/pull/712",
+   "title": "fix(openapi): declare badge conditional 304 response",
+   "created_at": "2026-11-01T13:06:20Z",
+   "age_days": 0,
+   "draft": false,
+   "size": {
+    "additions": 75,
+    "deletions": 20,
+    "files": 4
+   },
+   "small": true,
+   "mergeable": "yes",
+   "ci": "pending",
+   "engagement": {
+    "reviews": 0,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": null,
+    "unreviewed": true
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1f916 && cd 1f916",
+    "git fetch origin pull/712/head && git checkout FETCH_HEAD",
+    "npm ci && npm test"
+   ]
+  },
+  {
    "key": "1f916-ai/1f512#23",
    "repo": "1f916-ai/1f512",
    "number": 23,
@@ -773,7 +804,7 @@
    "url": "https://github.com/1f916-ai/1f916/pull/605",
    "title": "fix(listings): expose binding authorization verdict",
    "created_at": "2026-10-10T08:18:54Z",
-   "age_days": 21,
+   "age_days": 22,
    "draft": false,
    "size": {
     "additions": 22,
@@ -950,68 +981,6 @@
     "git clone https://github.com/1f916-ai/protocol && cd protocol",
     "git fetch origin pull/26/head && git checkout FETCH_HEAD",
     "node selftest.mjs && node testvectors/verify-rotate.mjs"
-   ]
-  },
-  {
-   "key": "1f916-ai/1f916#700",
-   "repo": "1f916-ai/1f916",
-   "number": 700,
-   "url": "https://github.com/1f916-ai/1f916/pull/700",
-   "title": "fix(mcp): refuse structured thread cursors before string coercion",
-   "created_at": "2026-10-31T02:15:38Z",
-   "age_days": 1,
-   "draft": false,
-   "size": {
-    "additions": 152,
-    "deletions": 1,
-    "files": 2
-   },
-   "small": true,
-   "mergeable": "yes",
-   "ci": "green",
-   "engagement": {
-    "reviews": 1,
-    "approvals": 0,
-    "changes_requested": 0,
-    "comments_by_others": 0,
-    "last_engagement_at": "2026-10-31T02:36:04Z",
-    "unreviewed": false
-   },
-   "check": [
-    "git clone https://github.com/1f916-ai/1f916 && cd 1f916",
-    "git fetch origin pull/700/head && git checkout FETCH_HEAD",
-    "npm ci && npm test"
-   ]
-  },
-  {
-   "key": "1f916-ai/1f916#701",
-   "repo": "1f916-ai/1f916",
-   "number": 701,
-   "url": "https://github.com/1f916-ai/1f916/pull/701",
-   "title": "fix(scan-guard): retain SQL across statement regex contexts",
-   "created_at": "2026-10-31T02:55:28Z",
-   "age_days": 1,
-   "draft": false,
-   "size": {
-    "additions": 187,
-    "deletions": 5,
-    "files": 2
-   },
-   "small": true,
-   "mergeable": "yes",
-   "ci": "green",
-   "engagement": {
-    "reviews": 1,
-    "approvals": 1,
-    "changes_requested": 0,
-    "comments_by_others": 0,
-    "last_engagement_at": "2026-10-31T03:16:50Z",
-    "unreviewed": false
-   },
-   "check": [
-    "git clone https://github.com/1f916-ai/1f916 && cd 1f916",
-    "git fetch origin pull/701/head && git checkout FETCH_HEAD",
-    "npm ci && npm test"
    ]
   }
  ],
