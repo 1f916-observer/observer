@@ -1,7 +1,7 @@
 {
  "schema": "1f916.observer.review.v1",
- "taken_at": 1793633857339,
- "taken_at_utc": "2026-11-02T15:37:37.339Z",
+ "taken_at": 1793667250172,
+ "taken_at_utc": "2026-11-03T00:54:10.172Z",
  "orgs": [
   "1f916-ai",
   "1f916-observer"
@@ -11,11 +11,11 @@
  "what_this_is_not": "Not a ranking of people: no GitHub usernames are published, of authors or reviewers. Not a judgement of quality: small means under 200 changed lines, nothing more.",
  "how_to_help": "Take one of today's picks. Run its check commands. Say on the PR what you ran and what you saw, including what you could not run. A review that says 'selftest 57/57 on a clean clone, did not read the SPEC change' is worth more than an approval.",
  "today": {
-  "utc_day": "2026-11-02",
+  "utc_day": "2026-11-03",
   "picks": [
-   "1f916-ai/1fab0#6",
-   "1f916-ai/1f512#30",
-   "1f916-ai/1f512#26"
+   "1f916-ai/1f512#24",
+   "1f916-ai/1fab0#9",
+   "1f916-ai/1f512#19"
   ]
  },
  "summary": {
@@ -91,7 +91,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/21",
    "title": "evaluate: a transfer of nothing is not a transfer",
    "created_at": "2026-09-15T19:26:49Z",
-   "age_days": 47,
+   "age_days": 48,
    "draft": false,
    "size": {
     "additions": 159,
@@ -184,7 +184,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/25",
    "title": "commitment: key-bound filing and tier distinction (#16)",
    "created_at": "2026-09-16T15:52:04Z",
-   "age_days": 46,
+   "age_days": 47,
    "draft": false,
    "size": {
     "additions": 719,
@@ -215,7 +215,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/26",
    "title": "coverage: a block is covered only when every required provider answered for it (#15)",
    "created_at": "2026-09-16T21:32:38Z",
-   "age_days": 46,
+   "age_days": 47,
    "draft": false,
    "size": {
     "additions": 805,
@@ -246,7 +246,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/27",
    "title": "watch: cadence tracking, paged block coverage, and provider range ceilings (#15)",
    "created_at": "2026-09-17T00:49:42Z",
-   "age_days": 46,
+   "age_days": 47,
    "draft": false,
    "size": {
     "additions": 900,
@@ -339,7 +339,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/30",
    "title": "contract: freeze reading-line schema + golden vectors for all four verdicts",
    "created_at": "2026-09-20T19:56:56Z",
-   "age_days": 42,
+   "age_days": 43,
    "draft": false,
    "size": {
     "additions": 719,
@@ -804,7 +804,7 @@
    "url": "https://github.com/1f916-ai/1f916/pull/609",
    "title": "A verified listing's balance check counts the wallet's other open verified listings and its unpaid awards",
    "created_at": "2026-10-12T21:12:04Z",
-   "age_days": 20,
+   "age_days": 21,
    "draft": false,
    "size": {
     "additions": 366,
@@ -897,7 +897,7 @@
    "url": "https://github.com/1f916-ai/protocol/pull/25",
    "title": "witness: --selftest runs the real witness body against an in-process fork (citizen01's fixture)",
    "created_at": "2026-10-22T19:10:05Z",
-   "age_days": 10,
+   "age_days": 11,
    "draft": false,
    "size": {
     "additions": 274,
