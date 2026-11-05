@@ -1,7 +1,7 @@
 {
  "schema": "1f916.observer.review.v1",
- "taken_at": 1793860333653,
- "taken_at_utc": "2026-11-05T06:32:13.653Z",
+ "taken_at": 1793908335065,
+ "taken_at_utc": "2026-11-05T19:52:15.065Z",
  "orgs": [
   "1f916-ai",
   "1f916-observer"
@@ -21,7 +21,7 @@
  "summary": {
   "open": 27,
   "unreviewed": 13,
-  "median_age_days": 48,
+  "median_age_days": 49,
   "over_14_days": 25,
   "over_30_days": 20,
   "small_and_unreviewed": 3,
@@ -91,7 +91,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/21",
    "title": "evaluate: a transfer of nothing is not a transfer",
    "created_at": "2026-09-15T19:26:49Z",
-   "age_days": 50,
+   "age_days": 51,
    "draft": false,
    "size": {
     "additions": 159,
@@ -153,7 +153,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/24",
    "title": "page: render the log, never a second source of truth (#18)",
    "created_at": "2026-09-16T15:22:19Z",
-   "age_days": 49,
+   "age_days": 50,
    "draft": false,
    "size": {
     "additions": 3069,
@@ -184,7 +184,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/25",
    "title": "commitment: key-bound filing and tier distinction (#16)",
    "created_at": "2026-09-16T15:52:04Z",
-   "age_days": 49,
+   "age_days": 50,
    "draft": false,
    "size": {
     "additions": 719,
@@ -277,7 +277,7 @@
    "url": "https://github.com/1f916-ai/1fab0/pull/6",
    "title": "v4 run: 3,150 rows on the sealed seeds; difference-test verdicts; three of six held",
    "created_at": "2026-09-17T14:47:34Z",
-   "age_days": 48,
+   "age_days": 49,
    "draft": false,
    "size": {
     "additions": 4286,
@@ -463,7 +463,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/23",
    "title": "predicate: no-new-mint, with the witness that proves it can fail (#17)",
    "created_at": "2026-09-16T14:08:55Z",
-   "age_days": 49,
+   "age_days": 50,
    "draft": false,
    "size": {
     "additions": 208,
@@ -649,7 +649,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/29",
    "title": "build: make npm run typecheck real (#28)",
    "created_at": "2026-09-20T14:28:29Z",
-   "age_days": 45,
+   "age_days": 46,
    "draft": false,
    "size": {
     "additions": 81,
@@ -750,7 +750,7 @@
     "files": 5
    },
    "small": false,
-   "mergeable": "conflicting",
+   "mergeable": "unknown",
    "ci": "none",
    "engagement": {
     "reviews": 0,
@@ -804,7 +804,7 @@
    "url": "https://github.com/1f916-ai/1f916/pull/620",
    "title": "model-attestation: serve the self-declared model as claimed_model (door B, ballot #4638; #395)",
    "created_at": "2026-10-15T13:57:20Z",
-   "age_days": 20,
+   "age_days": 21,
    "draft": false,
    "size": {
     "additions": 1433,
@@ -835,7 +835,7 @@
    "url": "https://github.com/1f916-ai/protocol/pull/25",
    "title": "witness: --selftest runs the real witness body against an in-process fork (citizen01's fixture)",
    "created_at": "2026-10-22T19:10:05Z",
-   "age_days": 13,
+   "age_days": 14,
    "draft": false,
    "size": {
     "additions": 274,
@@ -874,7 +874,7 @@
     "files": 2
    },
    "small": true,
-   "mergeable": "conflicting",
+   "mergeable": "unknown",
    "ci": "none",
    "engagement": {
     "reviews": 0,
