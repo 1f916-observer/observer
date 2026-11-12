@@ -1,7 +1,7 @@
 {
  "schema": "1f916.observer.review.v1",
- "taken_at": 1794405883287,
- "taken_at_utc": "2026-11-11T14:04:43.287Z",
+ "taken_at": 1794443512563,
+ "taken_at_utc": "2026-11-12T00:31:52.563Z",
  "orgs": [
   "1f916-ai",
   "1f916-observer"
@@ -11,17 +11,17 @@
  "what_this_is_not": "Not a ranking of people: no GitHub usernames are published, of authors or reviewers. Not a judgement of quality: small means under 200 changed lines, nothing more.",
  "how_to_help": "Take one of today's picks. Run its check commands. Say on the PR what you ran and what you saw, including what you could not run. A review that says 'selftest 57/57 on a clean clone, did not read the SPEC change' is worth more than an approval.",
  "today": {
-  "utc_day": "2026-11-11",
+  "utc_day": "2026-11-12",
   "picks": [
-   "1f916-ai/stocks.now#3",
-   "1f916-ai/1fab0#7",
-   "1f916-ai/1fab0#6"
+   "1f916-ai/stocks.now#4",
+   "1f916-ai/1f512#26",
+   "1f916-ai/1fab0#9"
   ]
  },
  "summary": {
   "open": 28,
   "unreviewed": 16,
-  "median_age_days": 53.5,
+  "median_age_days": 54,
   "over_14_days": 25,
   "over_30_days": 23,
   "small_and_unreviewed": 5,
@@ -97,7 +97,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/21",
    "title": "evaluate: a transfer of nothing is not a transfer",
    "created_at": "2026-09-15T19:26:49Z",
-   "age_days": 56,
+   "age_days": 57,
    "draft": false,
    "size": {
     "additions": 159,
@@ -159,7 +159,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/24",
    "title": "page: render the log, never a second source of truth (#18)",
    "created_at": "2026-09-16T15:22:19Z",
-   "age_days": 55,
+   "age_days": 56,
    "draft": false,
    "size": {
     "additions": 3069,
@@ -190,7 +190,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/25",
    "title": "commitment: key-bound filing and tier distinction (#16)",
    "created_at": "2026-09-16T15:52:04Z",
-   "age_days": 55,
+   "age_days": 56,
    "draft": false,
    "size": {
     "additions": 719,
@@ -221,7 +221,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/26",
    "title": "coverage: a block is covered only when every required provider answered for it (#15)",
    "created_at": "2026-09-16T21:32:38Z",
-   "age_days": 55,
+   "age_days": 56,
    "draft": false,
    "size": {
     "additions": 805,
@@ -283,7 +283,7 @@
    "url": "https://github.com/1f916-ai/1fab0/pull/6",
    "title": "v4 run: 3,150 rows on the sealed seeds; difference-test verdicts; three of six held",
    "created_at": "2026-09-17T14:47:34Z",
-   "age_days": 54,
+   "age_days": 55,
    "draft": false,
    "size": {
     "additions": 4286,
@@ -345,7 +345,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/30",
    "title": "contract: freeze reading-line schema + golden vectors for all four verdicts",
    "created_at": "2026-09-20T19:56:56Z",
-   "age_days": 51,
+   "age_days": 52,
    "draft": false,
    "size": {
     "additions": 719,
@@ -500,7 +500,7 @@
    "url": "https://github.com/1f916-ai/stocks.now/pull/3",
    "title": "Docs: identity tokens live, pool singular, User-Agent note, precision…",
    "created_at": "2026-11-09T19:30:41Z",
-   "age_days": 1,
+   "age_days": 2,
    "draft": false,
    "size": {
     "additions": 15,
@@ -531,7 +531,7 @@
    "url": "https://github.com/1f916-ai/stocks.now/pull/4",
    "title": "Cursor/fix drained pool staleness 8ce1",
    "created_at": "2026-11-09T19:33:56Z",
-   "age_days": 1,
+   "age_days": 2,
    "draft": false,
    "size": {
     "additions": 115,
@@ -562,7 +562,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/23",
    "title": "predicate: no-new-mint, with the witness that proves it can fail (#17)",
    "created_at": "2026-09-16T14:08:55Z",
-   "age_days": 55,
+   "age_days": 56,
    "draft": false,
    "size": {
     "additions": 208,
@@ -748,7 +748,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/29",
    "title": "build: make npm run typecheck real (#28)",
    "created_at": "2026-09-20T14:28:29Z",
-   "age_days": 51,
+   "age_days": 52,
    "draft": false,
    "size": {
     "additions": 81,
@@ -872,7 +872,7 @@
    "url": "https://github.com/1f916-ai/1f916/pull/609",
    "title": "A verified listing's balance check counts the wallet's other open verified listings and its unpaid awards",
    "created_at": "2026-10-12T21:12:04Z",
-   "age_days": 29,
+   "age_days": 30,
    "draft": false,
    "size": {
     "additions": 366,
