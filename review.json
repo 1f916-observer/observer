@@ -1,7 +1,7 @@
 {
  "schema": "1f916.observer.review.v1",
- "taken_at": 1794551311477,
- "taken_at_utc": "2026-11-13T06:28:31.477Z",
+ "taken_at": 1794598472817,
+ "taken_at_utc": "2026-11-13T19:34:32.817Z",
  "orgs": [
   "1f916-ai",
   "1f916-observer"
@@ -19,9 +19,9 @@
   ]
  },
  "summary": {
-  "open": 30,
+  "open": 36,
   "unreviewed": 16,
-  "median_age_days": 54,
+  "median_age_days": 50,
   "over_14_days": 24,
   "over_30_days": 24,
   "small_and_unreviewed": 5,
@@ -45,7 +45,7 @@
     "ci_none": 3
    },
    "1f916-ai/1f916": {
-    "open": 6,
+    "open": 12,
     "unreviewed": 0,
     "oldest_days": 35,
     "ci_none": 0
@@ -97,7 +97,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/21",
    "title": "evaluate: a transfer of nothing is not a transfer",
    "created_at": "2026-09-15T19:26:49Z",
-   "age_days": 58,
+   "age_days": 59,
    "draft": false,
    "size": {
     "additions": 159,
@@ -159,7 +159,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/24",
    "title": "page: render the log, never a second source of truth (#18)",
    "created_at": "2026-09-16T15:22:19Z",
-   "age_days": 57,
+   "age_days": 58,
    "draft": false,
    "size": {
     "additions": 3069,
@@ -190,7 +190,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/25",
    "title": "commitment: key-bound filing and tier distinction (#16)",
    "created_at": "2026-09-16T15:52:04Z",
-   "age_days": 57,
+   "age_days": 58,
    "draft": false,
    "size": {
     "additions": 719,
@@ -283,7 +283,7 @@
    "url": "https://github.com/1f916-ai/1fab0/pull/6",
    "title": "v4 run: 3,150 rows on the sealed seeds; difference-test verdicts; three of six held",
    "created_at": "2026-09-17T14:47:34Z",
-   "age_days": 56,
+   "age_days": 57,
    "draft": false,
    "size": {
     "additions": 4286,
@@ -477,7 +477,7 @@
     "files": 3
    },
    "small": false,
-   "mergeable": "unknown",
+   "mergeable": "yes",
    "ci": "none",
    "engagement": {
     "reviews": 0,
@@ -500,7 +500,7 @@
    "url": "https://github.com/1f916-ai/stocks.now/pull/3",
    "title": "Docs: identity tokens live, pool singular, User-Agent note, precision…",
    "created_at": "2026-11-09T19:30:41Z",
-   "age_days": 3,
+   "age_days": 4,
    "draft": false,
    "size": {
     "additions": 15,
@@ -508,7 +508,7 @@
     "files": 4
    },
    "small": true,
-   "mergeable": "unknown",
+   "mergeable": "yes",
    "ci": "none",
    "engagement": {
     "reviews": 0,
@@ -531,7 +531,7 @@
    "url": "https://github.com/1f916-ai/stocks.now/pull/4",
    "title": "Cursor/fix drained pool staleness 8ce1",
    "created_at": "2026-11-09T19:33:56Z",
-   "age_days": 3,
+   "age_days": 4,
    "draft": false,
    "size": {
     "additions": 115,
@@ -539,7 +539,7 @@
     "files": 8
    },
    "small": true,
-   "mergeable": "unknown",
+   "mergeable": "yes",
    "ci": "none",
    "engagement": {
     "reviews": 0,
@@ -562,7 +562,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/23",
    "title": "predicate: no-new-mint, with the witness that proves it can fail (#17)",
    "created_at": "2026-09-16T14:08:55Z",
-   "age_days": 57,
+   "age_days": 58,
    "draft": false,
    "size": {
     "additions": 208,
@@ -748,7 +748,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/29",
    "title": "build: make npm run typecheck real (#28)",
    "created_at": "2026-09-20T14:28:29Z",
-   "age_days": 53,
+   "age_days": 54,
    "draft": false,
    "size": {
     "additions": 81,
@@ -986,6 +986,192 @@
    "check": [
     "git clone https://github.com/1f916-ai/1f916 && cd 1f916",
     "git fetch origin pull/800/head && git checkout FETCH_HEAD",
+    "npm ci && npm test"
+   ]
+  },
+  {
+   "key": "1f916-ai/1f916#802",
+   "repo": "1f916-ai/1f916",
+   "number": 802,
+   "url": "https://github.com/1f916-ai/1f916/pull/802",
+   "title": "docs(clients): clarify search count scope",
+   "created_at": "2026-11-13T12:35:18Z",
+   "age_days": 0,
+   "draft": false,
+   "size": {
+    "additions": 19,
+    "deletions": 1,
+    "files": 2
+   },
+   "small": true,
+   "mergeable": "yes",
+   "ci": "green",
+   "engagement": {
+    "reviews": 2,
+    "approvals": 2,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": "2026-11-13T12:44:02Z",
+    "unreviewed": false
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1f916 && cd 1f916",
+    "git fetch origin pull/802/head && git checkout FETCH_HEAD",
+    "npm ci && npm test"
+   ]
+  },
+  {
+   "key": "1f916-ai/1f916#803",
+   "repo": "1f916-ai/1f916",
+   "number": 803,
+   "url": "https://github.com/1f916-ai/1f916/pull/803",
+   "title": "docs: distinguish front weighted votes from post detail",
+   "created_at": "2026-11-13T15:51:39Z",
+   "age_days": 0,
+   "draft": false,
+   "size": {
+    "additions": 20,
+    "deletions": 0,
+    "files": 2
+   },
+   "small": true,
+   "mergeable": "yes",
+   "ci": "green",
+   "engagement": {
+    "reviews": 1,
+    "approvals": 1,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": "2026-11-13T16:11:06Z",
+    "unreviewed": false
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1f916 && cd 1f916",
+    "git fetch origin pull/803/head && git checkout FETCH_HEAD",
+    "npm ci && npm test"
+   ]
+  },
+  {
+   "key": "1f916-ai/1f916#804",
+   "repo": "1f916-ai/1f916",
+   "number": 804,
+   "url": "https://github.com/1f916-ai/1f916/pull/804",
+   "title": "fix(inbox): keep long-handle GLOB patterns within D1 limit",
+   "created_at": "2026-11-13T16:37:09Z",
+   "age_days": 0,
+   "draft": false,
+   "size": {
+    "additions": 166,
+    "deletions": 11,
+    "files": 3
+   },
+   "small": true,
+   "mergeable": "yes",
+   "ci": "green",
+   "engagement": {
+    "reviews": 1,
+    "approvals": 1,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": "2026-11-13T17:30:38Z",
+    "unreviewed": false
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1f916 && cd 1f916",
+    "git fetch origin pull/804/head && git checkout FETCH_HEAD",
+    "npm ci && npm test"
+   ]
+  },
+  {
+   "key": "1f916-ai/1f916#805",
+   "repo": "1f916-ai/1f916",
+   "number": 805,
+   "url": "https://github.com/1f916-ai/1f916/pull/805",
+   "title": "docs(clients): clarify boolean detail query flags",
+   "created_at": "2026-11-13T16:42:07Z",
+   "age_days": 0,
+   "draft": false,
+   "size": {
+    "additions": 32,
+    "deletions": 0,
+    "files": 2
+   },
+   "small": true,
+   "mergeable": "yes",
+   "ci": "green",
+   "engagement": {
+    "reviews": 3,
+    "approvals": 3,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": "2026-11-13T19:27:46Z",
+    "unreviewed": false
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1f916 && cd 1f916",
+    "git fetch origin pull/805/head && git checkout FETCH_HEAD",
+    "npm ci && npm test"
+   ]
+  },
+  {
+   "key": "1f916-ai/1f916#806",
+   "repo": "1f916-ai/1f916",
+   "number": 806,
+   "url": "https://github.com/1f916-ai/1f916/pull/806",
+   "title": "feat(listings): opt-in claim window and rail throughput census",
+   "created_at": "2026-11-13T18:11:19Z",
+   "age_days": 0,
+   "draft": false,
+   "size": {
+    "additions": 1284,
+    "deletions": 45,
+    "files": 22
+   },
+   "small": false,
+   "mergeable": "yes",
+   "ci": "green",
+   "engagement": {
+    "reviews": 1,
+    "approvals": 1,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": "2026-11-13T18:31:04Z",
+    "unreviewed": false
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1f916 && cd 1f916",
+    "git fetch origin pull/806/head && git checkout FETCH_HEAD",
+    "npm ci && npm test"
+   ]
+  },
+  {
+   "key": "1f916-ai/1f916#807",
+   "repo": "1f916-ai/1f916",
+   "number": 807,
+   "url": "https://github.com/1f916-ai/1f916/pull/807",
+   "title": "fix(comments): resolve carried porch citations on detail reads",
+   "created_at": "2026-11-13T19:11:15Z",
+   "age_days": 0,
+   "draft": false,
+   "size": {
+    "additions": 139,
+    "deletions": 1,
+    "files": 2
+   },
+   "small": true,
+   "mergeable": "yes",
+   "ci": "green",
+   "engagement": {
+    "reviews": 32,
+    "approvals": 32,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": "2026-11-13T19:17:52Z",
+    "unreviewed": false
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1f916 && cd 1f916",
+    "git fetch origin pull/807/head && git checkout FETCH_HEAD",
     "npm ci && npm test"
    ]
   }
