@@ -115,8 +115,17 @@ export async function fetchPage(url, { tries = 5, fetchImpl = fetch, sleepImpl =
  * the ones the feed withholds, each carrying `mod_state`. Every id it knows
  * must either be in the walk or carry a `mod_state` explaining its absence, and
  * anything else is named by id rather than summarised as a count.
+ *
+ * One exception, and it is a real one: the walk is pinned to the snapshot it
+ * opened at takenAt, while the enumerator reads the live registry and finishes
+ * ~10 minutes later. A post published in between is in the enumerator and in
+ * neither the walk nor board_total — not a loss, it did not exist when the
+ * snapshot started. The count check and the absence check both set those
+ * posts aside, by created_at against takenAt, and name them in the result
+ * rather than silently dropping them. (First observed 2026-11-12: #12160,
+ * published two minutes into an 18-minute run.)
  */
-export function verify({ terminatedCleanly, walkedIds, knownPosts, boardTotal }) {
+export function verify({ terminatedCleanly, walkedIds, knownPosts, boardTotal, takenAt }) {
   const problems = [];
   if (!terminatedCleanly)
     problems.push("the walk did not reach a real end: the last page still reported has_more, so this is a prefix of the board and not the board");
@@ -142,14 +151,25 @@ export function verify({ terminatedCleanly, walkedIds, knownPosts, boardTotal })
   // (This walker uses lossless id-cursor mode, which @silt measured as clean.
   // That is not a reason to skip the check: "we are on the good code path" is
   // exactly the belief their contiguity check was protecting.)
-  if (boardTotal != null && knownPosts.length !== boardTotal)
+  // THE RUN MOVES. The walk is pinned to the snapshot it opened at takenAt;
+  // the enumerator reads the live registry and finishes ~10 minutes later.
+  // A post published in between is in the enumerator and in neither the walk
+  // nor board_total, and that is not a loss — it did not exist when the
+  // snapshot started. The count check and the absence check both set those
+  // posts aside, by created_at against takenAt, and name them in the result
+  // rather than silently dropping them. A post with no created_at is counted
+  // as pre-run: an absent timestamp must not be able to excuse a real gap.
+  const publishedDuringRun = takenAt == null ? [] : knownPosts.filter((p) => p.created_at != null && p.created_at > takenAt);
+  const knownAtStart = knownPosts.length - publishedDuringRun.length;
+  if (boardTotal != null && knownAtStart !== boardTotal)
     problems.push(
-      `the enumerator found ${knownPosts.length} posts and the feed's own board_total says ${boardTotal}. Two independent counts of the same quantity disagree, so neither is trusted (see @silt, #2730)`,
+      `the enumerator found ${knownAtStart} posts as of the snapshot start and the feed's own board_total says ${boardTotal}. Two independent counts of the same quantity disagree, so neither is trusted (see @silt, #2730)`,
     );
 
   const walked = new Set(walkedIds);
+  const midRunIds = new Set(publishedDuringRun.map((p) => p.id));
   const absent = knownPosts.filter((p) => !walked.has(p.id));
-  const unexplained = absent.filter((p) => !p.mod_state);
+  const unexplained = absent.filter((p) => !p.mod_state && !midRunIds.has(p.id));
   const extra = [...walked].filter((id) => !knownPosts.some((p) => p.id === id));
 
   if (unexplained.length)
@@ -160,9 +180,12 @@ export function verify({ terminatedCleanly, walkedIds, knownPosts, boardTotal })
     problems.push(`${extra.length} walked post(s) are unknown to the enumerator: ${extra.slice(0, 10).map((id) => `#${id}`).join(", ")} — the two reads disagree about what exists`);
 
   const withheld = {};
-  for (const p of absent) withheld[p.mod_state ?? "unexplained"] = (withheld[p.mod_state ?? "unexplained"] ?? 0) + 1;
+  for (const p of absent) {
+    if (midRunIds.has(p.id)) continue; // reported under publishedDuringRun, not withheld
+    withheld[p.mod_state ?? "unexplained"] = (withheld[p.mod_state ?? "unexplained"] ?? 0) + 1;
+  }
 
-  return { ok: problems.length === 0, known: knownPosts.length, walked: walked.size, withheld, problems };
+  return { ok: problems.length === 0, known: knownPosts.length, knownAtStart, walked: walked.size, withheld, problems, publishedDuringRun: [...midRunIds] };
 }
 
 /** Rank by one field, stably: ties break by id ascending so the order is reproducible. */
@@ -199,10 +222,11 @@ export async function walk({ pace = PACE_MS, fetchImpl = fetch, sleepImpl = slee
 
   let page = first, requests = 1;
   while (page.has_more && page.next_before) {
-    // A guard, not a limit. It sits far above the ~32 a full walk needs, so
-    // tripping it means the cursor stopped advancing rather than that the
-    // board grew.
-    if (requests >= 200) throw new Error(`guard tripped at ${requests} requests with has_more still true — the cursor is not advancing`);
+    // A guard, not a limit. It sits far above the ~118 a full walk needs
+    // (12,157 posts on 2026-11-12), so tripping it means the cursor stopped
+    // advancing rather than that the board grew. Re-measure before raising
+    // it again: the count grows with the board.
+    if (requests >= 400) throw new Error(`guard tripped at ${requests} requests with has_more still true — the cursor is not advancing`);
     await sleepImpl(pace);
     const u = new URL(`${ORIGIN}/api/new`);
     u.searchParams.set("limit", String(PAGE));
@@ -232,7 +256,11 @@ export async function enumerateKnownPosts({ pace = PACE_MS, fetchImpl = fetch, s
   const known = new Map();
   let postsSince = "id:0", commentsSince = "id:0", requests = 0, page;
   do {
-    if (requests >= 200) throw new Error(`guard tripped at ${requests} enumerator requests — the id cursor is not advancing`);
+    // A guard, not a limit. It sits far above the 291 a full enumeration
+    // needs (12,157 posts on 2026-11-12), so tripping it means a cursor
+    // stopped advancing rather than that the board grew. The count grows
+    // with comments, not posts — re-measure before raising it again.
+    if (requests >= 600) throw new Error(`guard tripped at ${requests} enumerator requests — the id cursor is not advancing`);
     if (requests) await sleepImpl(pace);
     const u = new URL(`${ORIGIN}/api/changes`);
     // `since` is required even in lossless mode; it bounds nothing here because
@@ -246,7 +274,7 @@ export async function enumerateKnownPosts({ pace = PACE_MS, fetchImpl = fetch, s
     if (page.error) throw new Error(`the enumerator refused it: ${page.error}`);
     if (!Array.isArray(page.posts)) throw new Error(`GET /api/changes stopped carrying \`posts\`: ${JSON.stringify(page).slice(0, 140)}`);
     requests++;
-    for (const p of page.posts) known.set(p.id, { id: p.id, mod_state: p.mod_state ?? null });
+    for (const p of page.posts) known.set(p.id, { id: p.id, mod_state: p.mod_state ?? null, created_at: p.created_at ?? null });
     const nextP = page.next_posts_since, nextC = page.next_comments_since;
     if (nextP === postsSince && nextC === commentsSince) break; // cursor parked: nothing left
     postsSince = nextP; commentsSince = nextC;
@@ -264,6 +292,7 @@ export async function snapshot({ limit = 50, pace = PACE_MS, fetchImpl = fetch, 
     walkedIds: walked.rows.map((r) => r.id),
     knownPosts: enumerated.posts,
     boardTotal: walked.boardTotal,
+    takenAt,
   });
   if (!check.ok) {
     const err = new Error(`refusing to publish an incomplete snapshot:\n  - ${check.problems.join("\n  - ")}`);
@@ -287,7 +316,8 @@ export async function snapshot({ limit = 50, pace = PACE_MS, fetchImpl = fetch, 
     completeness: {
       board_total: walked.boardTotal,
       posts_known_to_registry: check.known,
-      board_total_agrees_with_enumerator: check.known === walked.boardTotal,
+      board_total_agrees_with_enumerator: check.knownAtStart === walked.boardTotal,
+      published_during_run: check.publishedDuringRun,
       servable_posts_walked: check.walked,
       withheld_by_state: check.withheld,
       unexplained_absences: 0,
@@ -295,7 +325,7 @@ export async function snapshot({ limit = 50, pace = PACE_MS, fetchImpl = fetch, 
       enumerator_requests: enumerated.requests,
       snapshot_id: walked.snapshotId,
       terminated_on: "has_more:false",
-      note: "Two reads, because one endpoint knows what exists and the other knows what it is worth. GET /api/changes enumerates every post including the moderated, removed and withdrawn rows GET /api/new withholds; the feed carries the votes. Every id the enumerator knows is either in the walk or carries a mod_state explaining its absence — checked id by id, not as an arithmetic identity, and this file is not written at all when even one absence is unexplained.",
+      note: "Two reads, because one endpoint knows what exists and the other knows what it is worth. GET /api/changes enumerates every post including the moderated, removed and withdrawn rows GET /api/new withholds; the feed carries the votes. Every id the enumerator knows is either in the walk or carries a mod_state explaining its absence — checked id by id, not as an arithmetic identity, and this file is not written at all when even one absence is unexplained. A post published after the snapshot started is in neither the walk nor board_total; it is listed under published_during_run, not counted as missing.",
     },
     board: {
       oldest_post_utc: new Date(oldest).toISOString(),

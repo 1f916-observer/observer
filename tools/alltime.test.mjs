@@ -150,7 +150,7 @@ test("the enumerator pages by id cursor and stops when the cursor parks", async 
       posts: [], has_more: true, next_posts_since: "id:3", next_comments_since: "id:12" }) };
   };
   const e = await enumerateKnownPosts({ pace: 0, fetchImpl, sleepImpl: nosleep });
-  assert.deepEqual(e.posts, [{ id: 1, mod_state: null }, { id: 2, mod_state: "removed" }, { id: 3, mod_state: null }]);
+  assert.deepEqual(e.posts, [{ id: 1, mod_state: null, created_at: null }, { id: 2, mod_state: "removed", created_at: null }, { id: 3, mod_state: null, created_at: null }]);
   assert.equal(e.requests, 3);
 });
 
@@ -230,7 +230,7 @@ test("the enumerator's count is checked against the feed's own board_total", () 
   // the one a contiguity check cannot see: 1,2,3 is contiguous either way.
   const truncated = verify({ terminatedCleanly: true, walkedIds: [1, 2, 3], knownPosts: known, boardTotal: 3203 });
   assert.equal(truncated.ok, false);
-  assert.match(truncated.problems.join(" "), /enumerator found 3 posts and the feed's own board_total says 3203/);
+  assert.match(truncated.problems.join(" "), /enumerator found 3 posts as of the snapshot start and the feed's own board_total says 3203/);
   assert.match(truncated.problems.join(" "), /so neither is trusted/);
 
   // And the check must not be skippable by simply not passing the number.
@@ -245,6 +245,44 @@ test("snapshot() always supplies board_total to the check, so it cannot be skipp
   const feed = fakeFeed({ total: 250, boardTotal: 400, known });
   await assert.rejects(
     () => snapshot({ pace: 0, fetchImpl: feed.fetchImpl, sleepImpl: nosleep }),
-    /enumerator found 250 posts and the feed's own board_total says 400/,
+    /enumerator found 250 posts as of the snapshot start and the feed's own board_total says 400/,
   );
+});
+
+// Mid-run race (PR #97): posts published after takenAt are set aside, by created_at, and named.
+test("a post published after the snapshot started is accepted and named, not counted missing", () => {
+  const known = [{ id: 1, mod_state: null, created_at: 100 }, { id: 2, mod_state: null, created_at: 200 }, { id: 3, mod_state: null, created_at: 900 }];
+  const r = verify({ terminatedCleanly: true, walkedIds: [1, 2], knownPosts: known, boardTotal: 2, takenAt: 500 });
+  assert.equal(r.ok, true, r.problems.join("; "));
+  assert.deepEqual(r.publishedDuringRun, [3]);
+  assert.equal(r.knownAtStart, 2);
+  assert.deepEqual(r.withheld, {});
+});
+
+test("a pre-run absence is still refused even with takenAt", () => {
+  const known = [{ id: 1, mod_state: null, created_at: 100 }, { id: 2, mod_state: null, created_at: 200 }];
+  const r = verify({ terminatedCleanly: true, walkedIds: [1], knownPosts: known, boardTotal: 2, takenAt: 500 });
+  assert.equal(r.ok, false);
+  assert.match(r.problems.join(" "), /#2/);
+});
+
+test("a post with no created_at cannot excuse a gap", () => {
+  const known = [{ id: 1, mod_state: null, created_at: 100 }, { id: 2, mod_state: null, created_at: null }];
+  const r = verify({ terminatedCleanly: true, walkedIds: [1], knownPosts: known, boardTotal: 2, takenAt: 500 });
+  assert.equal(r.ok, false);
+  assert.deepEqual(r.publishedDuringRun, []);
+});
+
+test("a count mismatch beyond the race is still refused", () => {
+  const known = [{ id: 1, mod_state: null, created_at: 100 }, { id: 2, mod_state: null, created_at: 900 }];
+  const r = verify({ terminatedCleanly: true, walkedIds: [1], knownPosts: known, boardTotal: 5, takenAt: 500 });
+  assert.equal(r.ok, false);
+  assert.match(r.problems.join(" "), /board_total says 5/);
+});
+
+test("without takenAt the check behaves exactly as before", () => {
+  const known = [{ id: 1, mod_state: null, created_at: 100 }, { id: 2, mod_state: null, created_at: 900 }];
+  const r = verify({ terminatedCleanly: true, walkedIds: [1], knownPosts: known, boardTotal: 1 });
+  assert.equal(r.ok, false);
+  assert.deepEqual(r.publishedDuringRun, []);
 });
