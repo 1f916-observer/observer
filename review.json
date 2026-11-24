@@ -1,7 +1,7 @@
 {
  "schema": "1f916.observer.review.v1",
- "taken_at": 1795513411542,
- "taken_at_utc": "2026-11-24T09:43:31.542Z",
+ "taken_at": 1795558731128,
+ "taken_at_utc": "2026-11-24T22:18:51.128Z",
  "orgs": [
   "1f916-ai",
   "1f916-observer"
@@ -19,18 +19,18 @@
   ]
  },
  "summary": {
-  "open": 46,
-  "unreviewed": 19,
-  "median_age_days": 44,
-  "over_14_days": 25,
+  "open": 47,
+  "unreviewed": 20,
+  "median_age_days": 43,
+  "over_14_days": 27,
   "over_30_days": 24,
-  "small_and_unreviewed": 6,
+  "small_and_unreviewed": 7,
   "by_repo": {
    "1f916-ai/1f512": {
-    "open": 12,
-    "unreviewed": 10,
+    "open": 13,
+    "unreviewed": 11,
     "oldest_days": 70,
-    "ci_none": 12
+    "ci_none": 13
    },
    "1f916-ai/1fab0": {
     "open": 10,
@@ -97,7 +97,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/21",
    "title": "evaluate: a transfer of nothing is not a transfer",
    "created_at": "2026-09-15T19:26:49Z",
-   "age_days": 69,
+   "age_days": 70,
    "draft": false,
    "size": {
     "additions": 159,
@@ -159,7 +159,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/24",
    "title": "page: render the log, never a second source of truth (#18)",
    "created_at": "2026-09-16T15:22:19Z",
-   "age_days": 68,
+   "age_days": 69,
    "draft": false,
    "size": {
     "additions": 3069,
@@ -190,7 +190,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/25",
    "title": "commitment: key-bound filing and tier distinction (#16)",
    "created_at": "2026-09-16T15:52:04Z",
-   "age_days": 68,
+   "age_days": 69,
    "draft": false,
    "size": {
     "additions": 719,
@@ -221,7 +221,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/26",
    "title": "coverage: a block is covered only when every required provider answered for it (#15)",
    "created_at": "2026-09-16T21:32:38Z",
-   "age_days": 68,
+   "age_days": 69,
    "draft": false,
    "size": {
     "additions": 805,
@@ -283,7 +283,7 @@
    "url": "https://github.com/1f916-ai/1fab0/pull/6",
    "title": "v4 run: 3,150 rows on the sealed seeds; difference-test verdicts; three of six held",
    "created_at": "2026-09-17T14:47:34Z",
-   "age_days": 67,
+   "age_days": 68,
    "draft": false,
    "size": {
     "additions": 4286,
@@ -345,7 +345,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/30",
    "title": "contract: freeze reading-line schema + golden vectors for all four verdicts",
    "created_at": "2026-09-20T19:56:56Z",
-   "age_days": 64,
+   "age_days": 65,
    "draft": false,
    "size": {
     "additions": 719,
@@ -500,7 +500,7 @@
    "url": "https://github.com/1f916-ai/stocks.now/pull/3",
    "title": "Docs: identity tokens live, pool singular, User-Agent note, precision…",
    "created_at": "2026-11-09T19:30:41Z",
-   "age_days": 14,
+   "age_days": 15,
    "draft": false,
    "size": {
     "additions": 15,
@@ -531,7 +531,7 @@
    "url": "https://github.com/1f916-ai/stocks.now/pull/4",
    "title": "Cursor/fix drained pool staleness 8ce1",
    "created_at": "2026-11-09T19:33:56Z",
-   "age_days": 14,
+   "age_days": 15,
    "draft": false,
    "size": {
     "additions": 115,
@@ -553,6 +553,37 @@
     "git clone https://github.com/1f916-ai/stocks.now && cd stocks.now",
     "git fetch origin pull/4/head && git checkout FETCH_HEAD",
     "npm ci && npm test"
+   ]
+  },
+  {
+   "key": "1f916-ai/1f512#32",
+   "repo": "1f916-ai/1f512",
+   "number": 32,
+   "url": "https://github.com/1f916-ai/1f512/pull/32",
+   "title": "disclosed-within: a disclosure's arrival is a bracket, not a timestamp (#31)",
+   "created_at": "2026-11-17T21:08:54Z",
+   "age_days": 7,
+   "draft": false,
+   "size": {
+    "additions": 229,
+    "deletions": 14,
+    "files": 3
+   },
+   "small": false,
+   "mergeable": "yes",
+   "ci": "none",
+   "engagement": {
+    "reviews": 0,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": null,
+    "unreviewed": true
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1f512 && cd 1f512",
+    "git fetch origin pull/32/head && git checkout FETCH_HEAD",
+    "npm test"
    ]
   },
   {
@@ -587,49 +618,18 @@
    ]
   },
   {
-   "key": "1f916-ai/1f512#32",
-   "repo": "1f916-ai/1f512",
-   "number": 32,
-   "url": "https://github.com/1f916-ai/1f512/pull/32",
-   "title": "disclosed-within: a disclosure's arrival is a bracket, not a timestamp (#31)",
-   "created_at": "2026-11-17T21:08:54Z",
-   "age_days": 6,
-   "draft": false,
-   "size": {
-    "additions": 229,
-    "deletions": 14,
-    "files": 3
-   },
-   "small": false,
-   "mergeable": "yes",
-   "ci": "none",
-   "engagement": {
-    "reviews": 0,
-    "approvals": 0,
-    "changes_requested": 0,
-    "comments_by_others": 0,
-    "last_engagement_at": null,
-    "unreviewed": true
-   },
-   "check": [
-    "git clone https://github.com/1f916-ai/1f512 && cd 1f512",
-    "git fetch origin pull/32/head && git checkout FETCH_HEAD",
-    "npm test"
-   ]
-  },
-  {
    "key": "1f916-ai/1f512#33",
    "repo": "1f916-ai/1f512",
    "number": 33,
    "url": "https://github.com/1f916-ai/1f512/pull/33",
    "title": "bracket: build disclosure brackets from reading rows (#31, stacked on #32)",
    "created_at": "2026-11-21T12:36:28Z",
-   "age_days": 2,
+   "age_days": 3,
    "draft": false,
    "size": {
-    "additions": 546,
-    "deletions": 14,
-    "files": 5
+    "additions": 566,
+    "deletions": 15,
+    "files": 6
    },
    "small": false,
    "mergeable": "yes",
@@ -649,13 +649,44 @@
    ]
   },
   {
+   "key": "1f916-ai/1f512#34",
+   "repo": "1f916-ai/1f512",
+   "number": 34,
+   "url": "https://github.com/1f916-ai/1f512/pull/34",
+   "title": "ci: run the typecheck (#28; carries #29)",
+   "created_at": "2026-11-24T22:15:09Z",
+   "age_days": 0,
+   "draft": false,
+   "size": {
+    "additions": 84,
+    "deletions": 0,
+    "files": 6
+   },
+   "small": true,
+   "mergeable": "yes",
+   "ci": "none",
+   "engagement": {
+    "reviews": 0,
+    "approvals": 0,
+    "changes_requested": 0,
+    "comments_by_others": 0,
+    "last_engagement_at": null,
+    "unreviewed": true
+   },
+   "check": [
+    "git clone https://github.com/1f916-ai/1f512 && cd 1f512",
+    "git fetch origin pull/34/head && git checkout FETCH_HEAD",
+    "npm test"
+   ]
+  },
+  {
    "key": "1f916-ai/1f512#23",
    "repo": "1f916-ai/1f512",
    "number": 23,
    "url": "https://github.com/1f916-ai/1f512/pull/23",
    "title": "predicate: no-new-mint, with the witness that proves it can fail (#17)",
    "created_at": "2026-09-16T14:08:55Z",
-   "age_days": 68,
+   "age_days": 69,
    "draft": false,
    "size": {
     "additions": 208,
@@ -841,7 +872,7 @@
    "url": "https://github.com/1f916-ai/1f512/pull/29",
    "title": "build: make npm run typecheck real (#28)",
    "created_at": "2026-09-20T14:28:29Z",
-   "age_days": 64,
+   "age_days": 65,
    "draft": false,
    "size": {
     "additions": 81,
@@ -965,7 +996,7 @@
    "url": "https://github.com/1f916-ai/1f916/pull/609",
    "title": "A verified listing's balance check counts the wallet's other open verified listings and its unpaid awards",
    "created_at": "2026-10-12T21:12:04Z",
-   "age_days": 42,
+   "age_days": 43,
    "draft": false,
    "size": {
     "additions": 366,
@@ -996,7 +1027,7 @@
    "url": "https://github.com/1f916-ai/1f916/pull/806",
    "title": "feat(listings): opt-in claim window and rail throughput census",
    "created_at": "2026-11-13T18:11:19Z",
-   "age_days": 10,
+   "age_days": 11,
    "draft": false,
    "size": {
     "additions": 1284,
@@ -1089,7 +1120,7 @@
    "url": "https://github.com/1f916-ai/1f916/pull/820",
    "title": "docs(mentions): qualify simultaneous notification and scan cap drops",
    "created_at": "2026-11-16T18:19:50Z",
-   "age_days": 7,
+   "age_days": 8,
    "draft": false,
    "size": {
     "additions": 1,
@@ -1120,7 +1151,7 @@
    "url": "https://github.com/1f916-ai/1f916/pull/821",
    "title": "docs(openapi): correct /api/me inbox cursor contract",
    "created_at": "2026-11-16T18:51:26Z",
-   "age_days": 7,
+   "age_days": 8,
    "draft": false,
    "size": {
     "additions": 65,
@@ -1151,7 +1182,7 @@
    "url": "https://github.com/1f916-ai/1f916/pull/823",
    "title": "fix(source): contain asynchronous asset failures",
    "created_at": "2026-11-17T10:48:02Z",
-   "age_days": 6,
+   "age_days": 7,
    "draft": false,
    "size": {
     "additions": 167,
@@ -1182,7 +1213,7 @@
    "url": "https://github.com/1f916-ai/1f916/pull/824",
    "title": "docs(openapi): publish /api/citizens pagination contract",
    "created_at": "2026-11-17T12:03:36Z",
-   "age_days": 6,
+   "age_days": 7,
    "draft": false,
    "size": {
     "additions": 55,
@@ -1244,7 +1275,7 @@
    "url": "https://github.com/1f916-ai/1f916/pull/829",
    "title": "feat(marketing): read-only GET /api/marketing — positioning plus a rotating daily brief",
    "created_at": "2026-11-18T18:20:38Z",
-   "age_days": 5,
+   "age_days": 6,
    "draft": true,
    "size": {
     "additions": 932,
@@ -1275,7 +1306,7 @@
    "url": "https://github.com/1f916-ai/1f916/pull/831",
    "title": "docs: clarify /api/attest cursor and coverage semantics",
    "created_at": "2026-11-20T14:56:32Z",
-   "age_days": 3,
+   "age_days": 4,
    "draft": false,
    "size": {
     "additions": 28,
@@ -1306,7 +1337,7 @@
    "url": "https://github.com/1f916-ai/1f916/pull/832",
    "title": "docs(clients): explain bounded offers results",
    "created_at": "2026-11-20T21:46:00Z",
-   "age_days": 3,
+   "age_days": 4,
    "draft": false,
    "size": {
     "additions": 52,
@@ -1337,7 +1368,7 @@
    "url": "https://github.com/1f916-ai/1f916/pull/833",
    "title": "docs(openapi): define inbox ack success receipts",
    "created_at": "2026-11-21T10:13:47Z",
-   "age_days": 2,
+   "age_days": 3,
    "draft": false,
    "size": {
     "additions": 95,
@@ -1368,7 +1399,7 @@
    "url": "https://github.com/1f916-ai/1f916/pull/834",
    "title": "Clarify keyless surface counts for clients",
    "created_at": "2026-11-21T12:44:40Z",
-   "age_days": 2,
+   "age_days": 3,
    "draft": false,
    "size": {
     "additions": 34,
@@ -1461,7 +1492,7 @@
    "url": "https://github.com/1f916-ai/1f916/pull/837",
    "title": "docs: clarify checkpoint signature timestamp units",
    "created_at": "2026-11-22T12:13:42Z",
-   "age_days": 1,
+   "age_days": 2,
    "draft": false,
    "size": {
     "additions": 21,
